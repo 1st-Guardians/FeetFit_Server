@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -67,12 +68,70 @@ public class UserController {
         return ApiResponse.onSuccess(userService.getProfile(userId));
     }
 
+    @PostMapping("/profile/setup")
+    @Operation(
+            summary = "기본 정보 최초 등록 [은서]",
+            description = """
+                    로그인한 사용자의 기본 정보를 최초 등록하고 약관 동의 이력을 저장합니다.
+                    Authorization 헤더에 Bearer accessToken이 필요합니다.
+                    termsAgreed는 true만 허용합니다.
+                    이미 기본 정보가 등록된 유저는 이 API를 사용할 수 없습니다.
+                    """
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "기본 정보 최초 등록 및 약관 동의 저장 성공",
+                    content = @Content(examples = @ExampleObject(value = USER_PROFILE_SUCCESS_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "필수값 누락, 범위 오류, 약관 미동의, enum 값 오류, 잘못된 JSON",
+                    content = @Content(examples = {
+                            @ExampleObject(name = "유효성 검사 실패", value = PROFILE_SETUP_VALIDATION_ERROR_RESPONSE),
+                            @ExampleObject(name = "enum 값 오류", value = INVALID_JSON_OR_ENUM_RESPONSE)
+                    })
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = "Authorization 헤더 누락 또는 유효하지 않은 토큰",
+                    content = @Content(examples = @ExampleObject(value = UNAUTHORIZED_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "403",
+                    description = "접근 권한 없음",
+                    content = @Content(examples = @ExampleObject(value = FORBIDDEN_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "토큰의 userId에 해당하는 유저가 존재하지 않음",
+                    content = @Content(examples = @ExampleObject(value = USER_NOT_FOUND_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "409",
+                    description = "이미 기본 정보가 등록된 유저",
+                    content = @Content(examples = @ExampleObject(value = PROFILE_ALREADY_SETUP_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "500",
+                    description = "서버 내부 오류",
+                    content = @Content(examples = @ExampleObject(value = INTERNAL_SERVER_ERROR_RESPONSE))
+            )
+    })
+    public ApiResponse<UserResponseDTO.UserProfileResponseDTO> setupProfile(
+            @RequestBody @Valid UserRequestDTO.UserProfileSetupRequestDTO request
+    ) {
+        Long userId = findLoginUser.getCurrentUserId();
+        return ApiResponse.onSuccess(userService.setupProfile(userId, request));
+    }
+
     @PatchMapping("/profile")
     @Operation(
-            summary = "기본 정보 입력 [은서]",
+            summary = "기본 정보 수정 [은서]",
             description = """
-                    로그인한 사용자의 기본 정보를 입력하거나 수정합니다.
+                    로그인한 사용자의 기본 정보를 수정합니다.
                     Authorization 헤더에 Bearer accessToken이 필요합니다.
+                    약관 동의는 처리하지 않습니다.
                     gender는 MALE 또는 FEMALE만 허용합니다.
                     """
     )
@@ -136,6 +195,18 @@ public class UserController {
             }
             """;
 
+    private static final String PROFILE_SETUP_VALIDATION_ERROR_RESPONSE = """
+            {
+              "isSuccess": false,
+              "code": "COMMON400",
+              "message": "잘못된 요청입니다.",
+              "result": {
+                "age": "나이는 1세 이상이어야 합니다.",
+                "termsAgreed": "약관 동의는 필수입니다."
+              }
+            }
+            """;
+
     private static final String PROFILE_VALIDATION_ERROR_RESPONSE = """
             {
               "isSuccess": false,
@@ -181,6 +252,15 @@ public class UserController {
               "isSuccess": false,
               "code": "USER4001",
               "message": "사용자를 찾을 수 없습니다.",
+              "result": null
+            }
+            """;
+
+    private static final String PROFILE_ALREADY_SETUP_RESPONSE = """
+            {
+              "isSuccess": false,
+              "code": "USER4004",
+              "message": "이미 기본 정보가 등록된 사용자입니다.",
               "result": null
             }
             """;

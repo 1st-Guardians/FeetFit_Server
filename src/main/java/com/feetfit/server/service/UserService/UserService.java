@@ -6,5 +6,7 @@ import com.feetfit.server.web.dto.user.UserResponseDTO;
 public interface UserService {
     UserResponseDTO.UserProfileResponseDTO getProfile(Long userId);
 
+    UserResponseDTO.UserProfileResponseDTO setupProfile(Long userId, UserRequestDTO.UserProfileSetupRequestDTO request);
+
     UserResponseDTO.UserProfileResponseDTO updateProfile(Long userId, UserRequestDTO.UserProfileUpdateRequestDTO request);
 }

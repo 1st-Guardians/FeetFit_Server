@@ -1,6 +1,7 @@
 package com.feetfit.server.web.dto.user;
 
 import com.feetfit.server.domain.enums.Gender;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
@@ -40,5 +41,13 @@ public class UserRequestDTO {
 
         @Size(max = 255, message = "프로필 이미지 URL은 255자 이하여야 합니다.")
         private String profileImageUrl;
+    }
+
+    @Getter
+    @NoArgsConstructor
+    public static class UserProfileSetupRequestDTO extends UserProfileUpdateRequestDTO {
+        @NotNull(message = "약관 동의 여부는 필수입니다.")
+        @AssertTrue(message = "약관 동의는 필수입니다.")
+        private Boolean termsAgreed;
     }
 }

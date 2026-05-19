@@ -20,6 +20,7 @@ public enum ErrorStatus implements BaseErrorCode {
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "USER4001", "사용자를 찾을 수 없습니다."),
     USER_ALREADY_EXISTS(HttpStatus.CONFLICT, "USER4002", "이미 존재하는 사용자입니다."),
     USER_WITHDRAWN(HttpStatus.FORBIDDEN, "USER4003", "탈퇴한 사용자입니다."),
+    USER_PROFILE_ALREADY_SETUP(HttpStatus.CONFLICT, "USER4004", "이미 기본 정보가 등록된 사용자입니다."),
 
     // Auth
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH4001", "유효하지 않은 토큰입니다."),

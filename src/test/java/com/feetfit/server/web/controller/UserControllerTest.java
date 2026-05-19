@@ -27,6 +27,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -79,6 +80,76 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.isSuccess").value(false))
                 .andExpect(jsonPath("$.code").value("USER4001"))
                 .andExpect(jsonPath("$.message").value("사용자를 찾을 수 없습니다."));
+    }
+
+    @Test
+    void setupProfile_success_returnsUpdatedProfile() throws Exception {
+        given(findLoginUser.getCurrentUserId()).willReturn(1L);
+        given(userService.setupProfile(eq(1L), any())).willReturn(completeProfileResponse());
+
+        mockMvc.perform(post("/api/users/profile/setup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(validProfileSetupRequest()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.isSuccess").value(true))
+                .andExpect(jsonPath("$.code").value("COMMON200"))
+                .andExpect(jsonPath("$.result.requiresProfileSetup").value(false));
+    }
+
+    @Test
+    void setupProfile_termsAgreedFalse_returnsValidationError() throws Exception {
+        mockMvc.perform(post("/api/users/profile/setup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "nickname": "은서",
+                                  "age": 24,
+                                  "heightCm": 165.5,
+                                  "weightKg": 52.3,
+                                  "gender": "FEMALE",
+                                  "termsAgreed": false
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.isSuccess").value(false))
+                .andExpect(jsonPath("$.code").value("COMMON400"))
+                .andExpect(jsonPath("$.message").value("잘못된 요청입니다."))
+                .andExpect(jsonPath("$.result.termsAgreed").value("약관 동의는 필수입니다."));
+    }
+
+    @Test
+    void setupProfile_termsAgreedMissing_returnsValidationError() throws Exception {
+        mockMvc.perform(post("/api/users/profile/setup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "nickname": "은서",
+                                  "age": 24,
+                                  "heightCm": 165.5,
+                                  "weightKg": 52.3,
+                                  "gender": "FEMALE"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.isSuccess").value(false))
+                .andExpect(jsonPath("$.code").value("COMMON400"))
+                .andExpect(jsonPath("$.message").value("잘못된 요청입니다."))
+                .andExpect(jsonPath("$.result.termsAgreed").value("약관 동의 여부는 필수입니다."));
+    }
+
+    @Test
+    void setupProfile_alreadySetup_returnsConflictError() throws Exception {
+        given(findLoginUser.getCurrentUserId()).willReturn(1L);
+        given(userService.setupProfile(eq(1L), any()))
+                .willThrow(new UserHandler(ErrorStatus.USER_PROFILE_ALREADY_SETUP));
+
+        mockMvc.perform(post("/api/users/profile/setup")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(validProfileSetupRequest()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.isSuccess").value(false))
+                .andExpect(jsonPath("$.code").value("USER4004"))
+                .andExpect(jsonPath("$.message").value("이미 기본 정보가 등록된 사용자입니다."));
     }
 
     @Test
@@ -341,6 +412,20 @@ class UserControllerTest {
                   "weightKg": 52.3,
                   "gender": "FEMALE",
                   "profileImageUrl": "https://example.com/profile.png"
+                }
+                """;
+    }
+
+    private static String validProfileSetupRequest() {
+        return """
+                {
+                  "nickname": "은서",
+                  "age": 24,
+                  "heightCm": 165.5,
+                  "weightKg": 52.3,
+                  "gender": "FEMALE",
+                  "profileImageUrl": "https://example.com/profile.png",
+                  "termsAgreed": true
                 }
                 """;
     }
