@@ -8,6 +8,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -38,6 +39,17 @@ public class ExceptionAdvice extends ResponseEntityExceptionHandler {
         ex.getBindingResult().getFieldErrors()
                 .forEach(fieldError -> errors.put(fieldError.getField(), fieldError.getDefaultMessage()));
         ApiResponse<Object> body = ApiResponse.onFailure("COMMON400", "잘못된 요청입니다.", errors);
+        return ResponseEntity.badRequest().body(body);
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleHttpMessageNotReadable(
+            HttpMessageNotReadableException ex, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        ApiResponse<Object> body = ApiResponse.onFailure(
+                "COMMON400",
+                "요청 본문 형식이 잘못되었습니다. enum 값은 허용된 대문자 값으로 입력해야 합니다.",
+                null
+        );
         return ResponseEntity.badRequest().body(body);
     }
 
