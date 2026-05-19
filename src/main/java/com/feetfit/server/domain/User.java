@@ -30,17 +30,17 @@ public class User extends BaseEntity {
     @Column(nullable = false, length = 50)
     private String nickname;
 
-    @Column(nullable = false)
+    @Column
     private Integer age;
 
-    @Column(nullable = false)
+    @Column
     private Float heightCm;
 
-    @Column(nullable = false)
+    @Column
     private Float weightKg;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column
     private Gender gender;
 
     @Enumerated(EnumType.STRING)
@@ -77,4 +77,13 @@ public class User extends BaseEntity {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     @Builder.Default
     private List<ShoeRecommendation> shoeRecommendations = new ArrayList<>();
+
+    public void updateProfile(String nickname, Integer age, Float heightCm, Float weightKg, Gender gender, String profileImageUrl) {
+        this.nickname = nickname;
+        this.age = age;
+        this.heightCm = heightCm;
+        this.weightKg = weightKg;
+        this.gender = gender;
+        this.profileImageUrl = profileImageUrl;
+    }
 }

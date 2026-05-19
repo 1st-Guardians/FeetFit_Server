@@ -37,6 +37,10 @@ public class TokenProvider {
         return createToken(userId, REFRESH_TOKEN_EXPIRE_TIME);
     }
 
+    public Long getAccessTokenExpiresIn() {
+        return System.currentTimeMillis() + ACCESS_TOKEN_EXPIRE_TIME;
+    }
+
     private String createToken(Long userId, long expireTime) {
         Date now = new Date();
         return Jwts.builder()

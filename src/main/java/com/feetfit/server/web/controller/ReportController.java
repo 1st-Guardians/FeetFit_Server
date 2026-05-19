@@ -5,7 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Report", description = "리포트 API")
+@Tag(name = "Report [은서]", description = "리포트 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/reports")
