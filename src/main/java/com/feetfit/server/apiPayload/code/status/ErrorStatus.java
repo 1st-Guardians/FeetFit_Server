@@ -35,6 +35,7 @@ public enum ErrorStatus implements BaseErrorCode {
     // Measurement
     MEASUREMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "MEASUREMENT4001", "측정 세션을 찾을 수 없습니다."),
     MEASUREMENT_ALREADY_IN_PROGRESS(HttpStatus.CONFLICT, "MEASUREMENT4002", "이미 측정이 진행 중입니다."),
+    MEASUREMENT_FORBIDDEN(HttpStatus.FORBIDDEN, "MEASUREMENT4003", "본인의 측정 세션이 아닙니다."),
 
     // Report
     REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "REPORT4001", "리포트를 찾을 수 없습니다."),
