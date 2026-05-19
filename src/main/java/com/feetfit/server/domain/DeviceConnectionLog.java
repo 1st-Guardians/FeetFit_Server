@@ -25,6 +25,10 @@ public class DeviceConnectionLog extends BaseEntity {
     @JoinColumn(name = "device_id", nullable = false)
     private Device device;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ConnectionType connectionType;
@@ -45,4 +49,28 @@ public class DeviceConnectionLog extends BaseEntity {
 
     @Column(nullable = false)
     private LocalDateTime endedAt;
+
+    public static DeviceConnectionLog connected(User user, Device device, LocalDateTime occurredAt) {
+        return DeviceConnectionLog.builder()
+                .device(device)
+                .user(user)
+                .connectionType(ConnectionType.APP)
+                .connectionStatus(ConnectionStatus.CONNECTED)
+                .status(device.getStatus())
+                .startedAt(occurredAt)
+                .endedAt(occurredAt)
+                .build();
+    }
+
+    public static DeviceConnectionLog disconnected(User user, Device device, LocalDateTime occurredAt) {
+        return DeviceConnectionLog.builder()
+                .device(device)
+                .user(user)
+                .connectionType(ConnectionType.APP)
+                .connectionStatus(ConnectionStatus.DISCONNECTED)
+                .status(device.getStatus())
+                .startedAt(occurredAt)
+                .endedAt(occurredAt)
+                .build();
+    }
 }

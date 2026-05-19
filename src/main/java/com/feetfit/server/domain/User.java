@@ -61,9 +61,9 @@ public class User extends BaseEntity {
     @Builder.Default
     private List<UserTerms> termsList = new ArrayList<>();
 
-    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
-    @Builder.Default
-    private List<Device> devices = new ArrayList<>();
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "device_id")
+    private Device device;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     @Builder.Default
@@ -91,5 +91,13 @@ public class User extends BaseEntity {
         this.weightKg = weightKg;
         this.footSize = footSize;
         this.gender = gender;
+    }
+
+    public void connectDevice(Device device) {
+        this.device = device;
+    }
+
+    public void disconnectDevice() {
+        this.device = null;
     }
 }

@@ -67,6 +67,7 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.result.weightKg").value(52.3))
                 .andExpect(jsonPath("$.result.footSize").value(240))
                 .andExpect(jsonPath("$.result.gender").value("FEMALE"))
+                .andExpect(jsonPath("$.result.deviceConnected").value(true))
                 .andExpect(jsonPath("$.result.requiresProfileSetup").value(false));
     }
 
@@ -483,6 +484,7 @@ class UserControllerTest {
                 .weightKg(52.3F)
                 .footSize(240)
                 .gender("FEMALE")
+                .deviceConnected(true)
                 .requiresProfileSetup(false)
                 .build();
     }

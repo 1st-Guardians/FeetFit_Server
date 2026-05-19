@@ -32,6 +32,10 @@ public class UserConverter {
     }
 
     public static UserResponseDTO.UserProfileResponseDTO toUserProfileResponseDTO(User user) {
+        return toUserProfileResponseDTO(user, false);
+    }
+
+    public static UserResponseDTO.UserProfileResponseDTO toUserProfileResponseDTO(User user, Boolean deviceConnected) {
         return UserResponseDTO.UserProfileResponseDTO.builder()
                 .userId(user.getId())
                 .nickname(user.getNickname())
@@ -40,6 +44,7 @@ public class UserConverter {
                 .weightKg(user.getWeightKg())
                 .footSize(user.getFootSize())
                 .gender(user.getGender() != null ? user.getGender().name() : null)
+                .deviceConnected(deviceConnected)
                 .requiresProfileSetup(requiresProfileSetup(user))
                 .build();
     }
