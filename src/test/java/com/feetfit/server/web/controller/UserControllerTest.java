@@ -65,8 +65,8 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.result.age").value(24))
                 .andExpect(jsonPath("$.result.heightCm").value(165.5))
                 .andExpect(jsonPath("$.result.weightKg").value(52.3))
+                .andExpect(jsonPath("$.result.footSize").value(240))
                 .andExpect(jsonPath("$.result.gender").value("FEMALE"))
-                .andExpect(jsonPath("$.result.profileImageUrl").value("https://example.com/profile.png"))
                 .andExpect(jsonPath("$.result.requiresProfileSetup").value(false));
     }
 
@@ -106,6 +106,7 @@ class UserControllerTest {
                                   "age": 24,
                                   "heightCm": 165.5,
                                   "weightKg": 52.3,
+                                  "footSize": 240,
                                   "gender": "FEMALE",
                                   "termsAgreed": false
                                 }
@@ -127,6 +128,7 @@ class UserControllerTest {
                                   "age": 24,
                                   "heightCm": 165.5,
                                   "weightKg": 52.3,
+                                  "footSize": 240,
                                   "gender": "FEMALE"
                                 }
                                 """))
@@ -194,6 +196,7 @@ class UserControllerTest {
                                   "age": 24,
                                   "heightCm": 165.5,
                                   "weightKg": 52.3,
+                                  "footSize": 240,
                                   "gender": "female"
                                 }
                                 """))
@@ -205,7 +208,6 @@ class UserControllerTest {
 
     private static Stream<Arguments> invalidProfileRequests() {
         String longNickname = "a".repeat(51);
-        String longProfileImageUrl = "https://example.com/" + "a".repeat(260);
 
         return Stream.of(
                 Arguments.of(
@@ -215,6 +217,7 @@ class UserControllerTest {
                                   "age": 24,
                                   "heightCm": 165.5,
                                   "weightKg": 52.3,
+                                  "footSize": 240,
                                   "gender": "FEMALE"
                                 }
                                 """,
@@ -229,6 +232,7 @@ class UserControllerTest {
                                   "age": 24,
                                   "heightCm": 165.5,
                                   "weightKg": 52.3,
+                                  "footSize": 240,
                                   "gender": "FEMALE"
                                 }
                                 """,
@@ -243,6 +247,7 @@ class UserControllerTest {
                                   "age": 24,
                                   "heightCm": 165.5,
                                   "weightKg": 52.3,
+                                  "footSize": 240,
                                   "gender": "FEMALE"
                                 }
                                 """.formatted(longNickname),
@@ -256,6 +261,7 @@ class UserControllerTest {
                                   "nickname": "은서",
                                   "heightCm": 165.5,
                                   "weightKg": 52.3,
+                                  "footSize": 240,
                                   "gender": "FEMALE"
                                 }
                                 """,
@@ -270,6 +276,7 @@ class UserControllerTest {
                                   "age": 0,
                                   "heightCm": 165.5,
                                   "weightKg": 52.3,
+                                  "footSize": 240,
                                   "gender": "FEMALE"
                                 }
                                 """,
@@ -284,6 +291,7 @@ class UserControllerTest {
                                   "age": 121,
                                   "heightCm": 165.5,
                                   "weightKg": 52.3,
+                                  "footSize": 240,
                                   "gender": "FEMALE"
                                 }
                                 """,
@@ -297,6 +305,7 @@ class UserControllerTest {
                                   "nickname": "은서",
                                   "age": 24,
                                   "weightKg": 52.3,
+                                  "footSize": 240,
                                   "gender": "FEMALE"
                                 }
                                 """,
@@ -311,6 +320,7 @@ class UserControllerTest {
                                   "age": 24,
                                   "heightCm": 29.9,
                                   "weightKg": 52.3,
+                                  "footSize": 240,
                                   "gender": "FEMALE"
                                 }
                                 """,
@@ -325,6 +335,7 @@ class UserControllerTest {
                                   "age": 24,
                                   "heightCm": 250.1,
                                   "weightKg": 52.3,
+                                  "footSize": 240,
                                   "gender": "FEMALE"
                                 }
                                 """,
@@ -338,6 +349,7 @@ class UserControllerTest {
                                   "nickname": "은서",
                                   "age": 24,
                                   "heightCm": 165.5,
+                                  "footSize": 240,
                                   "gender": "FEMALE"
                                 }
                                 """,
@@ -352,6 +364,7 @@ class UserControllerTest {
                                   "age": 24,
                                   "heightCm": 165.5,
                                   "weightKg": 0.9,
+                                  "footSize": 240,
                                   "gender": "FEMALE"
                                 }
                                 """,
@@ -366,11 +379,56 @@ class UserControllerTest {
                                   "age": 24,
                                   "heightCm": 165.5,
                                   "weightKg": 300.1,
+                                  "footSize": 240,
                                   "gender": "FEMALE"
                                 }
                                 """,
                         "weightKg",
                         "몸무게는 300kg 이하여야 합니다."
+                ),
+                Arguments.of(
+                        "footSize 누락",
+                        """
+                                {
+                                  "nickname": "은서",
+                                  "age": 24,
+                                  "heightCm": 165.5,
+                                  "weightKg": 52.3,
+                                  "gender": "FEMALE"
+                                }
+                                """,
+                        "footSize",
+                        "발사이즈는 필수입니다."
+                ),
+                Arguments.of(
+                        "footSize 최소값 미만",
+                        """
+                                {
+                                  "nickname": "은서",
+                                  "age": 24,
+                                  "heightCm": 165.5,
+                                  "weightKg": 52.3,
+                                  "footSize": 149,
+                                  "gender": "FEMALE"
+                                }
+                                """,
+                        "footSize",
+                        "발사이즈는 150mm 이상이어야 합니다."
+                ),
+                Arguments.of(
+                        "footSize 최대값 초과",
+                        """
+                                {
+                                  "nickname": "은서",
+                                  "age": 24,
+                                  "heightCm": 165.5,
+                                  "weightKg": 52.3,
+                                  "footSize": 351,
+                                  "gender": "FEMALE"
+                                }
+                                """,
+                        "footSize",
+                        "발사이즈는 350mm 이하여야 합니다."
                 ),
                 Arguments.of(
                         "gender 누락",
@@ -379,26 +437,12 @@ class UserControllerTest {
                                   "nickname": "은서",
                                   "age": 24,
                                   "heightCm": 165.5,
-                                  "weightKg": 52.3
+                                  "weightKg": 52.3,
+                                  "footSize": 240
                                 }
                                 """,
                         "gender",
                         "성별은 필수입니다."
-                ),
-                Arguments.of(
-                        "profileImageUrl 길이 초과",
-                        """
-                                {
-                                  "nickname": "은서",
-                                  "age": 24,
-                                  "heightCm": 165.5,
-                                  "weightKg": 52.3,
-                                  "gender": "FEMALE",
-                                  "profileImageUrl": "%s"
-                                }
-                                """.formatted(longProfileImageUrl),
-                        "profileImageUrl",
-                        "프로필 이미지 URL은 255자 이하여야 합니다."
                 )
         );
     }
@@ -410,8 +454,8 @@ class UserControllerTest {
                   "age": 24,
                   "heightCm": 165.5,
                   "weightKg": 52.3,
-                  "gender": "FEMALE",
-                  "profileImageUrl": "https://example.com/profile.png"
+                  "footSize": 240,
+                  "gender": "FEMALE"
                 }
                 """;
     }
@@ -423,8 +467,8 @@ class UserControllerTest {
                   "age": 24,
                   "heightCm": 165.5,
                   "weightKg": 52.3,
+                  "footSize": 240,
                   "gender": "FEMALE",
-                  "profileImageUrl": "https://example.com/profile.png",
                   "termsAgreed": true
                 }
                 """;
@@ -437,8 +481,8 @@ class UserControllerTest {
                 .age(24)
                 .heightCm(165.5F)
                 .weightKg(52.3F)
+                .footSize(240)
                 .gender("FEMALE")
-                .profileImageUrl("https://example.com/profile.png")
                 .requiresProfileSetup(false)
                 .build();
     }

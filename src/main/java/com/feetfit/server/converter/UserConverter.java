@@ -7,12 +7,11 @@ import com.feetfit.server.web.dto.user.UserResponseDTO;
 
 public class UserConverter {
 
-    public static User toKakaoUser(String socialId, String nickname, String profileImageUrl) {
+    public static User toKakaoUser(String socialId, String nickname) {
         return User.builder()
                 .socialId(socialId)
                 .socialType(SocialType.KAKAO)
                 .nickname(nickname != null ? nickname : "카카오사용자")
-                .profileImageUrl(profileImageUrl)
                 .status(UserStatus.ACTIVE)
                 .build();
     }
@@ -39,8 +38,8 @@ public class UserConverter {
                 .age(user.getAge())
                 .heightCm(user.getHeightCm())
                 .weightKg(user.getWeightKg())
+                .footSize(user.getFootSize())
                 .gender(user.getGender() != null ? user.getGender().name() : null)
-                .profileImageUrl(user.getProfileImageUrl())
                 .requiresProfileSetup(requiresProfileSetup(user))
                 .build();
     }
@@ -49,6 +48,7 @@ public class UserConverter {
         return user.getAge() == null
                 || user.getHeightCm() == null
                 || user.getWeightKg() == null
+                || user.getFootSize() == null
                 || user.getGender() == null;
     }
 }
