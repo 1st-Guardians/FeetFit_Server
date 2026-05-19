@@ -36,8 +36,11 @@ public class StretchingTodoController {
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
-                    description = "스트레칭 투두 조회 성공",
-                    content = @Content(examples = @ExampleObject(value = STRETCHING_TODO_LIST_SUCCESS_RESPONSE))
+                    description = "스트레칭 투두 조회 성공. 오늘 투두가 없어도 빈 배열로 성공 응답합니다.",
+                    content = @Content(examples = {
+                            @ExampleObject(name = "투두 목록 있음", value = STRETCHING_TODO_LIST_SUCCESS_RESPONSE),
+                            @ExampleObject(name = "투두 목록 없음", value = STRETCHING_TODO_LIST_EMPTY_RESPONSE)
+                    })
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "401",
@@ -73,10 +76,11 @@ public class StretchingTodoController {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "400",
-                    description = "isCompleted 누락 또는 잘못된 JSON",
+                    description = "isCompleted 누락, 잘못된 JSON, todoId 형식 오류",
                     content = @Content(examples = {
                             @ExampleObject(name = "유효성 검사 실패", value = COMPLETION_VALIDATION_ERROR_RESPONSE),
-                            @ExampleObject(name = "잘못된 JSON", value = INVALID_JSON_RESPONSE)
+                            @ExampleObject(name = "잘못된 JSON", value = INVALID_JSON_RESPONSE),
+                            @ExampleObject(name = "todoId 형식 오류", value = INVALID_PATH_VARIABLE_RESPONSE)
                     })
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -130,6 +134,20 @@ public class StretchingTodoController {
             }
             """;
 
+    private static final String STRETCHING_TODO_LIST_EMPTY_RESPONSE = """
+            {
+              "isSuccess": true,
+              "code": "COMMON200",
+              "message": "성공입니다.",
+              "result": {
+                "totalCount": 0,
+                "hasTodayTodos": false,
+                "message": "오늘 스트레칭 투두가 없습니다.",
+                "todos": []
+              }
+            }
+            """;
+
     private static final String STRETCHING_TODO_COMPLETION_SUCCESS_RESPONSE = """
             {
               "isSuccess": true,
@@ -163,6 +181,15 @@ public class StretchingTodoController {
               "isSuccess": false,
               "code": "COMMON400",
               "message": "요청 본문 형식이 잘못되었습니다. enum 값은 허용된 대문자 값으로 입력해야 합니다.",
+              "result": null
+            }
+            """;
+
+    private static final String INVALID_PATH_VARIABLE_RESPONSE = """
+            {
+              "isSuccess": false,
+              "code": "COMMON400",
+              "message": "요청 경로 변수 형식이 잘못되었습니다.",
               "result": null
             }
             """;

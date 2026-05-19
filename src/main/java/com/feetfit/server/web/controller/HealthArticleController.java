@@ -31,8 +31,11 @@ public class HealthArticleController {
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
-                    description = "헬스 아티클 조회 성공",
-                    content = @Content(examples = @ExampleObject(value = HEALTH_ARTICLE_LIST_SUCCESS_RESPONSE))
+                    description = "헬스 아티클 조회 성공. 연결된 아티클이 없어도 빈 배열로 성공 응답합니다.",
+                    content = @Content(examples = {
+                            @ExampleObject(name = "아티클 목록 있음", value = HEALTH_ARTICLE_LIST_SUCCESS_RESPONSE),
+                            @ExampleObject(name = "아티클 목록 없음", value = HEALTH_ARTICLE_LIST_EMPTY_RESPONSE)
+                    })
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "401",
@@ -73,6 +76,18 @@ public class HealthArticleController {
                     "description": "무지외반증 예방을 위한 생활 습관과 스트레칭 정보를 제공합니다."
                   }
                 ]
+              }
+            }
+            """;
+
+    private static final String HEALTH_ARTICLE_LIST_EMPTY_RESPONSE = """
+            {
+              "isSuccess": true,
+              "code": "COMMON200",
+              "message": "성공입니다.",
+              "result": {
+                "totalCount": 0,
+                "articles": []
               }
             }
             """;
