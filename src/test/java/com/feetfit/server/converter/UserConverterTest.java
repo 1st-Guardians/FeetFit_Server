@@ -13,7 +13,7 @@ class UserConverterTest {
 
     @Test
     void toKakaoUser_nullNickname_usesFallbackNicknameAndRequiresProfileSetup() {
-        User user = UserConverter.toKakaoUser("12345", null, "https://example.com/profile.png");
+        User user = UserConverter.toKakaoUser("12345", null);
 
         assertThat(user.getSocialId()).isEqualTo("12345");
         assertThat(user.getSocialType()).isEqualTo(SocialType.KAKAO);
@@ -54,6 +54,7 @@ class UserConverterTest {
                 .age(24)
                 .heightCm(165.5F)
                 .weightKg(52.3F)
+                .footSize(240)
                 .gender(Gender.FEMALE)
                 .socialId("12345")
                 .socialType(SocialType.KAKAO)
@@ -63,6 +64,7 @@ class UserConverterTest {
         UserResponseDTO.UserProfileResponseDTO response = UserConverter.toUserProfileResponseDTO(user);
 
         assertThat(response.getUserId()).isEqualTo(1L);
+        assertThat(response.getFootSize()).isEqualTo(240);
         assertThat(response.getGender()).isEqualTo("FEMALE");
         assertThat(response.getRequiresProfileSetup()).isFalse();
     }

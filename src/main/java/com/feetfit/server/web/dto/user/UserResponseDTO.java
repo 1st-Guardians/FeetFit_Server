@@ -29,8 +29,8 @@ public class UserResponseDTO {
         private Integer age;
         private Float heightCm;
         private Float weightKg;
+        private Integer footSize;
         private String gender;
-        private String profileImageUrl;
         private Boolean requiresProfileSetup;
     }
 }

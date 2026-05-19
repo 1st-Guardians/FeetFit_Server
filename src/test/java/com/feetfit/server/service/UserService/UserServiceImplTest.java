@@ -72,8 +72,8 @@ class UserServiceImplTest {
         assertThat(user.getAge()).isEqualTo(25);
         assertThat(user.getHeightCm()).isEqualTo(170.5F);
         assertThat(user.getWeightKg()).isEqualTo(60.0F);
+        assertThat(user.getFootSize()).isEqualTo(270);
         assertThat(user.getGender()).isEqualTo(Gender.MALE);
-        assertThat(user.getProfileImageUrl()).isEqualTo("https://example.com/new-profile.png");
         assertThat(response.getRequiresProfileSetup()).isFalse();
     }
 
@@ -90,6 +90,7 @@ class UserServiceImplTest {
         assertThat(user.getAge()).isEqualTo(25);
         assertThat(user.getHeightCm()).isEqualTo(170.5F);
         assertThat(user.getWeightKg()).isEqualTo(60.0F);
+        assertThat(user.getFootSize()).isEqualTo(270);
         assertThat(user.getGender()).isEqualTo(Gender.MALE);
         assertThat(response.getRequiresProfileSetup()).isFalse();
         verify(userTermsRepository).save(argThat(userTerms ->
@@ -117,10 +118,10 @@ class UserServiceImplTest {
                 .age(24)
                 .heightCm(165.5F)
                 .weightKg(52.3F)
+                .footSize(240)
                 .gender(Gender.FEMALE)
                 .socialType(SocialType.KAKAO)
                 .socialId("12345")
-                .profileImageUrl("https://example.com/profile.png")
                 .status(UserStatus.ACTIVE)
                 .build();
     }
@@ -141,8 +142,8 @@ class UserServiceImplTest {
         ReflectionTestUtils.setField(request, "age", 25);
         ReflectionTestUtils.setField(request, "heightCm", 170.5F);
         ReflectionTestUtils.setField(request, "weightKg", 60.0F);
+        ReflectionTestUtils.setField(request, "footSize", 270);
         ReflectionTestUtils.setField(request, "gender", Gender.MALE);
-        ReflectionTestUtils.setField(request, "profileImageUrl", "https://example.com/new-profile.png");
         return request;
     }
 
@@ -152,8 +153,8 @@ class UserServiceImplTest {
         ReflectionTestUtils.setField(request, "age", 25);
         ReflectionTestUtils.setField(request, "heightCm", 170.5F);
         ReflectionTestUtils.setField(request, "weightKg", 60.0F);
+        ReflectionTestUtils.setField(request, "footSize", 270);
         ReflectionTestUtils.setField(request, "gender", Gender.MALE);
-        ReflectionTestUtils.setField(request, "profileImageUrl", "https://example.com/new-profile.png");
         ReflectionTestUtils.setField(request, "termsAgreed", true);
         return request;
     }

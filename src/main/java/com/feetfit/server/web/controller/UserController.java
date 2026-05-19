@@ -74,6 +74,7 @@ public class UserController {
             description = """
                     로그인한 사용자의 기본 정보를 최초 등록하고 약관 동의 이력을 저장합니다.
                     Authorization 헤더에 Bearer accessToken이 필요합니다.
+                    footSize는 mm 단위로 입력합니다.
                     termsAgreed는 true만 허용합니다.
                     이미 기본 정보가 등록된 유저는 이 API를 사용할 수 없습니다.
                     """
@@ -132,6 +133,7 @@ public class UserController {
                     로그인한 사용자의 기본 정보를 수정합니다.
                     Authorization 헤더에 Bearer accessToken이 필요합니다.
                     약관 동의는 처리하지 않습니다.
+                    footSize는 mm 단위로 입력합니다.
                     gender는 MALE 또는 FEMALE만 허용합니다.
                     """
     )
@@ -188,8 +190,8 @@ public class UserController {
                 "age": 24,
                 "heightCm": 165.5,
                 "weightKg": 52.3,
+                "footSize": 240,
                 "gender": "FEMALE",
-                "profileImageUrl": "https://example.com/profile.png",
                 "requiresProfileSetup": false
               }
             }
@@ -202,6 +204,7 @@ public class UserController {
               "message": "잘못된 요청입니다.",
               "result": {
                 "age": "나이는 1세 이상이어야 합니다.",
+                "footSize": "발사이즈는 150mm 이상이어야 합니다.",
                 "termsAgreed": "약관 동의는 필수입니다."
               }
             }
@@ -215,7 +218,8 @@ public class UserController {
               "result": {
                 "age": "나이는 1세 이상이어야 합니다.",
                 "heightCm": "키는 30cm 이상이어야 합니다.",
-                "weightKg": "몸무게는 1kg 이상이어야 합니다."
+                "weightKg": "몸무게는 1kg 이상이어야 합니다.",
+                "footSize": "발사이즈는 150mm 이상이어야 합니다."
               }
             }
             """;

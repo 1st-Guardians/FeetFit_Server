@@ -29,10 +29,9 @@ public class KakaoLoginCommandServiceImpl implements KakaoLoginCommandService {
         KakaoLoginResponseDTO.KakaoUserInfo kakaoUserInfo = getUserInfo(accessToken);
         String socialId = getSocialId(kakaoUserInfo);
         String nickname = getNickname(kakaoUserInfo);
-        String profileImageUrl = getProfileImageUrl(kakaoUserInfo);
 
         User user = userRepository.findBySocialTypeAndSocialId(SocialType.KAKAO, socialId)
-                .orElseGet(() -> userRepository.save(UserConverter.toKakaoUser(socialId, nickname, profileImageUrl)));
+                .orElseGet(() -> userRepository.save(UserConverter.toKakaoUser(socialId, nickname)));
 
         String serviceAccessToken = tokenProvider.createAccessToken(user.getId());
         String serviceRefreshToken = tokenProvider.createRefreshToken(user.getId());
@@ -72,11 +71,6 @@ public class KakaoLoginCommandServiceImpl implements KakaoLoginCommandService {
     private String getNickname(KakaoLoginResponseDTO.KakaoUserInfo kakaoUserInfo) {
         KakaoLoginResponseDTO.KakaoUserInfo.KakaoAccount.Profile profile = getProfile(kakaoUserInfo);
         return profile != null ? profile.getNickname() : null;
-    }
-
-    private String getProfileImageUrl(KakaoLoginResponseDTO.KakaoUserInfo kakaoUserInfo) {
-        KakaoLoginResponseDTO.KakaoUserInfo.KakaoAccount.Profile profile = getProfile(kakaoUserInfo);
-        return profile != null ? profile.getProfileImageUrl() : null;
     }
 
     private KakaoLoginResponseDTO.KakaoUserInfo.KakaoAccount.Profile getProfile(

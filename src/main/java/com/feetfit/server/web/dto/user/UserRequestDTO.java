@@ -36,11 +36,13 @@ public class UserRequestDTO {
         @DecimalMax(value = "300.0", message = "몸무게는 300kg 이하여야 합니다.")
         private Float weightKg;
 
+        @NotNull(message = "발사이즈는 필수입니다.")
+        @Min(value = 150, message = "발사이즈는 150mm 이상이어야 합니다.")
+        @Max(value = 350, message = "발사이즈는 350mm 이하여야 합니다.")
+        private Integer footSize;
+
         @NotNull(message = "성별은 필수입니다.")
         private Gender gender;
-
-        @Size(max = 255, message = "프로필 이미지 URL은 255자 이하여야 합니다.")
-        private String profileImageUrl;
     }
 
     @Getter

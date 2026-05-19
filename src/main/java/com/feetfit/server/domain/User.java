@@ -9,7 +9,6 @@ import lombok.*;
 import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.annotations.DynamicUpdate;
 
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -39,6 +38,9 @@ public class User extends BaseEntity {
     @Column
     private Float weightKg;
 
+    @Column
+    private Integer footSize;
+
     @Enumerated(EnumType.STRING)
     @Column
     private Gender gender;
@@ -49,9 +51,6 @@ public class User extends BaseEntity {
 
     @Column(unique = true, nullable = false)
     private String socialId;
-
-    @Column
-    private String profileImageUrl;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -78,12 +77,19 @@ public class User extends BaseEntity {
     @Builder.Default
     private List<ShoeRecommendation> shoeRecommendations = new ArrayList<>();
 
-    public void updateProfile(String nickname, Integer age, Float heightCm, Float weightKg, Gender gender, String profileImageUrl) {
+    public void updateProfile(
+            String nickname,
+            Integer age,
+            Float heightCm,
+            Float weightKg,
+            Integer footSize,
+            Gender gender
+    ) {
         this.nickname = nickname;
         this.age = age;
         this.heightCm = heightCm;
         this.weightKg = weightKg;
+        this.footSize = footSize;
         this.gender = gender;
-        this.profileImageUrl = profileImageUrl;
     }
 }

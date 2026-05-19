@@ -78,8 +78,8 @@ public class UserServiceImpl implements UserService {
                 request.getAge(),
                 request.getHeightCm(),
                 request.getWeightKg(),
-                request.getGender(),
-                request.getProfileImageUrl()
+                request.getFootSize(),
+                request.getGender()
         );
     }
 }
