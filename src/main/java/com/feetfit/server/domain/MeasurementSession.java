@@ -70,4 +70,5 @@ public class MeasurementSession extends BaseEntity {
 
     @OneToOne(mappedBy = "measurementSession", cascade = CascadeType.ALL)
     private Report report;
+
 }

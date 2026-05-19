@@ -31,7 +31,7 @@ public class DeviceController {
 
     @PostMapping("/connect")
     @Operation(
-            summary = "디바이스 연결",
+            summary = "디바이스 연결 [은서]",
             description = """
                     디바이스 고유 코드(deviceName)로 기존 디바이스를 로그인한 사용자에게 연결합니다.
                     사용자는 연결된 디바이스를 하나만 가질 수 있습니다.
@@ -130,7 +130,7 @@ public class DeviceController {
 
     @DeleteMapping("/{deviceId}/disconnect")
     @Operation(
-            summary = "디바이스 연결 해제",
+            summary = "디바이스 연결 해제 [은서]",
             description = "로그인한 사용자의 연결된 디바이스를 해제합니다. 실제 삭제가 아니라 다시 연결 가능한 AVAILABLE 상태로 변경합니다."
     )
     @ApiResponses({

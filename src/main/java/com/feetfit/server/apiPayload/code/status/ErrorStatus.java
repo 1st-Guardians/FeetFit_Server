@@ -39,6 +39,9 @@ public enum ErrorStatus implements BaseErrorCode {
     // Report
     REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "REPORT4001", "리포트를 찾을 수 없습니다."),
 
+    // Stretching Todo
+    STRETCHING_TODO_NOT_FOUND(HttpStatus.NOT_FOUND, "STRETCHING_TODO4001", "스트레칭 투두를 찾을 수 없습니다."),
+
     // Shoe
     SHOE_NOT_FOUND(HttpStatus.NOT_FOUND, "SHOE4001", "신발 정보를 찾을 수 없습니다."),
 
