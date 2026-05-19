@@ -50,11 +50,16 @@ public class DeviceConnectionLog extends BaseEntity {
     @Column(nullable = false)
     private LocalDateTime endedAt;
 
-    public static DeviceConnectionLog connected(User user, Device device, LocalDateTime occurredAt) {
+    public static DeviceConnectionLog connected(
+            User user,
+            Device device,
+            ConnectionType connectionType,
+            LocalDateTime occurredAt
+    ) {
         return DeviceConnectionLog.builder()
                 .device(device)
                 .user(user)
-                .connectionType(ConnectionType.APP)
+                .connectionType(connectionType)
                 .connectionStatus(ConnectionStatus.CONNECTED)
                 .status(device.getStatus())
                 .startedAt(occurredAt)
@@ -62,11 +67,16 @@ public class DeviceConnectionLog extends BaseEntity {
                 .build();
     }
 
-    public static DeviceConnectionLog disconnected(User user, Device device, LocalDateTime occurredAt) {
+    public static DeviceConnectionLog disconnected(
+            User user,
+            Device device,
+            ConnectionType connectionType,
+            LocalDateTime occurredAt
+    ) {
         return DeviceConnectionLog.builder()
                 .device(device)
                 .user(user)
-                .connectionType(ConnectionType.APP)
+                .connectionType(connectionType)
                 .connectionStatus(ConnectionStatus.DISCONNECTED)
                 .status(device.getStatus())
                 .startedAt(occurredAt)

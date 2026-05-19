@@ -1,5 +1,5 @@
 package com.feetfit.server.domain.enums;
 
 public enum ConnectionType {
-    APP, BLUETOOTH, WIFI
+    BLUETOOTH, WIFI
 }

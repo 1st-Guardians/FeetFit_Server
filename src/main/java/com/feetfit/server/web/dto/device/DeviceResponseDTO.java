@@ -14,6 +14,7 @@ public class DeviceResponseDTO {
     public static class DeviceInfoResponseDTO {
         private Long deviceId;
         private String deviceName;
+        private String connectionType;
         private String connectionStatus;
         private String status;
         private Boolean deviceConnected;

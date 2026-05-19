@@ -1,6 +1,7 @@
 package com.feetfit.server.domain;
 
 import com.feetfit.server.domain.common.BaseEntity;
+import com.feetfit.server.domain.enums.ConnectionType;
 import com.feetfit.server.domain.enums.Gender;
 import com.feetfit.server.domain.enums.SocialType;
 import com.feetfit.server.domain.enums.UserStatus;
@@ -65,6 +66,10 @@ public class User extends BaseEntity {
     @JoinColumn(name = "device_id")
     private Device device;
 
+    @Enumerated(EnumType.STRING)
+    @Column
+    private ConnectionType deviceConnectionType;
+
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL)
     @Builder.Default
     private List<MeasurementSession> measurementSessions = new ArrayList<>();
@@ -93,11 +98,13 @@ public class User extends BaseEntity {
         this.gender = gender;
     }
 
-    public void connectDevice(Device device) {
+    public void connectDevice(Device device, ConnectionType connectionType) {
         this.device = device;
+        this.deviceConnectionType = connectionType;
     }
 
     public void disconnectDevice() {
         this.device = null;
+        this.deviceConnectionType = null;
     }
 }

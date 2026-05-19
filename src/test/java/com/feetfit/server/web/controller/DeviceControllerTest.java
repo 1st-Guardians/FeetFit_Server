@@ -55,7 +55,8 @@ class DeviceControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "deviceName": "FeetFit-001"
+                                  "deviceName": "FeetFit-001",
+                                  "connectionType": "BLUETOOTH"
                                 }
                                 """))
                 .andExpect(status().isOk())
@@ -63,6 +64,7 @@ class DeviceControllerTest {
                 .andExpect(jsonPath("$.code").value("COMMON200"))
                 .andExpect(jsonPath("$.result.deviceId").value(1L))
                 .andExpect(jsonPath("$.result.deviceName").value("FeetFit-001"))
+                .andExpect(jsonPath("$.result.connectionType").value("BLUETOOTH"))
                 .andExpect(jsonPath("$.result.connectionStatus").value("CONNECTED"))
                 .andExpect(jsonPath("$.result.status").value("REGISTERED"))
                 .andExpect(jsonPath("$.result.deviceConnected").value(true));
@@ -96,7 +98,8 @@ class DeviceControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "deviceName": "FeetFit-001"
+                                  "deviceName": "FeetFit-001",
+                                  "connectionType": "BLUETOOTH"
                                 }
                                 """))
                 .andExpect(status().isConflict())
@@ -112,7 +115,7 @@ class DeviceControllerTest {
         given(findLoginUser.getCurrentUserId()).willReturn(1L);
         given(deviceService.getMyDevice(1L)).willReturn(connectedDeviceResponse());
 
-        mockMvc.perform(get("/api/devices/me"))
+        mockMvc.perform(get("/api/devices"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isSuccess").value(true))
                 .andExpect(jsonPath("$.result.deviceConnected").value(true));
@@ -123,7 +126,7 @@ class DeviceControllerTest {
         given(findLoginUser.getCurrentUserId()).willReturn(1L);
         given(deviceService.getMyDevice(1L)).willReturn(disconnectedDeviceResponse());
 
-        mockMvc.perform(get("/api/devices/me"))
+        mockMvc.perform(get("/api/devices"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isSuccess").value(true))
                 .andExpect(jsonPath("$.code").value("COMMON200"))
@@ -139,6 +142,7 @@ class DeviceControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isSuccess").value(true))
                 .andExpect(jsonPath("$.result.deviceId").value(1L))
+                .andExpect(jsonPath("$.result.connectionType").value("BLUETOOTH"))
                 .andExpect(jsonPath("$.result.connectionStatus").value("DISCONNECTED"))
                 .andExpect(jsonPath("$.result.status").value("AVAILABLE"))
                 .andExpect(jsonPath("$.result.deviceConnected").value(false));
@@ -148,6 +152,7 @@ class DeviceControllerTest {
         return DeviceResponseDTO.DeviceInfoResponseDTO.builder()
                 .deviceId(1L)
                 .deviceName("FeetFit-001")
+                .connectionType("BLUETOOTH")
                 .connectionStatus("CONNECTED")
                 .status("REGISTERED")
                 .deviceConnected(true)
@@ -158,6 +163,7 @@ class DeviceControllerTest {
         return DeviceResponseDTO.DeviceInfoResponseDTO.builder()
                 .deviceId(1L)
                 .deviceName("FeetFit-001")
+                .connectionType("BLUETOOTH")
                 .connectionStatus("DISCONNECTED")
                 .status("AVAILABLE")
                 .deviceConnected(false)

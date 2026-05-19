@@ -4,6 +4,7 @@ import com.feetfit.server.apiPayload.exception.handler.UserHandler;
 import com.feetfit.server.domain.Device;
 import com.feetfit.server.domain.User;
 import com.feetfit.server.domain.UserTerms;
+import com.feetfit.server.domain.enums.ConnectionType;
 import com.feetfit.server.domain.enums.Gender;
 import com.feetfit.server.domain.enums.SocialType;
 import com.feetfit.server.domain.enums.UserStatus;
@@ -141,10 +142,13 @@ class UserServiceImplTest {
 
     private static User completeUserWithDevice() {
         User user = completeUser();
-        user.connectDevice(Device.builder()
-                .id(1L)
-                .deviceName("FeetFit-001")
-                .build());
+        user.connectDevice(
+                Device.builder()
+                        .id(1L)
+                        .deviceName("FeetFit-001")
+                        .build(),
+                ConnectionType.BLUETOOTH
+        );
         return user;
     }
 

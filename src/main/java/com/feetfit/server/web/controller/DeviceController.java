@@ -32,7 +32,11 @@ public class DeviceController {
     @PostMapping("/connect")
     @Operation(
             summary = "디바이스 연결",
-            description = "디바이스 고유 코드(deviceName)로 기존 디바이스를 로그인한 사용자에게 연결합니다. 사용자는 연결된 디바이스를 하나만 가질 수 있습니다."
+            description = """
+                    디바이스 고유 코드(deviceName)로 기존 디바이스를 로그인한 사용자에게 연결합니다.
+                    사용자는 연결된 디바이스를 하나만 가질 수 있습니다.
+                    connectionType은 BLUETOOTH 또는 WIFI만 허용합니다.
+                    """
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -84,9 +88,9 @@ public class DeviceController {
         return ApiResponse.onSuccess(deviceService.connectDevice(userId, request));
     }
 
-    @GetMapping("/me")
+    @GetMapping
     @Operation(
-            summary = "내 디바이스 조회",
+            summary = "내 디바이스 조회 [은서]",
             description = "로그인한 사용자의 연결된 디바이스 정보를 조회합니다. 연결된 디바이스가 없으면 에러가 아니라 deviceConnected=false로 응답합니다."
     )
     @ApiResponses({
@@ -174,6 +178,7 @@ public class DeviceController {
               "result": {
                 "deviceId": 1,
                 "deviceName": "FeetFit-001",
+                "connectionType": "BLUETOOTH",
                 "connectionStatus": "CONNECTED",
                 "status": "REGISTERED",
                 "deviceConnected": true
@@ -189,6 +194,7 @@ public class DeviceController {
               "result": {
                 "deviceId": null,
                 "deviceName": null,
+                "connectionType": null,
                 "connectionStatus": null,
                 "status": null,
                 "deviceConnected": false
@@ -204,6 +210,7 @@ public class DeviceController {
               "result": {
                 "deviceId": 1,
                 "deviceName": "FeetFit-001",
+                "connectionType": "BLUETOOTH",
                 "connectionStatus": "DISCONNECTED",
                 "status": "AVAILABLE",
                 "deviceConnected": false
@@ -217,7 +224,8 @@ public class DeviceController {
               "code": "COMMON400",
               "message": "잘못된 요청입니다.",
               "result": {
-                "deviceName": "디바이스 고유 코드는 필수입니다."
+                "deviceName": "디바이스 고유 코드는 필수입니다.",
+                "connectionType": "연결 방식은 필수입니다."
               }
             }
             """;

@@ -7,6 +7,8 @@ import com.feetfit.server.converter.DeviceConverter;
 import com.feetfit.server.domain.Device;
 import com.feetfit.server.domain.DeviceConnectionLog;
 import com.feetfit.server.domain.User;
+import com.feetfit.server.domain.enums.ConnectionStatus;
+import com.feetfit.server.domain.enums.ConnectionType;
 import com.feetfit.server.domain.enums.DeviceStatus;
 import com.feetfit.server.repository.DeviceConnectionLogRepository;
 import com.feetfit.server.repository.DeviceRepository;
@@ -51,10 +53,15 @@ public class DeviceServiceImpl implements DeviceService {
             throw new DeviceHandler(ErrorStatus.DEVICE_NOT_FOUND);
         }
 
-        user.connectDevice(device);
+        user.connectDevice(device, request.getConnectionType());
         device.markConnected();
-        deviceConnectionLogRepository.save(DeviceConnectionLog.connected(user, device, LocalDateTime.now()));
-        return DeviceConverter.toDeviceInfoResponseDTO(device, true);
+        deviceConnectionLogRepository.save(DeviceConnectionLog.connected(
+                user,
+                device,
+                request.getConnectionType(),
+                LocalDateTime.now()
+        ));
+        return DeviceConverter.toDeviceInfoResponseDTO(device, request.getConnectionType(), true);
     }
 
     @Override
@@ -66,7 +73,7 @@ public class DeviceServiceImpl implements DeviceService {
             return DeviceConverter.toEmptyDeviceInfoResponseDTO();
         }
 
-        return DeviceConverter.toDeviceInfoResponseDTO(device, true);
+        return DeviceConverter.toDeviceInfoResponseDTO(device, resolveConnectionType(user, device), true);
     }
 
     @Override
@@ -80,11 +87,31 @@ public class DeviceServiceImpl implements DeviceService {
         }
 
         long connectedUserCount = userRepository.countByDeviceId(deviceId);
+        ConnectionType connectionType = user.getDeviceConnectionType();
         user.disconnectDevice();
         if (connectedUserCount <= 1) {
             device.markAvailable();
         }
-        deviceConnectionLogRepository.save(DeviceConnectionLog.disconnected(user, device, LocalDateTime.now()));
-        return DeviceConverter.toDeviceInfoResponseDTO(device, false);
+        deviceConnectionLogRepository.save(DeviceConnectionLog.disconnected(
+                user,
+                device,
+                connectionType,
+                LocalDateTime.now()
+        ));
+        return DeviceConverter.toDeviceInfoResponseDTO(device, connectionType, false);
+    }
+
+    private ConnectionType resolveConnectionType(User user, Device device) {
+        if (user.getDeviceConnectionType() != null) {
+            return user.getDeviceConnectionType();
+        }
+
+        return deviceConnectionLogRepository.findLatestSupportedConnectionLog(
+                        user.getId(),
+                        device.getId(),
+                        ConnectionStatus.CONNECTED.name()
+                )
+                .map(DeviceConnectionLog::getConnectionType)
+                .orElse(null);
     }
 }

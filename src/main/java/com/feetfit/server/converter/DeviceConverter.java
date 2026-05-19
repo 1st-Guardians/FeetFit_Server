@@ -2,6 +2,7 @@ package com.feetfit.server.converter;
 
 import com.feetfit.server.domain.Device;
 import com.feetfit.server.domain.enums.ConnectionStatus;
+import com.feetfit.server.domain.enums.ConnectionType;
 import com.feetfit.server.domain.enums.DeviceStatus;
 import com.feetfit.server.web.dto.device.DeviceResponseDTO;
 
@@ -19,9 +20,18 @@ public class DeviceConverter {
             Device device,
             Boolean deviceConnected
     ) {
+        return toDeviceInfoResponseDTO(device, null, deviceConnected);
+    }
+
+    public static DeviceResponseDTO.DeviceInfoResponseDTO toDeviceInfoResponseDTO(
+            Device device,
+            ConnectionType connectionType,
+            Boolean deviceConnected
+    ) {
         return DeviceResponseDTO.DeviceInfoResponseDTO.builder()
                 .deviceId(device.getId())
                 .deviceName(device.getDeviceName())
+                .connectionType(connectionType != null ? connectionType.name() : null)
                 .connectionStatus(device.getConnectionStatus().name())
                 .status(device.getStatus().name())
                 .deviceConnected(deviceConnected)

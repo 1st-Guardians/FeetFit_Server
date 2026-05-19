@@ -2,8 +2,10 @@ package com.feetfit.server.service.DeviceService;
 
 import com.feetfit.server.apiPayload.exception.handler.DeviceHandler;
 import com.feetfit.server.domain.Device;
+import com.feetfit.server.domain.DeviceConnectionLog;
 import com.feetfit.server.domain.User;
 import com.feetfit.server.domain.enums.ConnectionStatus;
+import com.feetfit.server.domain.enums.ConnectionType;
 import com.feetfit.server.domain.enums.DeviceStatus;
 import com.feetfit.server.domain.enums.SocialType;
 import com.feetfit.server.domain.enums.UserStatus;
@@ -53,6 +55,7 @@ class DeviceServiceImplTest {
 
         assertThat(response.getDeviceId()).isEqualTo(1L);
         assertThat(response.getDeviceName()).isEqualTo("FeetFit-001");
+        assertThat(response.getConnectionType()).isEqualTo("BLUETOOTH");
         assertThat(response.getConnectionStatus()).isEqualTo("CONNECTED");
         assertThat(response.getStatus()).isEqualTo("REGISTERED");
         assertThat(response.getDeviceConnected()).isTrue();
@@ -61,6 +64,7 @@ class DeviceServiceImplTest {
                 log.getUser() == user
                         && log.getDevice() == device
                         && log.getConnectionStatus() == ConnectionStatus.CONNECTED
+                        && log.getConnectionType() == ConnectionType.BLUETOOTH
         ));
     }
 
@@ -99,6 +103,22 @@ class DeviceServiceImplTest {
         DeviceResponseDTO.DeviceInfoResponseDTO response = deviceService.getMyDevice(1L);
 
         assertThat(response.getDeviceConnected()).isTrue();
+        assertThat(response.getConnectionType()).isEqualTo("BLUETOOTH");
+    }
+
+    @Test
+    void getMyDevice_missingUserConnectionType_usesLatestConnectionLog() {
+        User user = userWithDeviceWithoutConnectionType(registeredDevice());
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(deviceConnectionLogRepository.findLatestSupportedConnectionLog(
+                1L,
+                1L,
+                ConnectionStatus.CONNECTED.name()
+        )).willReturn(Optional.of(connectionLog(user, user.getDevice(), ConnectionType.WIFI)));
+
+        DeviceResponseDTO.DeviceInfoResponseDTO response = deviceService.getMyDevice(1L);
+
+        assertThat(response.getConnectionType()).isEqualTo("WIFI");
     }
 
     @Test
@@ -109,6 +129,7 @@ class DeviceServiceImplTest {
 
         assertThat(response.getDeviceId()).isNull();
         assertThat(response.getDeviceName()).isNull();
+        assertThat(response.getConnectionType()).isNull();
         assertThat(response.getConnectionStatus()).isNull();
         assertThat(response.getStatus()).isNull();
         assertThat(response.getDeviceConnected()).isFalse();
@@ -124,6 +145,7 @@ class DeviceServiceImplTest {
         DeviceResponseDTO.DeviceInfoResponseDTO response = deviceService.disconnectDevice(1L, 1L);
 
         assertThat(user.getDevice()).isNull();
+        assertThat(response.getConnectionType()).isEqualTo("BLUETOOTH");
         assertThat(device.getConnectionStatus()).isEqualTo(ConnectionStatus.DISCONNECTED);
         assertThat(device.getStatus()).isEqualTo(DeviceStatus.AVAILABLE);
         assertThat(response.getDeviceConnected()).isFalse();
@@ -131,6 +153,7 @@ class DeviceServiceImplTest {
                 log.getUser() == user
                         && log.getDevice() == device
                         && log.getConnectionStatus() == ConnectionStatus.DISCONNECTED
+                        && log.getConnectionType() == ConnectionType.BLUETOOTH
         ));
     }
 
@@ -144,6 +167,7 @@ class DeviceServiceImplTest {
         DeviceResponseDTO.DeviceInfoResponseDTO response = deviceService.disconnectDevice(1L, 1L);
 
         assertThat(user.getDevice()).isNull();
+        assertThat(response.getConnectionType()).isEqualTo("BLUETOOTH");
         assertThat(device.getConnectionStatus()).isEqualTo(ConnectionStatus.CONNECTED);
         assertThat(device.getStatus()).isEqualTo(DeviceStatus.REGISTERED);
         assertThat(response.getDeviceConnected()).isFalse();
@@ -152,6 +176,7 @@ class DeviceServiceImplTest {
     private static DeviceRequestDTO.DeviceConnectRequestDTO connectRequest() {
         DeviceRequestDTO.DeviceConnectRequestDTO request = new DeviceRequestDTO.DeviceConnectRequestDTO();
         ReflectionTestUtils.setField(request, "deviceName", "FeetFit-001");
+        ReflectionTestUtils.setField(request, "connectionType", ConnectionType.BLUETOOTH);
         return request;
     }
 
@@ -185,7 +210,17 @@ class DeviceServiceImplTest {
 
     private static User userWithDevice(Device device) {
         User user = user();
-        user.connectDevice(device);
+        user.connectDevice(device, ConnectionType.BLUETOOTH);
         return user;
+    }
+
+    private static User userWithDeviceWithoutConnectionType(Device device) {
+        User user = user();
+        ReflectionTestUtils.setField(user, "device", device);
+        return user;
+    }
+
+    private static DeviceConnectionLog connectionLog(User user, Device device, ConnectionType connectionType) {
+        return DeviceConnectionLog.connected(user, device, connectionType, java.time.LocalDateTime.now());
     }
 }
