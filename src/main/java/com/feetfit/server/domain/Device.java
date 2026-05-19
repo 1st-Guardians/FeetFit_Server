@@ -25,11 +25,7 @@ public class Device extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
-
-    @Column
+    @Column(nullable = false, unique = true, length = 100)
     private String deviceName;
 
     @Enumerated(EnumType.STRING)
@@ -42,6 +38,10 @@ public class Device extends BaseEntity {
     @Builder.Default
     private DeviceStatus status = DeviceStatus.AVAILABLE;
 
+    @OneToMany(mappedBy = "device")
+    @Builder.Default
+    private List<User> users = new ArrayList<>();
+
     @OneToMany(mappedBy = "device", cascade = CascadeType.ALL)
     @Builder.Default
     private List<DeviceConnectionLog> connectionLogs = new ArrayList<>();
@@ -49,4 +49,14 @@ public class Device extends BaseEntity {
     @OneToMany(mappedBy = "device", cascade = CascadeType.ALL)
     @Builder.Default
     private List<MeasurementSession> measurementSessions = new ArrayList<>();
+
+    public void markConnected() {
+        this.connectionStatus = ConnectionStatus.CONNECTED;
+        this.status = DeviceStatus.REGISTERED;
+    }
+
+    public void markAvailable() {
+        this.connectionStatus = ConnectionStatus.DISCONNECTED;
+        this.status = DeviceStatus.AVAILABLE;
+    }
 }

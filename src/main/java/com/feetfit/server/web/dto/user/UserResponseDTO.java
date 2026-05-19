@@ -31,6 +31,7 @@ public class UserResponseDTO {
         private Float weightKg;
         private Integer footSize;
         private String gender;
+        private Boolean deviceConnected;
         private Boolean requiresProfileSetup;
     }
 }

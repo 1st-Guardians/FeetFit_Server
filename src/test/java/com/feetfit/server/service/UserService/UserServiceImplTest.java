@@ -1,8 +1,10 @@
 package com.feetfit.server.service.UserService;
 
 import com.feetfit.server.apiPayload.exception.handler.UserHandler;
+import com.feetfit.server.domain.Device;
 import com.feetfit.server.domain.User;
 import com.feetfit.server.domain.UserTerms;
+import com.feetfit.server.domain.enums.ConnectionType;
 import com.feetfit.server.domain.enums.Gender;
 import com.feetfit.server.domain.enums.SocialType;
 import com.feetfit.server.domain.enums.UserStatus;
@@ -41,7 +43,7 @@ class UserServiceImplTest {
 
     @Test
     void getProfile_existingUser_returnsProfileResponse() {
-        given(userRepository.findById(1L)).willReturn(Optional.of(completeUser()));
+        given(userRepository.findById(1L)).willReturn(Optional.of(completeUserWithDevice()));
 
         UserResponseDTO.UserProfileResponseDTO response = userService.getProfile(1L);
 
@@ -49,6 +51,7 @@ class UserServiceImplTest {
         assertThat(response.getNickname()).isEqualTo("은서");
         assertThat(response.getAge()).isEqualTo(24);
         assertThat(response.getGender()).isEqualTo("FEMALE");
+        assertThat(response.getDeviceConnected()).isTrue();
         assertThat(response.getRequiresProfileSetup()).isFalse();
     }
 
@@ -74,6 +77,7 @@ class UserServiceImplTest {
         assertThat(user.getWeightKg()).isEqualTo(60.0F);
         assertThat(user.getFootSize()).isEqualTo(270);
         assertThat(user.getGender()).isEqualTo(Gender.MALE);
+        assertThat(response.getDeviceConnected()).isFalse();
         assertThat(response.getRequiresProfileSetup()).isFalse();
     }
 
@@ -134,6 +138,18 @@ class UserServiceImplTest {
                 .socialId("12345")
                 .status(UserStatus.ACTIVE)
                 .build();
+    }
+
+    private static User completeUserWithDevice() {
+        User user = completeUser();
+        user.connectDevice(
+                Device.builder()
+                        .id(1L)
+                        .deviceName("FeetFit-001")
+                        .build(),
+                ConnectionType.BLUETOOTH
+        );
+        return user;
     }
 
     private static UserRequestDTO.UserProfileUpdateRequestDTO profileUpdateRequest() {

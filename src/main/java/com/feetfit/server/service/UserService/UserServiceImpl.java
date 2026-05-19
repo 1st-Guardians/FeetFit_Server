@@ -28,7 +28,7 @@ public class UserServiceImpl implements UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserHandler(ErrorStatus.USER_NOT_FOUND));
 
-        return UserConverter.toUserProfileResponseDTO(user);
+        return toUserProfileResponse(user);
     }
 
     @Override
@@ -51,7 +51,7 @@ public class UserServiceImpl implements UserService {
                 .expiresAt(now.plusYears(1))
                 .build());
 
-        return UserConverter.toUserProfileResponseDTO(user);
+        return toUserProfileResponse(user);
     }
 
     @Override
@@ -64,7 +64,7 @@ public class UserServiceImpl implements UserService {
 
         updateProfileFields(user, request);
 
-        return UserConverter.toUserProfileResponseDTO(user);
+        return toUserProfileResponse(user);
     }
 
     private User findUser(Long userId) {
@@ -81,5 +81,10 @@ public class UserServiceImpl implements UserService {
                 request.getFootSize(),
                 request.getGender()
         );
+    }
+
+    private UserResponseDTO.UserProfileResponseDTO toUserProfileResponse(User user) {
+        boolean deviceConnected = user.getDevice() != null;
+        return UserConverter.toUserProfileResponseDTO(user, deviceConnected);
     }
 }

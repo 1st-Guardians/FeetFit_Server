@@ -30,7 +30,7 @@ public enum ErrorStatus implements BaseErrorCode {
 
     // Device
     DEVICE_NOT_FOUND(HttpStatus.NOT_FOUND, "DEVICE4001", "기기를 찾을 수 없습니다."),
-    DEVICE_ALREADY_REGISTERED(HttpStatus.CONFLICT, "DEVICE4002", "이미 등록된 기기입니다."),
+    DEVICE_ALREADY_REGISTERED(HttpStatus.CONFLICT, "DEVICE4002", "이미 등록된 기기가 있습니다."),
 
     // Measurement
     MEASUREMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "MEASUREMENT4001", "측정 세션을 찾을 수 없습니다."),
