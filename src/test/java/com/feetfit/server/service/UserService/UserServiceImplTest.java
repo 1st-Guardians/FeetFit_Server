@@ -1,0 +1,106 @@
+package com.feetfit.server.service.UserService;
+
+import com.feetfit.server.apiPayload.exception.handler.UserHandler;
+import com.feetfit.server.domain.User;
+import com.feetfit.server.domain.enums.Gender;
+import com.feetfit.server.domain.enums.SocialType;
+import com.feetfit.server.domain.enums.UserStatus;
+import com.feetfit.server.repository.UserRepository;
+import com.feetfit.server.web.dto.user.UserRequestDTO;
+import com.feetfit.server.web.dto.user.UserResponseDTO;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
+
+import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.BDDMockito.given;
+
+@ExtendWith(MockitoExtension.class)
+class UserServiceImplTest {
+
+    @Mock
+    private UserRepository userRepository;
+
+    @InjectMocks
+    private UserServiceImpl userService;
+
+    @Test
+    void getProfile_existingUser_returnsProfileResponse() {
+        given(userRepository.findById(1L)).willReturn(Optional.of(completeUser()));
+
+        UserResponseDTO.UserProfileResponseDTO response = userService.getProfile(1L);
+
+        assertThat(response.getUserId()).isEqualTo(1L);
+        assertThat(response.getNickname()).isEqualTo("은서");
+        assertThat(response.getAge()).isEqualTo(24);
+        assertThat(response.getGender()).isEqualTo("FEMALE");
+        assertThat(response.getRequiresProfileSetup()).isFalse();
+    }
+
+    @Test
+    void getProfile_missingUser_throwsUserHandler() {
+        given(userRepository.findById(404L)).willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userService.getProfile(404L))
+                .isInstanceOf(UserHandler.class);
+    }
+
+    @Test
+    void updateProfile_existingUser_updatesProfileFields() {
+        User user = incompleteUser();
+        UserRequestDTO.UserProfileUpdateRequestDTO request = profileUpdateRequest();
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+
+        UserResponseDTO.UserProfileResponseDTO response = userService.updateProfile(1L, request);
+
+        assertThat(user.getNickname()).isEqualTo("새닉네임");
+        assertThat(user.getAge()).isEqualTo(25);
+        assertThat(user.getHeightCm()).isEqualTo(170.5F);
+        assertThat(user.getWeightKg()).isEqualTo(60.0F);
+        assertThat(user.getGender()).isEqualTo(Gender.MALE);
+        assertThat(user.getProfileImageUrl()).isEqualTo("https://example.com/new-profile.png");
+        assertThat(response.getRequiresProfileSetup()).isFalse();
+    }
+
+    private static User completeUser() {
+        return User.builder()
+                .id(1L)
+                .nickname("은서")
+                .age(24)
+                .heightCm(165.5F)
+                .weightKg(52.3F)
+                .gender(Gender.FEMALE)
+                .socialType(SocialType.KAKAO)
+                .socialId("12345")
+                .profileImageUrl("https://example.com/profile.png")
+                .status(UserStatus.ACTIVE)
+                .build();
+    }
+
+    private static User incompleteUser() {
+        return User.builder()
+                .id(1L)
+                .nickname("카카오사용자")
+                .socialType(SocialType.KAKAO)
+                .socialId("12345")
+                .status(UserStatus.ACTIVE)
+                .build();
+    }
+
+    private static UserRequestDTO.UserProfileUpdateRequestDTO profileUpdateRequest() {
+        UserRequestDTO.UserProfileUpdateRequestDTO request = new UserRequestDTO.UserProfileUpdateRequestDTO();
+        ReflectionTestUtils.setField(request, "nickname", "새닉네임");
+        ReflectionTestUtils.setField(request, "age", 25);
+        ReflectionTestUtils.setField(request, "heightCm", 170.5F);
+        ReflectionTestUtils.setField(request, "weightKg", 60.0F);
+        ReflectionTestUtils.setField(request, "gender", Gender.MALE);
+        ReflectionTestUtils.setField(request, "profileImageUrl", "https://example.com/new-profile.png");
+        return request;
+    }
+}
