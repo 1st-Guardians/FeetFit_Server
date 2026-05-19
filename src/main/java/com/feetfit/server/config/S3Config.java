@@ -13,19 +13,19 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class S3Config {
 
-    @Value("${cloud.aws.credentials.access-key}")
+    @Value("${S3_ACCESS_KEY}")
     private String accessKey;
 
-    @Value("${cloud.aws.credentials.secret-key}")
+    @Value("${S3_SECRET_KEY}")
     private String secretKey;
 
-    @Value("${cloud.aws.region.static}")
+    @Value("${S3_REGION}")
     private String region;
 
-    @Value("${cloud.aws.s3.bucket}")
+    @Value("${S3_BUCKET}")
     private String bucket;
 
-    @Value("${cloud.aws.s3.profile-image-path}")
+    @Value("${S3_PROFILE_IMAGE_PATH}")
     private String profileImagePath;
 
     @Bean
