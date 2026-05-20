@@ -5,9 +5,11 @@ import com.feetfit.server.apiPayload.exception.handler.MeasurementHandler;
 import com.feetfit.server.converter.ReportConverter;
 import com.feetfit.server.domain.HalluxValgusAnalysis;
 import com.feetfit.server.domain.MeasurementSession;
+import com.feetfit.server.domain.TinaPedisAnalysis;
 import com.feetfit.server.domain.enums.MeasurementStatus;
 import com.feetfit.server.repository.HalluxValgusAnalysisRepository;
 import com.feetfit.server.repository.MeasurementSessionRepository;
+import com.feetfit.server.repository.TinaPedisAnalysisRepository;
 import com.feetfit.server.web.dto.report.ReportRequestDTO;
 import com.feetfit.server.web.dto.report.ReportResponseDTO;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +25,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
 
     private final HalluxValgusAnalysisRepository halluxValgusAnalysisRepository;
     private final MeasurementSessionRepository measurementSessionRepository;
+    private final TinaPedisAnalysisRepository tinaPedisAnalysisRepository;
 
     @Override
     public ReportResponseDTO.SaveHalluxValgusResultDTO saveHalluxValgusAnalysis(
@@ -63,5 +66,61 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                 );
 
         return ReportConverter.toSaveHalluxValgusResultDTO(saved);
+    }
+
+    @Override
+    public ReportResponseDTO.TinaPedisAnalysisResultDTO saveTinaPedisAnalysis(
+            Long userId,
+            ReportRequestDTO.SaveTinaPedisAnalysisDTO request
+    ) {
+        MeasurementSession measurementSession = getValidatedCompletedMeasurementSession(
+                userId,
+                request.getMeasurementSessionId()
+        );
+
+        TinaPedisAnalysis saved = tinaPedisAnalysisRepository.findByMeasurementSessionId(measurementSession.getId())
+                .map(existing -> {
+                    existing.updateTinaPedisAnalysis(
+                            request.getFungalSuspicionSafetyScore(),
+                            request.getSkinReactionSafetyScore(),
+                            request.getFungalSuspicionSafetyDescription(),
+                            request.getSkinReactionSafetyDescription(),
+                            request.getTotalScoreDescription(),
+                            request.getSuspiciousAreaMapImageUrl(),
+                            request.getOriginalFootImageUrl(),
+                            request.getRecordedAt()
+                    );
+                    return existing;
+                })
+                .orElseGet(() -> tinaPedisAnalysisRepository.save(
+                        ReportConverter.toTinaPedisAnalysis(measurementSession, request)
+                ));
+
+        tinaPedisAnalysisRepository.flush();
+
+        TinaPedisAnalysis previousAnalysis = tinaPedisAnalysisRepository
+                .findTopByMeasurementSessionUserIdAndRecordedAtLessThanOrderByRecordedAtDesc(
+                        userId,
+                        saved.getRecordedAt().toLocalDate().atStartOfDay()
+                )
+                .orElse(null);
+
+        return ReportConverter.toTinaPedisAnalysisResultDTO(saved, previousAnalysis);
+    }
+
+    private MeasurementSession getValidatedCompletedMeasurementSession(Long userId, Long measurementSessionId) {
+        MeasurementSession measurementSession = measurementSessionRepository
+                .findById(measurementSessionId)
+                .orElseThrow(() -> new MeasurementHandler(ErrorStatus.MEASUREMENT_NOT_FOUND));
+
+        if (!measurementSession.getUser().getId().equals(userId)) {
+            throw new MeasurementHandler(ErrorStatus.MEASUREMENT_FORBIDDEN);
+        }
+
+        if (!measurementSession.getStatus().equals(MeasurementStatus.COMPLETED)) {
+            throw new MeasurementHandler(ErrorStatus.MEASUREMENT_NOT_COMPLETED);
+        }
+
+        return measurementSession;
     }
 }

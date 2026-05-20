@@ -8,4 +8,8 @@ public interface ReportCommandService {
     // 무지외반 측정 분석 결과 저장
     ReportResponseDTO.SaveHalluxValgusResultDTO saveHalluxValgusAnalysis(
             Long userId, ReportRequestDTO.SaveHalluxValgusDTO request);
+
+    // 무좀 분석 결과 저장
+    ReportResponseDTO.TinaPedisAnalysisResultDTO saveTinaPedisAnalysis(
+            Long userId, ReportRequestDTO.SaveTinaPedisAnalysisDTO request);
 }

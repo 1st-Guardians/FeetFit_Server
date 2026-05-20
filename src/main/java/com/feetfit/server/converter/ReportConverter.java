@@ -2,6 +2,7 @@ package com.feetfit.server.converter;
 
 import com.feetfit.server.domain.HalluxValgusAnalysis;
 import com.feetfit.server.domain.MeasurementSession;
+import com.feetfit.server.domain.TinaPedisAnalysis;
 import com.feetfit.server.web.dto.report.ReportRequestDTO;
 import com.feetfit.server.web.dto.report.ReportResponseDTO;
 
@@ -69,5 +70,70 @@ public class ReportConverter {
                 .createdAt(analysis.getCreatedAt())
                 .updatedAt(analysis.getUpdatedAt())
                 .build();
+    }
+
+    public static TinaPedisAnalysis toTinaPedisAnalysis(
+            MeasurementSession measurementSession,
+            ReportRequestDTO.SaveTinaPedisAnalysisDTO request
+    ) {
+        return TinaPedisAnalysis.builder()
+                .measurementSession(measurementSession)
+                .fungalSuspicionSafetyScore(request.getFungalSuspicionSafetyScore())
+                .skinReactionSafetyScore(request.getSkinReactionSafetyScore())
+                .fungalSuspicionSafetyDescription(request.getFungalSuspicionSafetyDescription())
+                .skinReactionSafetyDescription(request.getSkinReactionSafetyDescription())
+                .totalScoreDescription(request.getTotalScoreDescription())
+                .suspiciousAreaMapImageUrl(request.getSuspiciousAreaMapImageUrl())
+                .originalFootImageUrl(request.getOriginalFootImageUrl())
+                .recordedAt(request.getRecordedAt())
+                .build();
+    }
+
+    public static ReportResponseDTO.TinaPedisAnalysisResultDTO toTinaPedisAnalysisResultDTO(
+            TinaPedisAnalysis analysis
+    ) {
+        return toTinaPedisAnalysisResultDTO(analysis, null);
+    }
+
+    public static ReportResponseDTO.TinaPedisAnalysisResultDTO toTinaPedisAnalysisResultDTO(
+            TinaPedisAnalysis analysis,
+            TinaPedisAnalysis previousAnalysis
+    ) {
+        Float totalScore = calculateTinaPedisTotalScore(analysis);
+        Float previousTotalScore = previousAnalysis != null
+                ? calculateTinaPedisTotalScore(previousAnalysis)
+                : null;
+        Float totalScoreDiff = previousTotalScore != null
+                ? roundToOneDecimal(totalScore - previousTotalScore)
+                : null;
+
+        return ReportResponseDTO.TinaPedisAnalysisResultDTO.builder()
+                .id(analysis.getId())
+                .measurementSessionId(analysis.getMeasurementSession().getId())
+                .fungalSuspicionSafetyScore(analysis.getFungalSuspicionSafetyScore())
+                .skinReactionSafetyScore(analysis.getSkinReactionSafetyScore())
+                .totalScore(totalScore)
+                .previousTotalScore(previousTotalScore)
+                .totalScoreDiff(totalScoreDiff)
+                .fungalSuspicionSafetyDescription(analysis.getFungalSuspicionSafetyDescription())
+                .skinReactionSafetyDescription(analysis.getSkinReactionSafetyDescription())
+                .totalScoreDescription(analysis.getTotalScoreDescription())
+                .suspiciousAreaMapImageUrl(analysis.getSuspiciousAreaMapImageUrl())
+                .originalFootImageUrl(analysis.getOriginalFootImageUrl())
+                .recordedAt(analysis.getRecordedAt())
+                .createdAt(analysis.getCreatedAt())
+                .updatedAt(analysis.getUpdatedAt())
+                .build();
+    }
+
+    private static Float calculateTinaPedisTotalScore(TinaPedisAnalysis analysis) {
+        return roundToOneDecimal(
+                analysis.getFungalSuspicionSafetyScore() * 0.7f
+                        + analysis.getSkinReactionSafetyScore() * 0.3f
+        );
+    }
+
+    private static Float roundToOneDecimal(Float value) {
+        return Math.round(value * 10f) / 10f;
     }
 }
