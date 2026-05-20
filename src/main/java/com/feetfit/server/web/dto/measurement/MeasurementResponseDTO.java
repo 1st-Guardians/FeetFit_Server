@@ -7,7 +7,9 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public class MeasurementResponseDTO {
 
@@ -50,5 +52,59 @@ public class MeasurementResponseDTO {
 
         @Schema(description = "수정 시각", example = "2026-05-20T09:03:00")
         private LocalDateTime updatedAt;
+    }
+
+    @Builder
+    @Getter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Schema(description = "오늘 측정 여부 조회 응답")
+    public static class TodayMeasurementStatusResultDTO {
+        @Schema(description = "오늘 날짜", example = "2026-05-20")
+        private LocalDate today;
+
+        @Schema(description = "오늘 완료된 측정 기록 존재 여부", example = "true")
+        private Boolean hasTodayMeasurement;
+    }
+
+    @Builder
+    @Getter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Schema(description = "주간 측정 여부 조회 응답")
+    public static class WeeklyMeasurementStatusResultDTO {
+        @Schema(description = "오늘 날짜", example = "2026-05-20")
+        private LocalDate today;
+
+        @Schema(description = "이번 주 시작일. 일요일 기준", example = "2026-05-17")
+        private LocalDate weekStartDate;
+
+        @Schema(description = "이번 주 종료일. 토요일 기준", example = "2026-05-23")
+        private LocalDate weekEndDate;
+
+        @Schema(description = "이번 주에 완료된 측정 기록 존재 여부", example = "true")
+        private Boolean hasWeeklyMeasurement;
+
+        @Schema(description = "일요일부터 토요일까지 날짜별 측정 여부")
+        private List<DailyMeasurementStatusDTO> dailyStatuses;
+    }
+
+    @Builder
+    @Getter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Schema(description = "날짜별 측정 여부")
+    public static class DailyMeasurementStatusDTO {
+        @Schema(description = "날짜", example = "2026-05-20")
+        private LocalDate date;
+
+        @Schema(description = "요일", example = "WEDNESDAY")
+        private String dayOfWeek;
+
+        @Schema(description = "한글 요일", example = "수")
+        private String dayOfWeekKor;
+
+        @Schema(description = "해당 날짜에 완료된 측정 기록 존재 여부", example = "true")
+        private Boolean hasMeasurement;
     }
 }
