@@ -8,6 +8,7 @@ import com.feetfit.server.converter.MeasurementConverter;
 import com.feetfit.server.domain.Device;
 import com.feetfit.server.domain.MeasurementSession;
 import com.feetfit.server.domain.User;
+import com.feetfit.server.domain.enums.MeasurementStatus;
 import com.feetfit.server.repository.MeasurementSessionRepository;
 import com.feetfit.server.repository.UserRepository;
 import com.feetfit.server.web.dto.measurement.MeasurementRequestDTO;
@@ -60,6 +61,13 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
         // 본인 측정 세션인지 검증
         if (!measurementSession.getUser().getId().equals(userId)) {
             throw new MeasurementHandler(ErrorStatus.MEASUREMENT_FORBIDDEN);
+        }
+
+        // COMPLETED 시 measurementDurationSec 검증
+        if (request.getStatus() == MeasurementStatus.COMPLETED) {
+            if (request.getMeasurementDurationSec() == null || request.getMeasurementDurationSec() <= 0) {
+                throw new MeasurementHandler(ErrorStatus._BAD_REQUEST);
+            }
         }
 
         measurementSession.updateStatus(request.getStatus(), request.getMeasurementDurationSec());
