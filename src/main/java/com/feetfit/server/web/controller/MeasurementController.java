@@ -170,7 +170,7 @@ public class MeasurementController {
     private static final String DEVICE_FORBIDDEN_RESPONSE = """
             {
               "isSuccess": false,
-              "code": "DEVICE4002",
+              "code": "DEVICE4003",
               "message": "본인의 디바이스가 아닙니다.",
               "result": null
             }
