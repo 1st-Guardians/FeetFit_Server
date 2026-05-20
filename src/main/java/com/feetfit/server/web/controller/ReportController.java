@@ -30,7 +30,7 @@ public class ReportController {
 
     @PostMapping("/hallux-valgus")
     @Operation(
-            summary = "무지외반 분석 결과 저장",
+            summary = "무지외반 분석 결과 저장 [민지]",
             description = """
                     AI 분석 결과로 받은 왼발/오른발 무지외반 데이터를 저장합니다.
                     Authorization 헤더에 Bearer accessToken이 필요합니다.
@@ -120,7 +120,7 @@ public class ReportController {
 
     @GetMapping("/hallux-valgus")
     @Operation(
-            summary = "무지외반 분석 결과 조회",
+            summary = "무지외반 분석 결과 조회 [민지]",
             description = """
                     날짜를 지정하여 해당 날짜의 가장 마지막으로 저장된 무지외반 분석 결과를 조회합니다.
                     Authorization 헤더에 Bearer accessToken이 필요합니다.
