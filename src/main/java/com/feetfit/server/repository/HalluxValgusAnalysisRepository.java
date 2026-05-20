@@ -18,22 +18,14 @@ public interface HalluxValgusAnalysisRepository extends JpaRepository<HalluxValg
             @Param("userId") Long userId,
             @Param("date") LocalDateTime date);
 
-    @Query("SELECT h FROM HalluxValgusAnalysis h " +
-            "WHERE h.measurementSession.user.id = :userId " +
-            "AND DATE(h.updatedAt) = :date " +
-            "ORDER BY h.updatedAt DESC " +
-            "LIMIT 1")
-    Optional<HalluxValgusAnalysis> findLatestByUserIdAndDate(
-            @Param("userId") Long userId,
-            @Param("date") LocalDate date);
+    // 해당 날짜의 가장 최근 데이터
+    Optional<HalluxValgusAnalysis> findTopByMeasurementSessionUserIdAndUpdatedAtGreaterThanEqualAndUpdatedAtLessThanOrderByUpdatedAtDesc(
+            Long userId,
+            LocalDateTime startOfDay,
+            LocalDateTime endOfDay);
 
-    // 오늘 말고 가장 최근 데이터 조회
-    @Query("SELECT h FROM HalluxValgusAnalysis h " +
-            "WHERE h.measurementSession.user.id = :userId " +
-            "AND DATE(h.updatedAt) < :date " +
-            "ORDER BY h.updatedAt DESC " +
-            "LIMIT 1")
-    Optional<HalluxValgusAnalysis> findPreviousByUserIdBeforeDate(
-            @Param("userId") Long userId,
-            @Param("date") LocalDate date);
+    // 해당 날짜 이전의 가장 최근 데이터
+    Optional<HalluxValgusAnalysis> findTopByMeasurementSessionUserIdAndUpdatedAtLessThanOrderByUpdatedAtDesc(
+            Long userId,
+            LocalDateTime startOfDay);
 }

@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Service
 @Transactional(readOnly = true)
@@ -22,14 +23,19 @@ public class ReportQueryServiceImpl implements ReportQueryService {
     @Override
     public ReportResponseDTO.HalluxValgusResultDTO getHalluxValgusAnalysis(Long userId, LocalDate date) {
 
+        LocalDateTime startOfDay = date.atStartOfDay();
+        LocalDateTime endOfDay = date.plusDays(1).atStartOfDay();
+
         // 해당 날짜 가장 최근 데이터 조회
         HalluxValgusAnalysis halluxValgusAnalysis = halluxValgusAnalysisRepository
-                .findLatestByUserIdAndDate(userId, date)
+                .findTopByMeasurementSessionUserIdAndUpdatedAtGreaterThanEqualAndUpdatedAtLessThanOrderByUpdatedAtDesc(
+                        userId, startOfDay, endOfDay)
                 .orElseThrow(() -> new ReportHandler(ErrorStatus.REPORT_NOT_FOUND));
 
         // 이전 측정 데이터 조회 (없으면 null)
         HalluxValgusAnalysis previousAnalysis = halluxValgusAnalysisRepository
-                .findPreviousByUserIdBeforeDate(userId, date)
+                .findTopByMeasurementSessionUserIdAndUpdatedAtLessThanOrderByUpdatedAtDesc(
+                        userId, startOfDay)
                 .orElse(null);
 
         return ReportConverter.toHalluxValgusResultDTO(halluxValgusAnalysis, previousAnalysis);
