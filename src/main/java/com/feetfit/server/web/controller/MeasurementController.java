@@ -25,7 +25,7 @@ public class MeasurementController {
 
     @PostMapping
     @Operation(
-            summary = "측정 세션 생성",
+            summary = "측정 세션 생성 [민지]",
             description = """
                     새로운 측정 세션을 생성합니다.
                     Authorization 헤더에 Bearer accessToken이 필요합니다.
@@ -74,7 +74,7 @@ public class MeasurementController {
 
     @PatchMapping("/{measurementSessionId}/status")
     @Operation(
-            summary = "측정 세션 상태 업데이트",
+            summary = "측정 세션 상태 업데이트 [민지]",
             description = """
                     측정 세션의 상태를 업데이트합니다.
                     Authorization 헤더에 Bearer accessToken이 필요합니다.

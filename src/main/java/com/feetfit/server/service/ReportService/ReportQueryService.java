@@ -1,0 +1,9 @@
+package com.feetfit.server.service.ReportService;
+
+import com.feetfit.server.web.dto.report.ReportResponseDTO;
+
+import java.time.LocalDate;
+
+public interface ReportQueryService {
+    ReportResponseDTO.HalluxValgusResultDTO getHalluxValgusAnalysis(Long userId, LocalDate date);
+}

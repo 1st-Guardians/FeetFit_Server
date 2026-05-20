@@ -43,4 +43,31 @@ public class ReportConverter {
                 .updatedAt(analysis.getUpdatedAt())
                 .build();
     }
+
+    public static ReportResponseDTO.HalluxValgusResultDTO toHalluxValgusResultDTO(
+            HalluxValgusAnalysis analysis,
+            HalluxValgusAnalysis previousAnalysis) {
+
+        Float previousRiskScore = previousAnalysis != null ? previousAnalysis.getRiskScore() : null;
+        Float riskScoreDiff = previousRiskScore != null
+                ? analysis.getRiskScore() - previousRiskScore
+                : null;
+
+        return ReportResponseDTO.HalluxValgusResultDTO.builder()
+                .id(analysis.getId())
+                .imageUrl(analysis.getImageUrl())
+                .leftToeAngleDegree(analysis.getLeftToeAngleDegree())
+                .leftRiskLevel(analysis.getLeftRiskLevel())
+                .leftAnalysisText(analysis.getLeftAnalysisText())
+                .rightToeAngleDegree(analysis.getRightToeAngleDegree())
+                .rightRiskLevel(analysis.getRightRiskLevel())
+                .rightAnalysisText(analysis.getRightAnalysisText())
+                .riskScore(analysis.getRiskScore())
+                .scoreAnalysisText(analysis.getScoreAnalysisText())
+                .previousRiskScore(previousRiskScore)
+                .riskScoreDiff(riskScoreDiff)
+                .createdAt(analysis.getCreatedAt())
+                .updatedAt(analysis.getUpdatedAt())
+                .build();
+    }
 }
