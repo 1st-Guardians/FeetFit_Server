@@ -3,6 +3,7 @@ package com.feetfit.server.web.controller;
 import com.feetfit.server.apiPayload.ApiResponse;
 import com.feetfit.server.jwt.FindLoginUser;
 import com.feetfit.server.service.MeasurementService.MeasurementCommandService;
+import com.feetfit.server.service.MeasurementService.MeasurementQueryService;
 import com.feetfit.server.web.dto.measurement.MeasurementRequestDTO;
 import com.feetfit.server.web.dto.measurement.MeasurementResponseDTO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 public class MeasurementController {
 
     private final MeasurementCommandService measurementCommandService;
+    private final MeasurementQueryService measurementQueryService;
     private final FindLoginUser findLoginUser;
 
     @PostMapping
@@ -118,6 +120,89 @@ public class MeasurementController {
         return ApiResponse.onSuccess(measurementCommandService.updateMeasurementStatus(userId, measurementSessionId, request));
     }
 
+    @GetMapping("/today-status")
+    @Operation(
+            summary = "오늘 측정 여부 조회 [은서]",
+            description = """
+                    오늘 날짜의 측정 완료 여부를 조회합니다.
+                    Authorization 헤더에 Bearer accessToken이 필요합니다.
+                    - 기준 시간대는 Asia/Seoul입니다.
+                    - COMPLETED 상태의 측정 세션만 측정 기록으로 판단합니다.
+                    - 오늘 완료된 측정 기록이 있으면 hasTodayMeasurement=true입니다.
+                    """
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "오늘 측정 여부 조회 성공",
+                    content = @Content(examples = {
+                            @ExampleObject(name = "오늘 측정 기록 있음", value = TODAY_MEASUREMENT_STATUS_SUCCESS_RESPONSE),
+                            @ExampleObject(name = "오늘 측정 기록 없음", value = TODAY_MEASUREMENT_STATUS_EMPTY_RESPONSE)
+                    })
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = "Authorization 헤더 누락 또는 유효하지 않은 토큰",
+                    content = @Content(examples = @ExampleObject(value = UNAUTHORIZED_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "토큰의 userId에 해당하는 사용자가 없음",
+                    content = @Content(examples = @ExampleObject(value = USER_NOT_FOUND_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "500",
+                    description = "서버 내부 오류",
+                    content = @Content(examples = @ExampleObject(value = INTERNAL_SERVER_ERROR_RESPONSE))
+            )
+    })
+    public ApiResponse<MeasurementResponseDTO.TodayMeasurementStatusResultDTO> getTodayMeasurementStatus() {
+        Long userId = findLoginUser.getCurrentUserId();
+        return ApiResponse.onSuccess(measurementQueryService.getTodayMeasurementStatus(userId));
+    }
+
+    @GetMapping("/weekly-status")
+    @Operation(
+            summary = "한 주 측정 여부 조회 [은서]",
+            description = """
+                    오늘 날짜가 포함된 일요일~토요일 구간의 날짜별 측정 완료 여부를 조회합니다.
+                    Authorization 헤더에 Bearer accessToken이 필요합니다.
+                    - 기준 시간대는 Asia/Seoul입니다.
+                    - COMPLETED 상태의 측정 세션만 측정 기록으로 판단합니다.
+                    - hasWeeklyMeasurement는 이번 주에 완료된 측정 기록이 하나라도 있으면 true입니다.
+                    - dailyStatuses는 일요일부터 토요일까지 순서대로 반환합니다.
+                    """
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "한 주 측정 여부 조회 성공",
+                    content = @Content(examples = {
+                            @ExampleObject(name = "이번 주 측정 기록 있음", value = WEEKLY_MEASUREMENT_STATUS_SUCCESS_RESPONSE),
+                            @ExampleObject(name = "이번 주 측정 기록 없음", value = WEEKLY_MEASUREMENT_STATUS_EMPTY_RESPONSE)
+                    })
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = "Authorization 헤더 누락 또는 유효하지 않은 토큰",
+                    content = @Content(examples = @ExampleObject(value = UNAUTHORIZED_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "토큰의 userId에 해당하는 사용자가 없음",
+                    content = @Content(examples = @ExampleObject(value = USER_NOT_FOUND_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "500",
+                    description = "서버 내부 오류",
+                    content = @Content(examples = @ExampleObject(value = INTERNAL_SERVER_ERROR_RESPONSE))
+            )
+    })
+    public ApiResponse<MeasurementResponseDTO.WeeklyMeasurementStatusResultDTO> getWeeklyMeasurementStatus() {
+        Long userId = findLoginUser.getCurrentUserId();
+        return ApiResponse.onSuccess(measurementQueryService.getWeeklyMeasurementStatus(userId));
+    }
+
     private static final String CREATE_MEASUREMENT_SESSION_SUCCESS_RESPONSE = """
             {
               "isSuccess": true,
@@ -147,6 +232,146 @@ public class MeasurementController {
             }
             """;
 
+    private static final String TODAY_MEASUREMENT_STATUS_SUCCESS_RESPONSE = """
+            {
+              "isSuccess": true,
+              "code": "COMMON200",
+              "message": "성공입니다.",
+              "result": {
+                "today": "2026-05-20",
+                "hasTodayMeasurement": true
+              }
+            }
+            """;
+
+    private static final String TODAY_MEASUREMENT_STATUS_EMPTY_RESPONSE = """
+            {
+              "isSuccess": true,
+              "code": "COMMON200",
+              "message": "성공입니다.",
+              "result": {
+                "today": "2026-05-20",
+                "hasTodayMeasurement": false
+              }
+            }
+            """;
+
+    private static final String WEEKLY_MEASUREMENT_STATUS_SUCCESS_RESPONSE = """
+            {
+              "isSuccess": true,
+              "code": "COMMON200",
+              "message": "성공입니다.",
+              "result": {
+                "today": "2026-05-20",
+                "weekStartDate": "2026-05-17",
+                "weekEndDate": "2026-05-23",
+                "hasWeeklyMeasurement": true,
+                "dailyStatuses": [
+                  {
+                    "date": "2026-05-17",
+                    "dayOfWeek": "SUNDAY",
+                    "dayOfWeekKor": "일",
+                    "hasMeasurement": false
+                  },
+                  {
+                    "date": "2026-05-18",
+                    "dayOfWeek": "MONDAY",
+                    "dayOfWeekKor": "월",
+                    "hasMeasurement": true
+                  },
+                  {
+                    "date": "2026-05-19",
+                    "dayOfWeek": "TUESDAY",
+                    "dayOfWeekKor": "화",
+                    "hasMeasurement": false
+                  },
+                  {
+                    "date": "2026-05-20",
+                    "dayOfWeek": "WEDNESDAY",
+                    "dayOfWeekKor": "수",
+                    "hasMeasurement": true
+                  },
+                  {
+                    "date": "2026-05-21",
+                    "dayOfWeek": "THURSDAY",
+                    "dayOfWeekKor": "목",
+                    "hasMeasurement": false
+                  },
+                  {
+                    "date": "2026-05-22",
+                    "dayOfWeek": "FRIDAY",
+                    "dayOfWeekKor": "금",
+                    "hasMeasurement": false
+                  },
+                  {
+                    "date": "2026-05-23",
+                    "dayOfWeek": "SATURDAY",
+                    "dayOfWeekKor": "토",
+                    "hasMeasurement": false
+                  }
+                ]
+              }
+            }
+            """;
+
+    private static final String WEEKLY_MEASUREMENT_STATUS_EMPTY_RESPONSE = """
+            {
+              "isSuccess": true,
+              "code": "COMMON200",
+              "message": "성공입니다.",
+              "result": {
+                "today": "2026-05-20",
+                "weekStartDate": "2026-05-17",
+                "weekEndDate": "2026-05-23",
+                "hasWeeklyMeasurement": false,
+                "dailyStatuses": [
+                  {
+                    "date": "2026-05-17",
+                    "dayOfWeek": "SUNDAY",
+                    "dayOfWeekKor": "일",
+                    "hasMeasurement": false
+                  },
+                  {
+                    "date": "2026-05-18",
+                    "dayOfWeek": "MONDAY",
+                    "dayOfWeekKor": "월",
+                    "hasMeasurement": false
+                  },
+                  {
+                    "date": "2026-05-19",
+                    "dayOfWeek": "TUESDAY",
+                    "dayOfWeekKor": "화",
+                    "hasMeasurement": false
+                  },
+                  {
+                    "date": "2026-05-20",
+                    "dayOfWeek": "WEDNESDAY",
+                    "dayOfWeekKor": "수",
+                    "hasMeasurement": false
+                  },
+                  {
+                    "date": "2026-05-21",
+                    "dayOfWeek": "THURSDAY",
+                    "dayOfWeekKor": "목",
+                    "hasMeasurement": false
+                  },
+                  {
+                    "date": "2026-05-22",
+                    "dayOfWeek": "FRIDAY",
+                    "dayOfWeekKor": "금",
+                    "hasMeasurement": false
+                  },
+                  {
+                    "date": "2026-05-23",
+                    "dayOfWeek": "SATURDAY",
+                    "dayOfWeekKor": "토",
+                    "hasMeasurement": false
+                  }
+                ]
+              }
+            }
+            """;
+
     private static final String VALIDATION_ERROR_RESPONSE = """
             {
               "isSuccess": false,
@@ -163,6 +388,15 @@ public class MeasurementController {
               "isSuccess": false,
               "code": "COMMON401",
               "message": "인증이 필요합니다.",
+              "result": null
+            }
+            """;
+
+    private static final String USER_NOT_FOUND_RESPONSE = """
+            {
+              "isSuccess": false,
+              "code": "USER4001",
+              "message": "사용자를 찾을 수 없습니다.",
               "result": null
             }
             """;
