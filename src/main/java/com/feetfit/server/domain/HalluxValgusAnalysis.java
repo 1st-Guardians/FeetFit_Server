@@ -53,4 +53,21 @@ public class HalluxValgusAnalysis extends BaseEntity {
 
     @Column(columnDefinition = "TEXT")
     private String scoreAnalysisText;
+
+    public void updateHalluxValgusAnalysis(
+            String imageUrl,
+            Float leftToeAngleDegree, RiskLevel leftRiskLevel, String leftAnalysisText,
+            Float rightToeAngleDegree, RiskLevel rightRiskLevel, String rightAnalysisText,
+            Float riskScore, String scoreAnalysisText) {
+
+        this.imageUrl = imageUrl;
+        this.leftToeAngleDegree = leftToeAngleDegree;
+        this.leftRiskLevel = leftRiskLevel;
+        this.leftAnalysisText = leftAnalysisText;
+        this.rightToeAngleDegree = rightToeAngleDegree;
+        this.rightRiskLevel = rightRiskLevel;
+        this.rightAnalysisText = rightAnalysisText;
+        this.riskScore = riskScore;
+        this.scoreAnalysisText = scoreAnalysisText;
+    }
 }

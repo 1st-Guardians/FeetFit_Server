@@ -31,8 +31,12 @@ public class ReportController {
             summary = "무지외반 분석 결과 저장",
             description = """
                     AI 분석 결과로 받은 왼발/오른발 무지외반 데이터를 저장합니다.
+                    Authorization 헤더에 Bearer accessToken이 필요합니다.
                     - riskLevel은 LOW, MEDIUM, HIGH만 허용합니다.
-                    - analyses 배열에 왼발, 오른발 데이터를 함께 보내주세요.
+                    - 같은 날짜에 이미 저장된 데이터가 있으면 덮어씁니다 (UPDATE).
+                    - 같은 날짜에 저장된 데이터가 없으면 새로 저장합니다 (INSERT).
+                    - 측정 세션의 status가 COMPLETED인 경우에만 저장됩니다.
+                    - 본인의 측정 세션 ID만 사용 가능합니다.
                     """
     )
     @ApiResponses({
@@ -85,7 +89,8 @@ public class ReportController {
                 "rightAnalysisText": "오른발 양호",
                 "riskScore": 75.5,
                 "scoreAnalysisText": "전반적으로 주의가 필요합니다.",
-                "createdAt": "2026-05-20T01:55:09"
+                "createdAt": "2026-05-20T01:55:09",
+                "updatedAt": "2026-05-20T01:55:09"
               }
             }
             """;

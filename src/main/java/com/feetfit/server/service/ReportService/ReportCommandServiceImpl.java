@@ -5,6 +5,7 @@ import com.feetfit.server.apiPayload.exception.handler.MeasurementHandler;
 import com.feetfit.server.converter.ReportConverter;
 import com.feetfit.server.domain.HalluxValgusAnalysis;
 import com.feetfit.server.domain.MeasurementSession;
+import com.feetfit.server.domain.enums.MeasurementStatus;
 import com.feetfit.server.repository.HalluxValgusAnalysisRepository;
 import com.feetfit.server.repository.MeasurementSessionRepository;
 import com.feetfit.server.web.dto.report.ReportRequestDTO;
@@ -13,8 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import java.time.LocalDateTime;
 
 @Service
 @Transactional
@@ -37,9 +37,30 @@ public class ReportCommandServiceImpl implements ReportCommandService {
             throw new MeasurementHandler(ErrorStatus.MEASUREMENT_FORBIDDEN);
         }
 
-        HalluxValgusAnalysis saved = halluxValgusAnalysisRepository.save(
-                ReportConverter.toHalluxValgusAnalysis(measurementSession, request)
-        );
+        // COMPLETED 상태인지 검증
+        if (!measurementSession.getStatus().equals(MeasurementStatus.COMPLETED)) {
+            throw new MeasurementHandler(ErrorStatus.MEASUREMENT_NOT_COMPLETED);
+        }
+
+        // 오늘 날짜에 이미 저장된 데이터 있는지 조회
+        HalluxValgusAnalysis saved = halluxValgusAnalysisRepository
+                .findByUserIdAndDate(userId, LocalDateTime.now())
+                .map(existing -> {
+                    // 있으면 UPDATE
+                    existing.updateHalluxValgusAnalysis(
+                            request.getImageUrl(),
+                            request.getLeftToeAngleDegree(), request.getLeftRiskLevel(), request.getLeftAnalysisText(),
+                            request.getRightToeAngleDegree(), request.getRightRiskLevel(), request.getRightAnalysisText(),
+                            request.getRiskScore(), request.getScoreAnalysisText()
+                    );
+                    return existing;
+                })
+                .orElseGet(() ->
+                        // 없으면 INSERT
+                        halluxValgusAnalysisRepository.save(
+                                ReportConverter.toHalluxValgusAnalysis(measurementSession, request)
+                        )
+                );
 
         return ReportConverter.toSaveHalluxValgusResultDTO(saved);
     }
