@@ -71,4 +71,8 @@ public class MeasurementSession extends BaseEntity {
     @OneToOne(mappedBy = "measurementSession", cascade = CascadeType.ALL)
     private Report report;
 
+    public void updateStatus(MeasurementStatus status, Integer measurementDurationSec) {
+        this.status = status;
+        this.measurementDurationSec = measurementDurationSec;
+    }
 }
