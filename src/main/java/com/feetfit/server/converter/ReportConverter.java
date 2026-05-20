@@ -7,7 +7,6 @@ import com.feetfit.server.web.dto.report.ReportResponseDTO;
 
 public class ReportConverter {
 
-    // DTO → Entity
     public static HalluxValgusAnalysis toHalluxValgusAnalysis(
             MeasurementSession measurementSession,
             ReportRequestDTO.SaveHalluxValgusDTO request) {
@@ -26,7 +25,6 @@ public class ReportConverter {
                 .build();
     }
 
-    // Entity → ResponseDTO
     public static ReportResponseDTO.SaveHalluxValgusResultDTO toSaveHalluxValgusResultDTO(
             HalluxValgusAnalysis analysis) {
 
@@ -42,6 +40,7 @@ public class ReportConverter {
                 .riskScore(analysis.getRiskScore())
                 .scoreAnalysisText(analysis.getScoreAnalysisText())
                 .createdAt(analysis.getCreatedAt())
+                .updatedAt(analysis.getUpdatedAt())
                 .build();
     }
 }

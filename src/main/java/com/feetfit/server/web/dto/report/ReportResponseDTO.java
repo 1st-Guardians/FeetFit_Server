@@ -34,5 +34,6 @@ public class ReportResponseDTO {
         private String scoreAnalysisText;
 
         private LocalDateTime createdAt;
+        private LocalDateTime updatedAt;
     }
 }
