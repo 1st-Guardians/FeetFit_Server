@@ -54,7 +54,4 @@ public class Report extends BaseEntity {
     @Builder.Default
     private List<Advice> advices = new ArrayList<>();
 
-    @OneToMany(mappedBy = "report", cascade = CascadeType.ALL)
-    @Builder.Default
-    private List<UserStretchingTodo> stretchingTodos = new ArrayList<>();
 }

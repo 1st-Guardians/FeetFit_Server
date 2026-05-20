@@ -82,6 +82,10 @@ public class User extends BaseEntity {
     @Builder.Default
     private List<ShoeRecommendation> shoeRecommendations = new ArrayList<>();
 
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<UserStretchingTodoAssignment> stretchingTodoAssignments = new ArrayList<>();
+
     public void updateProfile(
             String nickname,
             Integer age,

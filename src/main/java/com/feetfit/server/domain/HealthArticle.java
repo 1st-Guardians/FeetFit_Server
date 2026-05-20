@@ -1,7 +1,7 @@
 package com.feetfit.server.domain;
 
 import com.feetfit.server.domain.common.BaseEntity;
-import com.feetfit.server.domain.enums.RecommendationType;
+import com.feetfit.server.domain.enums.HealthType;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -35,7 +35,7 @@ public class HealthArticle extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column
-    private RecommendationType healthType;
+    private HealthType healthType;
 
     @Column(columnDefinition = "TEXT")
     private String description;
