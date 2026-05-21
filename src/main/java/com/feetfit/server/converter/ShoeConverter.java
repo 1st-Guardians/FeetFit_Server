@@ -40,4 +40,11 @@ public class ShoeConverter {
                 .hasNext(shoePage.hasNext())
                 .build();
     }
+
+    public static ShoeResponseDTO.ShoeClickResultDTO toShoeClickResultDTO(Shoe shoe) {
+        return ShoeResponseDTO.ShoeClickResultDTO.builder()
+                .id(shoe.getId())
+                .clickCount(shoe.getClickCount())
+                .build();
+    }
 }
