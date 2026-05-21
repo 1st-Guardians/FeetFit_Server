@@ -1,6 +1,8 @@
 package com.feetfit.server.converter;
 
 import com.feetfit.server.domain.Shoe;
+import com.feetfit.server.domain.ShoeRecommendation;
+import com.feetfit.server.domain.ShoeRecommendationReason;
 import com.feetfit.server.web.dto.shoe.ShoeResponseDTO;
 import org.springframework.data.domain.Page;
 
@@ -68,6 +70,42 @@ public class ShoeConverter {
                 .shoes(shoes.stream()
                         .map(shoe -> toShoeRecommendTop3ItemDTO(shoe, fitScoreMap.get(shoe.getId())))
                         .collect(Collectors.toList()))
+                .build();
+    }
+
+    public static ShoeResponseDTO.ReasonResultDTO toReasonResultDTO(
+            ShoeRecommendationReason reason) {
+
+        List<String> reviewTexts = reason.getReasonReviews().stream()
+                .map(rr -> rr.getReview().getReviewText())
+                .collect(Collectors.toList());
+
+        return ShoeResponseDTO.ReasonResultDTO.builder()
+                .reasonType(reason.getReasonType())
+                .title(reason.getTitle())
+                .riskLevel(reason.getRiskLevel())
+                .reviewSummary(reason.getReviewSummary())
+                .reviewTexts(reviewTexts)
+                .build();
+    }
+
+    public static ShoeResponseDTO.ShoeDetailResultDTO toShoeDetailResultDTO(
+            Shoe shoe,
+            ShoeRecommendation recommendation,
+            List<ShoeResponseDTO.ReasonResultDTO> reasons) {
+        return ShoeResponseDTO.ShoeDetailResultDTO.builder()
+                .id(shoe.getId())
+                .brandName(shoe.getBrandName())
+                .shoeName(shoe.getShoeName())
+                .shoeUrl(shoe.getShoeUrl())
+                .price(shoe.getPrice())
+                .imageUrl(shoe.getImageUrl())
+                .overallRating(shoe.getOverallRating())
+                .clickCount(shoe.getClickCount())
+                .reviewCount(shoe.getReviewCount())
+                .fitScore(recommendation != null ? recommendation.getFitScore() : null)
+                .pointSummary(recommendation != null ? recommendation.getPointSummary() : null)
+                .reasons(reasons)
                 .build();
     }
 }

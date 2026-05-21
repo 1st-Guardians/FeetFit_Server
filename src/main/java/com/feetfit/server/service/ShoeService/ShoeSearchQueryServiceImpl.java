@@ -1,14 +1,13 @@
 package com.feetfit.server.service.ShoeService;
 
 import com.feetfit.server.apiPayload.code.status.ErrorStatus;
+import com.feetfit.server.apiPayload.exception.handler.ShoeHandler;
 import com.feetfit.server.apiPayload.exception.handler.UserHandler;
+import com.feetfit.server.converter.ShoeConverter;
 import com.feetfit.server.converter.ShoeSearchConverter;
-import com.feetfit.server.domain.Shoe;
-import com.feetfit.server.domain.ShoeSearchHistory;
-import com.feetfit.server.domain.User;
-import com.feetfit.server.repository.ShoeRepository;
-import com.feetfit.server.repository.ShoeSearchHistoryRepository;
-import com.feetfit.server.repository.UserRepository;
+import com.feetfit.server.domain.*;
+import com.feetfit.server.repository.*;
+import com.feetfit.server.web.dto.shoe.ShoeResponseDTO;
 import com.feetfit.server.web.dto.shoe.ShoeSearchResponseDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -29,6 +28,8 @@ public class ShoeSearchQueryServiceImpl implements ShoeSearchQueryService {
     private final ShoeRepository shoeRepository;
     private final ShoeSearchHistoryRepository shoeSearchHistoryRepository;
     private final UserRepository userRepository;
+    private final ShoeRecommendationReasonRepository shoeRecommendationReasonRepository;
+    private final ShoeRecommendationRepository shoeRecommendationRepository;
 
     private static final int MAX_HISTORY_COUNT = 10;
 
@@ -77,5 +78,30 @@ public class ShoeSearchQueryServiceImpl implements ShoeSearchQueryService {
                 .collect(Collectors.toList());
 
         return ShoeSearchConverter.toShoeSearchHistoryResultDTO(histories);
+    }
+
+    @Override
+    public ShoeResponseDTO.ShoeDetailResultDTO getShoeDetail(Long userId, Long shoeId) {
+
+        Shoe shoe = shoeRepository.findById(shoeId)
+                .orElseThrow(() -> new ShoeHandler(ErrorStatus.SHOE_NOT_FOUND));
+
+        ShoeRecommendation recommendation = shoeRecommendationRepository
+                .findByUserIdAndShoeId(userId, shoeId)
+                .orElse(null);
+
+        if (recommendation == null) {
+            return ShoeConverter.toShoeDetailResultDTO(shoe, null, List.of());
+        }
+
+        // reason 조회 (연관된 리뷰 3개 포함)
+        List<ShoeRecommendationReason> reasons = shoeRecommendationReasonRepository
+                .findByShoeRecommendationId(recommendation.getId());
+
+        List<ShoeResponseDTO.ReasonResultDTO> reasonResultDTOs = reasons.stream()
+                .map(ShoeConverter::toReasonResultDTO)
+                .collect(Collectors.toList());
+
+        return ShoeConverter.toShoeDetailResultDTO(shoe, recommendation, reasonResultDTOs);
     }
 }

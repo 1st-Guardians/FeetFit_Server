@@ -1,5 +1,7 @@
 package com.feetfit.server.web.dto.shoe;
 
+import com.feetfit.server.domain.enums.ReasonType;
+import com.feetfit.server.domain.enums.RiskLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -69,5 +71,37 @@ public class ShoeResponseDTO {
         private String imageUrl;
         private Float overallRating;
         private Float fitScore;
+    }
+
+    // 신발 디테일 - 각 타입(발볼, 뒤꿈치, 깔창)
+    @Builder
+    @Getter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ShoeDetailResultDTO {
+        private Long id;
+        private String brandName;
+        private String shoeName;
+        private String shoeUrl;
+        private Integer price;
+        private String imageUrl;
+        private Float overallRating;      // 별점
+        private Integer clickCount;
+        private Integer reviewCount;
+        private Float fitScore;           // 적합도 % (없으면 null)
+        private String pointSummary;     // 한 눈에 보는 착용 포인트 (없으면 null)
+        private List<ReasonResultDTO> reasons;  // 부위별 정보 (없으면 빈 배열)
+    }
+
+    @Builder
+    @Getter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ReasonResultDTO {
+        private ReasonType reasonType;    // FOREFOOT, HEEL, INSOLE
+        private String title;             // 발볼 넓음, 뒤꿈치 까짐 주의, 깔창 얇음
+        private RiskLevel riskLevel;      // LOW, MEDIUM, HIGH
+        private String reviewSummary;     // 긴 멘트
+        private List<String> reviewTexts; // AI가 선택한 리뷰 3개
     }
 }
