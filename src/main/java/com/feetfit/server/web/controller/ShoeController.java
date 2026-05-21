@@ -210,7 +210,11 @@ public class ShoeController {
                     "imageUrl": "https://example.com/nike-air-max-270.jpg",
                     "overallRating": 4.3
                   }
-                ]
+                ],
+                "currentPage": 0,
+                "totalPages": 1,
+                "totalElements": 4,
+                "hasNext": false
               }
             }
             """;
@@ -228,7 +232,7 @@ public class ShoeController {
                   },
                   {
                     "id": 2,
-                    "keyword": "호카"
+                    "keyword": "프론트 화이팅 백엔드도 화이팅"
                   }
                 ]
               }
