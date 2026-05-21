@@ -12,6 +12,7 @@ import com.feetfit.server.repository.ShoeRepository;
 import com.feetfit.server.repository.UserRepository;
 import com.feetfit.server.web.dto.shoe.ShoeResponseDTO;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,18 +31,19 @@ public class ShoeCommandServiceImpl implements ShoeCommandService {
         Shoe shoe = shoeRepository.findById(shoeId)
                 .orElseThrow(() -> new ShoeHandler(ErrorStatus.SHOE_NOT_FOUND));
 
-        // 이미 클릭한 유저면 clickCount 증가 안 함
-        if (!shoeClickHistoryRepository.existsByUserIdAndShoeId(userId, shoeId)) {
-            User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new UserHandler(ErrorStatus.USER_NOT_FOUND));
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserHandler(ErrorStatus.USER_NOT_FOUND));
 
-            shoe.incrementClickCount();
-            shoeClickHistoryRepository.save(
+        try {
+            shoeClickHistoryRepository.saveAndFlush(
                     ShoeClickHistory.builder()
                             .user(user)
                             .shoe(shoe)
                             .build()
             );
+            shoe.incrementClickCount();  // 히스토리 insert 성공한 경우에만 증가
+        } catch (DataIntegrityViolationException ignored) {
+            // 이미 클릭한 유저 → no-op
         }
 
         return ShoeConverter.toShoeClickResultDTO(shoe);
