@@ -37,7 +37,7 @@ public class ShoeRecommendation extends BaseEntity {
     private Float fitScore;
 
     @Column(nullable = false, columnDefinition = "TEXT")
-    private String reviewSummary;
+    private String pointSummary;
 
     @Column(nullable = false)
     private LocalDateTime analyzedAt;

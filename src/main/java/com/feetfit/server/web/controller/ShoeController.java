@@ -79,6 +79,47 @@ public class ShoeController {
         return ApiResponse.onSuccess(shoeQueryService.getShoeList(userId, request));
     }
 
+    @GetMapping("/{shoeId}")
+    @Operation(
+            summary = "신발 디테일 조회 [민지]",
+            description = """
+                    신발 상세 정보를 조회합니다.
+                    Authorization 헤더에 Bearer accessToken이 필요합니다.
+                    - 로그인한 유저의 fitScore를 함께 반환합니다.
+                    - 측정 이력이 없는 유저는 fitScore, reviewSummary(리뷰 요약)가 null로 반환됩니다.
+                    - 부위별(발볼/뒤꿈치/깔창) AI가 선택한 리뷰 3개씩 반환합니다.
+                    - 추천 데이터가 없는 유저는 reasons(발볼, 뒤꿈치, 깔창에 대한 내용)가 빈 배열로 반환됩니다.
+                    """
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "신발 디테일 조회 성공",
+                    content = @Content(examples = @ExampleObject(value = SHOE_DETAIL_SUCCESS_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = "Authorization 헤더 누락 또는 유효하지 않은 토큰",
+                    content = @Content(examples = @ExampleObject(value = UNAUTHORIZED_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "신발을 찾을 수 없음",
+                    content = @Content(examples = @ExampleObject(value = SHOE_NOT_FOUND_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "500",
+                    description = "서버 내부 오류",
+                    content = @Content(examples = @ExampleObject(value = INTERNAL_SERVER_ERROR_RESPONSE))
+            )
+    })
+    public ApiResponse<ShoeResponseDTO.ShoeDetailResultDTO> getShoeDetail(
+            @PathVariable Long shoeId
+    ) {
+        Long userId = findLoginUser.getCurrentUserId();
+        return ApiResponse.onSuccess(shoeSearchQueryService.getShoeDetail(userId, shoeId));
+    }
+
     @PostMapping("/{shoeId}/click")
     @Operation(
             summary = "신발 클릭 수 증가 [민지]",
@@ -222,6 +263,62 @@ public class ShoeController {
         Long userId = findLoginUser.getCurrentUserId();
         return ApiResponse.onSuccess(shoeQueryService.getTop3ShoesByFitScore(userId));
     }
+
+    private static final String SHOE_DETAIL_SUCCESS_RESPONSE = """
+            {
+              "isSuccess": true,
+              "code": "COMMON200",
+              "message": "성공입니다.",
+              "result": {
+                "id": 1,
+                "brandName": "푸마",
+                "shoeName": "푸마 x 로제 스피드캣 PRM 블랙 원 화이트",
+                "shoeUrl": "https://www.puma.com/kr",
+                "price": 159000,
+                "imageUrl": "https://example.com/puma-speedcat.jpg",
+                "overallRating": 4.3,
+                "clickCount": 0,
+                "reviewCount": 0,
+                "fitScore": 87.0,
+                "pointSummary": "발볼이 슬림하게 나온 편이라 발볼 넓으면 반 사이즈 업 추천, 정사이즈는 전체적으로 딱 맞는 핏이다. 로우하고 날렵한 디자인이라 청바지, 슬랙스, 스커트까지 깔끔하게 잘 어울리는 데일리용 스니커즈다. 디자인 위주 신발이라 쿠션감은 크지 않지만 가볍고 예쁘게 신기 좋다.",
+                "reasons": [
+                  {
+                    "reasonType": "INSOLE",
+                    "title": "깔창 얇음",
+                    "riskLevel": "HIGH",
+                    "reviewSummary": "이 제품은 깔창이 얇아 충격 흡수를 충분히 제공하지 못할 수 있습니다.",
+                    "reviewTexts": [
+                      "깔창이 얇아서 오래 걸으면 발바닥이 조금 피로했어요.",
+                      "쿠션감이 크지 않고 바닥이 얇은 편입니다.",
+                      "디자인은 예쁘지만 푹신한 느낌은 적었어요."
+                    ]
+                  },
+                  {
+                    "reasonType": "HEEL",
+                    "title": "뒤꿈치 까짐 주의",
+                    "riskLevel": "MEDIUM",
+                    "reviewSummary": "사용자의 보행 패턴에서 뒤꿈치 압력 집중이 일부 확인됩니다.",
+                    "reviewTexts": [
+                      "처음 신었을 때 뒤꿈치가 조금 까졌어요.",
+                      "뒷부분이 단단해서 오래 신으면 마찰이 느껴졌습니다.",
+                      "양말을 두껍게 신지 않으면 뒤꿈치가 불편했어요."
+                    ]
+                  },
+                  {
+                    "reasonType": "FOREFOOT",
+                    "title": "발볼 넓음",
+                    "riskLevel": "LOW",
+                    "reviewSummary": "사용자의 발 구조 분석 결과, 발볼이 큰 편에 해당합니다.",
+                    "reviewTexts": [
+                      "발볼이 여유 있게 나와서 편하게 신을 수 있었어요.",
+                      "평소 발볼이 넓은 편인데도 답답하지 않았습니다.",
+                      "발볼이 좁은 사람은 조금 헐겁게 느낄 수도 있어요."
+                    ]
+                  }
+                ]
+              }
+            }
+            """;
 
     private static final String SHOE_TOP3_SUCCESS_RESPONSE = """
             {
