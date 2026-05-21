@@ -3,6 +3,7 @@ package com.feetfit.server.web.controller;
 import com.feetfit.server.apiPayload.ApiResponse;
 import com.feetfit.server.domain.enums.ShoeSort;
 import com.feetfit.server.jwt.FindLoginUser;
+import com.feetfit.server.service.ShoeService.ShoeCommandService;
 import com.feetfit.server.service.ShoeService.ShoeQueryService;
 import com.feetfit.server.web.dto.shoe.ShoeRequestDTO;
 import com.feetfit.server.web.dto.shoe.ShoeResponseDTO;
@@ -15,10 +16,7 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @Validated
 @Tag(name = "Shoe", description = "신발 API")
@@ -28,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class ShoeController {
 
     private final ShoeQueryService shoeQueryService;
+    private final ShoeCommandService shoeCommandService;
     private final FindLoginUser findLoginUser;
 
     @GetMapping
@@ -75,6 +74,65 @@ public class ShoeController {
         ShoeRequestDTO.ShoeListRequestDTO request = new ShoeRequestDTO.ShoeListRequestDTO(resolvedSort, page, size);
         return ApiResponse.onSuccess(shoeQueryService.getShoeList(userId, request));
     }
+
+    @PostMapping("/{shoeId}/click")
+    @Operation(
+            summary = "신발 클릭 수 증가 [민지]",
+            description = """
+                신발 클릭 수를 1 증가시킵니다.
+                Authorization 헤더에 Bearer accessToken이 필요합니다.
+                - 유저가 신발을 클릭했을 때 호출해주세요.
+                """
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "신발 클릭 수 증가 성공",
+                    content = @Content(examples = @ExampleObject(value = SHOE_CLICK_SUCCESS_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = "Authorization 헤더 누락 또는 유효하지 않은 토큰",
+                    content = @Content(examples = @ExampleObject(value = UNAUTHORIZED_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "신발을 찾을 수 없음",
+                    content = @Content(examples = @ExampleObject(value = SHOE_NOT_FOUND_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "500",
+                    description = "서버 내부 오류",
+                    content = @Content(examples = @ExampleObject(value = INTERNAL_SERVER_ERROR_RESPONSE))
+            )
+    })
+    public ApiResponse<ShoeResponseDTO.ShoeClickResultDTO> clickShoe(
+            @PathVariable Long shoeId
+    ) {
+        Long userId = findLoginUser.getCurrentUserId();
+        return ApiResponse.onSuccess(shoeCommandService.clickShoe(userId, shoeId));
+    }
+
+    private static final String SHOE_CLICK_SUCCESS_RESPONSE = """
+            {
+              "isSuccess": true,
+              "code": "COMMON200",
+              "message": "성공입니다.",
+              "result": {
+                "id": 1,
+                "clickCount": 1
+              }
+            }
+            """;
+
+    private static final String SHOE_NOT_FOUND_RESPONSE = """
+            {
+              "isSuccess": false,
+              "code": "SHOE4001",
+              "message": "신발 정보를 찾을 수 없습니다.",
+              "result": null
+            }
+            """;
 
     private static final String SHOE_LIST_SUCCESS_RESPONSE = """
             {

@@ -37,4 +37,13 @@ public class ShoeResponseDTO {
         private Integer reviewCount;
         private Float fitScore;  // 측정 안 한 유저면 null
     }
+
+    @Builder
+    @Getter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ShoeClickResultDTO {
+        private Long id;
+        private Integer clickCount;
+    }
 }

@@ -50,8 +50,4 @@ public class Shoe extends BaseEntity {
     @OneToMany(mappedBy = "shoe", cascade = CascadeType.ALL)
     @Builder.Default
     private List<ShoeRecommendation> recommendations = new ArrayList<>();
-
-    public void incrementClickCount() {
-        this.clickCount++;
-    }
 }

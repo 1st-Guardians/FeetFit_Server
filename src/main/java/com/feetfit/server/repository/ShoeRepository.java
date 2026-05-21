@@ -4,6 +4,7 @@ import com.feetfit.server.domain.Shoe;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -21,4 +22,8 @@ public interface ShoeRepository extends JpaRepository<Shoe, Long> {
             "WHERE r.user.id = :userId " +
             "ORDER BY r.fitScore DESC")
     Page<Shoe> findAllByFitScoreDesc(@Param("userId") Long userId, Pageable pageable);
+
+    @Modifying
+    @Query("UPDATE Shoe s SET s.clickCount = s.clickCount + 1 WHERE s.id = :shoeId")
+    void incrementClickCount(@Param("shoeId") Long shoeId);
 }
