@@ -32,4 +32,11 @@ public interface ShoeRepository extends JpaRepository<Shoe, Long> {
 
     // 신발명, 브랜드명 기준 검색
     Page<Shoe> findByShoeNameContainingOrBrandNameContaining(String shoeName, String brandName, Pageable pageable);
+
+    // 추천 신발 3종
+    @Query("SELECT s FROM Shoe s " +
+            "JOIN ShoeRecommendation r ON r.shoe.id = s.id " +
+            "WHERE r.user.id = :userId " +
+            "ORDER BY r.fitScore DESC")
+    List<Shoe> findTop3ByFitScoreDesc(@Param("userId") Long userId, Pageable pageable);
 }

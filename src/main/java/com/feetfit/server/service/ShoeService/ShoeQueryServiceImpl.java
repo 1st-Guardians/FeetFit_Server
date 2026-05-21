@@ -70,4 +70,29 @@ public class ShoeQueryServiceImpl implements ShoeQueryService {
         Map<Long, Float> finalFitScoreMap = fitScoreMap;
         return ShoeConverter.toShoeListResultDTO(shoePage, finalFitScoreMap);
     }
+
+    @Override
+    public ShoeResponseDTO.ShoeRecommendTop3ResultDTO getTop3ShoesByFitScore(Long userId) {
+
+        // 측정 이력 없으면 400 에러
+        if (!shoeRecommendationRepository.existsByUserId(userId)) {
+            throw new ShoeHandler(ErrorStatus.SHOE_FIT_SCORE_UNAVAILABLE);
+        }
+
+        Pageable pageable = PageRequest.of(0, 3);
+        List<Shoe> shoes = shoeRepository.findTop3ByFitScoreDesc(userId, pageable);
+
+        List<Long> shoeIds = shoes.stream()
+                .map(Shoe::getId)
+                .collect(Collectors.toList());
+
+        Map<Long, Float> fitScoreMap = shoeRecommendationRepository
+                .findByUserIdAndShoeIdIn(userId, shoeIds).stream()
+                .collect(Collectors.toMap(
+                        r -> r.getShoe().getId(),
+                        ShoeRecommendation::getFitScore
+                ));
+
+        return ShoeConverter.toShoeRecommendTop3ResultDTO(shoes, fitScoreMap);
+    }
 }

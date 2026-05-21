@@ -46,4 +46,28 @@ public class ShoeResponseDTO {
         private Long id;
         private Integer clickCount;
     }
+
+    // 추천 신발 3종
+    @Builder
+    @Getter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ShoeRecommendTop3ResultDTO {
+        private List<ShoeRecommendTop3ItemDTO> shoes;
+    }
+
+    @Builder
+    @Getter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ShoeRecommendTop3ItemDTO {
+        private Long id;
+        private String brandName;
+        private String shoeName;
+        private Integer price;
+        private String shoeUrl;
+        private String imageUrl;
+        private Float overallRating;
+        private Float fitScore;
+    }
 }
