@@ -187,6 +187,84 @@ public class ShoeController {
         return ApiResponse.onSuccess(shoeSearchQueryService.getSearchHistory(userId));
     }
 
+    @GetMapping("/recommendations/top3")
+    @Operation(
+            summary = "추천 신발 Top3 조회 [민지]",
+            description = """
+                사용자와 적합도가 가장 높은 신발 3종을 조회합니다.
+                Authorization 헤더에 Bearer accessToken이 필요합니다.
+                - 측정 이력이 없는 유저는 400을 반환합니다.
+                """
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "추천 신발 Top3 조회 성공",
+                    content = @Content(examples = @ExampleObject(value = SHOE_TOP3_SUCCESS_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "측정 이력 없음",
+                    content = @Content(examples = @ExampleObject(value = FIT_SCORE_UNAVAILABLE_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = "Authorization 헤더 누락 또는 유효하지 않은 토큰",
+                    content = @Content(examples = @ExampleObject(value = UNAUTHORIZED_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "500",
+                    description = "서버 내부 오류",
+                    content = @Content(examples = @ExampleObject(value = INTERNAL_SERVER_ERROR_RESPONSE))
+            )
+    })
+    public ApiResponse<ShoeResponseDTO.ShoeRecommendTop3ResultDTO> getTop3ShoesByFitScore() {
+        Long userId = findLoginUser.getCurrentUserId();
+        return ApiResponse.onSuccess(shoeQueryService.getTop3ShoesByFitScore(userId));
+    }
+
+    private static final String SHOE_TOP3_SUCCESS_RESPONSE = """
+            {
+              "isSuccess": true,
+              "code": "COMMON200",
+              "message": "성공입니다.",
+              "result": {
+                "shoes": [
+                  {
+                    "id": 18,
+                    "brandName": "호카",
+                    "shoeName": "본다이 8",
+                    "shoeUrl": "https://www.hoka.com/kr/bondi-8",
+                    "price": 199000,
+                    "imageUrl": "https://example.com/hoka-bondi-8.jpg",
+                    "overallRating": 4.7,
+                    "fitScore": 94.2
+                  },
+                  {
+                    "id": 10,
+                    "brandName": "뉴발란스",
+                    "shoeName": "1080v13",
+                    "shoeUrl": "https://www.newbalance.co.kr/product/1080v13",
+                    "price": 229000,
+                    "imageUrl": "https://example.com/nb-1080v13.jpg",
+                    "overallRating": 4.6,
+                    "fitScore": 93.0
+                  },
+                  {
+                    "id": 1,
+                    "brandName": "나이키",
+                    "shoeName": "에어 줌 페가수스 41",
+                    "shoeUrl": "https://www.nike.com/kr/t/air-zoom-pegasus-41",
+                    "price": 139000,
+                    "imageUrl": "https://example.com/nike-pegasus-41.jpg",
+                    "overallRating": 4.5,
+                    "fitScore": 92.5
+                  }
+                ]
+              }
+            }
+            """;
+
     private static final String SHOE_SEARCH_SUCCESS_RESPONSE = """
             {
               "isSuccess": true,

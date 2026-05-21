@@ -47,4 +47,27 @@ public class ShoeConverter {
                 .clickCount(shoe.getClickCount())
                 .build();
     }
+
+    public static ShoeResponseDTO.ShoeRecommendTop3ItemDTO toShoeRecommendTop3ItemDTO(
+            Shoe shoe, Float fitScore) {
+        return ShoeResponseDTO.ShoeRecommendTop3ItemDTO.builder()
+                .id(shoe.getId())
+                .brandName(shoe.getBrandName())
+                .shoeName(shoe.getShoeName())
+                .shoeUrl(shoe.getShoeUrl())
+                .price(shoe.getPrice())
+                .imageUrl(shoe.getImageUrl())
+                .overallRating(shoe.getOverallRating())
+                .fitScore(fitScore)
+                .build();
+    }
+
+    public static ShoeResponseDTO.ShoeRecommendTop3ResultDTO toShoeRecommendTop3ResultDTO(
+            List<Shoe> shoes, Map<Long, Float> fitScoreMap) {
+        return ShoeResponseDTO.ShoeRecommendTop3ResultDTO.builder()
+                .shoes(shoes.stream()
+                        .map(shoe -> toShoeRecommendTop3ItemDTO(shoe, fitScoreMap.get(shoe.getId())))
+                        .collect(Collectors.toList()))
+                .build();
+    }
 }
