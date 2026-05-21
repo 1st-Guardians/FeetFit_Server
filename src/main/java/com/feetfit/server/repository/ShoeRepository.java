@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
+
 public interface ShoeRepository extends JpaRepository<Shoe, Long> {
 
     // 별점순
@@ -23,7 +25,11 @@ public interface ShoeRepository extends JpaRepository<Shoe, Long> {
             "ORDER BY r.fitScore DESC")
     Page<Shoe> findAllByFitScoreDesc(@Param("userId") Long userId, Pageable pageable);
 
-    @Modifying
+    // 신발 클릭 수 증가
+    @Modifying(clearAutomatically = true)
     @Query("UPDATE Shoe s SET s.clickCount = s.clickCount + 1 WHERE s.id = :shoeId")
     void incrementClickCount(@Param("shoeId") Long shoeId);
+
+    // 신발명, 브랜드명 기준 검색
+    Page<Shoe> findByShoeNameContainingOrBrandNameContaining(String shoeName, String brandName, Pageable pageable);
 }

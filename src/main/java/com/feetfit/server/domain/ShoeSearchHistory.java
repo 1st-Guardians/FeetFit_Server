@@ -22,13 +22,12 @@ public class ShoeSearchHistory extends BaseEntity {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "shoe_id", nullable = false)
-    private Shoe shoe;
-
     @Column(nullable = false)
     private String keyword;
 
     @Column(nullable = false)
     private LocalDateTime searchedAt;
+
+    @Column(nullable = false)
+    private LocalDateTime expiresAt;  // 1주일 후 만료
 }
