@@ -11,8 +11,8 @@ public class ShoeRequestDTO {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class ShoeListRequestDTO {
-        private ShoeSort sort;
-        private int page;
-        private int size;
+        private ShoeSort sort = ShoeSort.FIT_SCORE;
+        private int page = 0;
+        private int size = 20;
     }
 }

@@ -11,12 +11,16 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+@Validated
 @Tag(name = "Shoe", description = "신발 API")
 @RestController
 @RequiredArgsConstructor
@@ -63,11 +67,12 @@ public class ShoeController {
     })
     public ApiResponse<ShoeResponseDTO.ShoeListResultDTO> getShoeList(
             @RequestParam(defaultValue = "FIT_SCORE") ShoeSort sort,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size
+            @RequestParam(defaultValue = "0") @Min(value = 0, message = "page는 0 이상이어야 합니다.") int page,
+            @RequestParam(defaultValue = "20") @Min(value = 1, message = "size는 1 이상이어야 합니다.") @Max(value = 100, message = "size는 100 이하이어야 합니다.") int size
     ) {
         Long userId = findLoginUser.getCurrentUserId();
-        ShoeRequestDTO.ShoeListRequestDTO request = new ShoeRequestDTO.ShoeListRequestDTO(sort, page, size);
+        ShoeSort resolvedSort = (sort != null) ? sort : ShoeSort.FIT_SCORE;  // null 방어
+        ShoeRequestDTO.ShoeListRequestDTO request = new ShoeRequestDTO.ShoeListRequestDTO(resolvedSort, page, size);
         return ApiResponse.onSuccess(shoeQueryService.getShoeList(userId, request));
     }
 

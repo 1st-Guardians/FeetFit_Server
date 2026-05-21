@@ -8,5 +8,5 @@ import java.util.List;
 public interface ShoeRecommendationRepository extends JpaRepository<ShoeRecommendation, Long> {
     boolean existsByUserId(Long userId);
     List<ShoeRecommendation> findByUserId(Long userId);
-
+    List<ShoeRecommendation> findByUserIdAndShoeIdIn(Long userId, List<Long> shoeIds);
 }

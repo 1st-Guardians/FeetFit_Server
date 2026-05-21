@@ -17,6 +17,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -34,19 +35,28 @@ public class ShoeQueryServiceImpl implements ShoeQueryService {
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
         boolean hasMeasurement = shoeRecommendationRepository.existsByUserId(userId);
 
+        // sort null 방어
+        ShoeSort sort = request.getSort() != null ? request.getSort() : ShoeSort.FIT_SCORE;
+
         // 측정 안 한 유저가 발 적합도순 요청 시 400 에러
-        if (request.getSort() == ShoeSort.FIT_SCORE && !hasMeasurement) {
+        if (sort == ShoeSort.FIT_SCORE && !hasMeasurement) {
             throw new ShoeHandler(ErrorStatus.SHOE_FIT_SCORE_UNAVAILABLE);
         }
 
         Page<Shoe> shoePage;
         Map<Long, Float> fitScoreMap = Map.of();
 
-        switch (request.getSort()) {
+        switch (sort) {
             case FIT_SCORE -> {
                 shoePage = shoeRepository.findAllByFitScoreDesc(userId, pageable);
-                // fitScore 맵 생성
-                fitScoreMap = shoeRecommendationRepository.findByUserId(userId).stream()
+
+                // 현재 페이지 shoeId 범위로만 fitScore 조회
+                List<Long> shoeIds = shoePage.getContent().stream()
+                        .map(Shoe::getId)
+                        .collect(Collectors.toList());
+
+                fitScoreMap = shoeRecommendationRepository
+                        .findByUserIdAndShoeIdIn(userId, shoeIds).stream()
                         .collect(Collectors.toMap(
                                 r -> r.getShoe().getId(),
                                 ShoeRecommendation::getFitScore
