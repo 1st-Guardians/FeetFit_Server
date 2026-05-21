@@ -6,4 +6,6 @@ import java.time.LocalDate;
 
 public interface ReportQueryService {
     ReportResponseDTO.HalluxValgusResultDTO getHalluxValgusAnalysis(Long userId, LocalDate date);
+
+    ReportResponseDTO.TinaPedisAnalysisResultDTO getTinaPedisAnalysis(Long userId, LocalDate date);
 }

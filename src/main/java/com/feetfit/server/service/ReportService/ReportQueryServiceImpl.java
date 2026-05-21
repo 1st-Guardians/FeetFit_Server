@@ -4,7 +4,9 @@ import com.feetfit.server.apiPayload.code.status.ErrorStatus;
 import com.feetfit.server.apiPayload.exception.handler.ReportHandler;
 import com.feetfit.server.converter.ReportConverter;
 import com.feetfit.server.domain.HalluxValgusAnalysis;
+import com.feetfit.server.domain.TinaPedisAnalysis;
 import com.feetfit.server.repository.HalluxValgusAnalysisRepository;
+import com.feetfit.server.repository.TinaPedisAnalysisRepository;
 import com.feetfit.server.web.dto.report.ReportResponseDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -19,6 +21,7 @@ import java.time.LocalDateTime;
 public class ReportQueryServiceImpl implements ReportQueryService {
 
     private final HalluxValgusAnalysisRepository halluxValgusAnalysisRepository;
+    private final TinaPedisAnalysisRepository tinaPedisAnalysisRepository;
 
     @Override
     public ReportResponseDTO.HalluxValgusResultDTO getHalluxValgusAnalysis(Long userId, LocalDate date) {
@@ -39,5 +42,28 @@ public class ReportQueryServiceImpl implements ReportQueryService {
                 .orElse(null);
 
         return ReportConverter.toHalluxValgusResultDTO(halluxValgusAnalysis, previousAnalysis);
+    }
+
+    @Override
+    public ReportResponseDTO.TinaPedisAnalysisResultDTO getTinaPedisAnalysis(Long userId, LocalDate date) {
+        LocalDateTime startOfDay = date.atStartOfDay();
+        LocalDateTime endOfDay = date.plusDays(1).atStartOfDay();
+
+        TinaPedisAnalysis tinaPedisAnalysis = tinaPedisAnalysisRepository
+                .findTopByMeasurementSessionUserIdAndRecordedAtGreaterThanEqualAndRecordedAtLessThanOrderByRecordedAtDesc(
+                        userId,
+                        startOfDay,
+                        endOfDay
+                )
+                .orElseThrow(() -> new ReportHandler(ErrorStatus.TINA_PEDIS_ANALYSIS_NOT_FOUND));
+
+        TinaPedisAnalysis previousAnalysis = tinaPedisAnalysisRepository
+                .findTopByMeasurementSessionUserIdAndRecordedAtLessThanOrderByRecordedAtDesc(
+                        userId,
+                        startOfDay
+                )
+                .orElse(null);
+
+        return ReportConverter.toTinaPedisAnalysisResultDTO(tinaPedisAnalysis, previousAnalysis);
     }
 }
