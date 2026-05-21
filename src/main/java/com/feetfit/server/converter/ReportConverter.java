@@ -31,6 +31,7 @@ public class ReportConverter {
 
         return ReportResponseDTO.SaveHalluxValgusResultDTO.builder()
                 .id(analysis.getId())
+                .measurementSessionId(analysis.getMeasurementSession().getId())
                 .imageUrl(analysis.getImageUrl())
                 .leftToeAngleDegree(analysis.getLeftToeAngleDegree())
                 .leftRiskLevel(analysis.getLeftRiskLevel())
@@ -56,6 +57,7 @@ public class ReportConverter {
 
         return ReportResponseDTO.HalluxValgusResultDTO.builder()
                 .id(analysis.getId())
+                .measurementSessionId(analysis.getMeasurementSession().getId())
                 .imageUrl(analysis.getImageUrl())
                 .leftToeAngleDegree(analysis.getLeftToeAngleDegree())
                 .leftRiskLevel(analysis.getLeftRiskLevel())

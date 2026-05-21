@@ -21,6 +21,9 @@ public class ReportResponseDTO {
         @Schema(description = "무지외반 분석 결과 ID", example = "1")
         private Long id;
 
+        @Schema(description = "측정 세션 ID", example = "1")
+        private Long measurementSessionId;
+
         @Schema(description = "분석 이미지 URL", example = "https://example.com/hallux/foot-001.jpg")
         private String imageUrl;
 
@@ -66,6 +69,9 @@ public class ReportResponseDTO {
     public static class HalluxValgusResultDTO {
         @Schema(description = "무지외반 분석 결과 ID", example = "1")
         private Long id;
+
+        @Schema(description = "측정 세션 ID", example = "1")
+        private Long measurementSessionId;
 
         @Schema(description = "분석 이미지 URL", example = "https://example.com/hallux/foot-001.jpg")
         private String imageUrl;
