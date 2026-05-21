@@ -37,6 +37,6 @@ public interface ShoeRepository extends JpaRepository<Shoe, Long> {
     @Query("SELECT s FROM Shoe s " +
             "JOIN ShoeRecommendation r ON r.shoe.id = s.id " +
             "WHERE r.user.id = :userId " +
-            "ORDER BY r.fitScore DESC")
+            "ORDER BY r.fitScore DESC, s.id ASC")
     List<Shoe> findTop3ByFitScoreDesc(@Param("userId") Long userId, Pageable pageable);
 }

@@ -193,7 +193,7 @@ public class ShoeController {
             description = """
                 사용자와 적합도가 가장 높은 신발 3종을 조회합니다.
                 Authorization 헤더에 Bearer accessToken이 필요합니다.
-                - 측정 이력이 없는 유저는 빈 배열을 반환합니다.
+                - 측정 이력이 없는 유저는 400을 반환합니다.
                 """
     )
     @ApiResponses({
@@ -234,6 +234,7 @@ public class ShoeController {
                     "id": 18,
                     "brandName": "호카",
                     "shoeName": "본다이 8",
+                    "shoeUrl": "https://www.hoka.com/kr/bondi-8",
                     "price": 199000,
                     "imageUrl": "https://example.com/hoka-bondi-8.jpg",
                     "overallRating": 4.7,
@@ -243,6 +244,7 @@ public class ShoeController {
                     "id": 10,
                     "brandName": "뉴발란스",
                     "shoeName": "1080v13",
+                    "shoeUrl": "https://www.newbalance.co.kr/product/1080v13",
                     "price": 229000,
                     "imageUrl": "https://example.com/nb-1080v13.jpg",
                     "overallRating": 4.6,
@@ -252,6 +254,7 @@ public class ShoeController {
                     "id": 1,
                     "brandName": "나이키",
                     "shoeName": "에어 줌 페가수스 41",
+                    "shoeUrl": "https://www.nike.com/kr/t/air-zoom-pegasus-41",
                     "price": 139000,
                     "imageUrl": "https://example.com/nike-pegasus-41.jpg",
                     "overallRating": 4.5,
