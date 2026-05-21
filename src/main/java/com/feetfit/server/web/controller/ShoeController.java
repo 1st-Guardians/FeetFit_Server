@@ -86,7 +86,7 @@ public class ShoeController {
                     신발 상세 정보를 조회합니다.
                     Authorization 헤더에 Bearer accessToken이 필요합니다.
                     - 로그인한 유저의 fitScore를 함께 반환합니다.
-                    - 측정 이력이 없는 유저는 fitScore, reviewSummary(리뷰 요약)가 null로 반환됩니다.
+                    - 측정 이력이 없는 유저는 fitScore, pointSummary(착용 포인트)가 null로 반환됩니다.
                     - 부위별(발볼/뒤꿈치/깔창) AI가 선택한 리뷰 3개씩 반환합니다.
                     - 추천 데이터가 없는 유저는 reasons(발볼, 뒤꿈치, 깔창에 대한 내용)가 빈 배열로 반환됩니다.
                     """
