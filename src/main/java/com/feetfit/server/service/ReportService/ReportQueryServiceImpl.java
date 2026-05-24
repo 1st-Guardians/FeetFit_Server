@@ -80,13 +80,14 @@ public class ReportQueryServiceImpl implements ReportQueryService {
         LocalDateTime startOfDay = date.atStartOfDay();
         LocalDateTime endOfDay = date.plusDays(1).atStartOfDay();
 
+        // user 조회 먼저
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserHandler(ErrorStatus.USER_NOT_FOUND));
+
         DailyFootAnalysis analysis = dailyFootAnalysisRepository
                 .findTopByMeasurementSessionUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThanOrderByCreatedAtDesc(
                         userId, startOfDay, endOfDay)
                 .orElseThrow(() -> new ReportHandler(ErrorStatus.REPORT_NOT_FOUND));
-
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new UserHandler(ErrorStatus.USER_NOT_FOUND));
 
         DailyFootAnalysis previousAnalysis = dailyFootAnalysisRepository
                 .findTopByMeasurementSessionUserIdAndCreatedAtLessThanOrderByCreatedAtDesc(

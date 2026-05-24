@@ -387,6 +387,11 @@ public class ReportController {
                     content = @Content(examples = @ExampleObject(value = DAILY_FOOT_ANALYSIS_SUCCESS_RESPONSE))
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "date 파라미터 누락 또는 형식 오류",
+                    content = @Content(examples = @ExampleObject(value = INVALID_DATE_PARAMETER_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "401",
                     description = "Authorization 헤더 누락 또는 유효하지 않은 토큰",
                     content = @Content(examples = @ExampleObject(value = UNAUTHORIZED_RESPONSE))
