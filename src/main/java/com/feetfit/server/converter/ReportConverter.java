@@ -1,11 +1,11 @@
 package com.feetfit.server.converter;
 
-import com.feetfit.server.domain.DailyFootAnalysis;
-import com.feetfit.server.domain.HalluxValgusAnalysis;
-import com.feetfit.server.domain.MeasurementSession;
-import com.feetfit.server.domain.TinaPedisAnalysis;
+import com.feetfit.server.domain.*;
 import com.feetfit.server.web.dto.report.ReportRequestDTO;
 import com.feetfit.server.web.dto.report.ReportResponseDTO;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class ReportConverter {
 
@@ -220,6 +220,43 @@ public class ReportConverter {
         return ReportResponseDTO.FootTypeTextResultDTO.builder()
                 .nickname(nickname)
                 .typeText(typeText)
+                .build();
+    }
+
+    public static ReportResponseDTO.MetricScoreDTO toMetricScoreDTO(MetricAnalysisResult result) {
+        return ReportResponseDTO.MetricScoreDTO.builder()
+                .metricType(result.getMetricType())
+                .score(result.getScore())
+                .status(result.getStatus())
+                .advice(result.getAdvice())
+                .build();
+    }
+
+    public static ReportResponseDTO.MonthlyScoreDTO toMonthlyScoreDTO(Object[] row) {
+        return ReportResponseDTO.MonthlyScoreDTO.builder()
+                .month(((Number) row[0]).intValue())
+                .avgScore(((Number) row[1]).floatValue())
+                .build();
+    }
+
+    public static ReportResponseDTO.ReportSummaryResultDTO toReportSummaryResultDTO(
+            Report report,
+            List<ReportResponseDTO.MonthlyScoreDTO> monthlyScores) {
+
+        List<ReportResponseDTO.MetricScoreDTO> metricScoreDTOs = report.getMetricAnalysisResults().stream()
+                .map(ReportConverter::toMetricScoreDTO)
+                .collect(Collectors.toList());
+
+        // 균등 가중치로 totalScore 계산
+        float totalScore = (float) metricScoreDTOs.stream()
+                .mapToDouble(ReportResponseDTO.MetricScoreDTO::getScore)
+                .average()
+                .orElse(0.0);
+
+        return ReportResponseDTO.ReportSummaryResultDTO.builder()
+                .totalScore(Math.round(totalScore))  // 반올림
+                .metricScores(metricScoreDTOs)
+                .monthlyScores(monthlyScores)
                 .build();
     }
 }

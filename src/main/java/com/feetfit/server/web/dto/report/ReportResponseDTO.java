@@ -1,6 +1,7 @@
 package com.feetfit.server.web.dto.report;
 
 import com.feetfit.server.domain.enums.GaugeStatus;
+import com.feetfit.server.domain.enums.MetricType;
 import com.feetfit.server.domain.enums.RiskLevel;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
@@ -286,5 +287,59 @@ public class ReportResponseDTO {
                 example = "발의 아치가 낮아 발바닥이 넓게 닿는 편이에요.",
                 nullable = true)
         private String typeText;
+    }
+
+    @Builder
+    @Getter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Schema(description = "요약 페이지 조회 응답")
+    public static class ReportSummaryResultDTO {
+
+        @Schema(description = "발 종합 점수", example = "83")
+        private Integer totalScore;
+
+        @Schema(description = "지표별 분석 결과 목록")
+        private List<MetricScoreDTO> metricScores;
+
+        @Schema(description = "1년간 월별 종합 점수 평균 변화 추이")
+        private List<MonthlyScoreDTO> monthlyScores;
+    }
+
+    @Builder
+    @Getter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Schema(description = "지표별 분석 결과")
+    public static class MetricScoreDTO {
+
+        @Schema(description = "지표 타입", example = "PRESSURE_BALANCE",
+                allowableValues = {"PRESSURE_BALANCE", "HALLUX_VALGUS", "ATHLETES_FOOT", "FOOT_ODOR", "FOOT_ENVIRONMENT"})
+        private MetricType metricType;
+
+        @Schema(description = "점수", example = "85.0")
+        private Float score;
+
+        @Schema(description = "지표 상태", example = "VERY_GOOD",
+                allowableValues = {"VERY_GOOD", "ATTENTION_NEEDED", "NEED_IMPROVEMENT"})
+        private GaugeStatus status;
+
+        @Schema(description = "어드바이스 목록 (2개)",
+                example = "[\"좌우 발의 압력 분포에 다소 차이가 나타나고 있습니다.\", \"보행 시 체중을 양쪽 발에 고르게 분산하는 습관을 의식하는 것이 필요합니다.\"]")
+        private List<String> advice;
+    }
+
+    @Builder
+    @Getter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Schema(description = "월별 점수")
+    public static class MonthlyScoreDTO {
+
+        @Schema(description = "월 (1~12)", example = "1")
+        private Integer month;
+
+        @Schema(description = "해당 월 종합 점수 평균", example = "78.5")
+        private Float avgScore;
     }
 }
