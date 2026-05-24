@@ -118,7 +118,7 @@ public class ReportRequestDTO {
         @NotNull(message = "균형 점수는 필수입니다.")
         private Float balanceScore;
 
-        @NotNull(message = "균형 코멘트는 필수입니다.")
+        @NotBlank(message = "균형 코멘트는 필수입니다.")
         private String balanceComment;
 
         private Float leftPressurePercent;
@@ -142,7 +142,7 @@ public class ReportRequestDTO {
         @Size(min = 3, max = 3, message = "관리 팁은 3개여야 합니다.")
         private List<String> careTips;
 
-        @NotNull(message = "발 타입 텍스트는 필수입니다.")
+        @NotBlank(message = "발 타입 텍스트는 필수입니다.")
         private String typeText;
     }
 }

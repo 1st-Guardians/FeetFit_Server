@@ -319,10 +319,11 @@ public class ReportController {
             description = """
                 AI 분석 결과로 받은 종합 발 분석 데이터를 저장합니다.
                 Authorization 헤더에 Bearer accessToken이 필요합니다.
-                - 같은 날짜에 이미 저장된 데이터가 있으면 덮어씁니다 (UPDATE).
-                - 같은 날짜에 저장된 데이터가 없으면 새로 저장합니다 (INSERT).
+                - 같은 측정 세션 ID에 이미 저장된 데이터가 있으면 덮어씁니다 (UPDATE).
+                - 같은 측정 세션 ID에 저장된 데이터가 없으면 새로 저장합니다 (INSERT).
                 - 측정 세션의 status가 COMPLETED인 경우에만 저장됩니다.
                 - 본인의 측정 세션 ID만 사용 가능합니다.
+                - careTips는 정확히 3개여야 합니다.
                 """
     )
     @ApiResponses({
@@ -333,8 +334,11 @@ public class ReportController {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "400",
-                    description = "필수값 누락, 완료되지 않은 측정 세션",
-                    content = @Content(examples = @ExampleObject(value = VALIDATION_ERROR_RESPONSE))
+                    description = "필수값 누락, 완료되지 않은 측정 세션, careTips 3개 아님",
+                    content = @Content(examples = {
+                            @ExampleObject(name = "유효성 검사 실패", value = DAILY_FOOT_ANALYSIS_VALIDATION_ERROR_RESPONSE),
+                            @ExampleObject(name = "완료되지 않은 측정 세션", value = MEASUREMENT_NOT_COMPLETED_RESPONSE)
+                    })
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "401",
@@ -363,6 +367,24 @@ public class ReportController {
         Long userId = findLoginUser.getCurrentUserId();
         return ApiResponse.onSuccess(reportCommandService.saveDailyFootAnalysis(userId, request));
     }
+
+    private static final String DAILY_FOOT_ANALYSIS_VALIDATION_ERROR_RESPONSE = """
+            {
+              "isSuccess": false,
+              "code": "COMMON400",
+              "message": "잘못된 요청입니다.",
+              "result": {
+                "measurementSessionId": "측정 세션 ID는 필수입니다.",
+                "conditionLevel": "종합 상태는 필수입니다.",
+                "balanceScore": "균형 점수는 필수입니다.",
+                "balanceComment": "균형 코멘트는 필수입니다.",
+                "avgTemperatureCelsius": "평균 온도는 필수입니다.",
+                "avgHumidityPercent": "평균 습도는 필수입니다.",
+                "careTips": "관리 팁은 3개여야 합니다.",
+                "typeText": "발 타입 텍스트는 필수입니다."
+              }
+            }
+            """;
 
     private static final String SAVE_DAILY_FOOT_ANALYSIS_SUCCESS_RESPONSE = """
             {
