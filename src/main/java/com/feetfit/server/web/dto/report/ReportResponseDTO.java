@@ -176,7 +176,7 @@ public class ReportResponseDTO {
     @NoArgsConstructor
     @AllArgsConstructor
     @Schema(description = "종합 발 분석 결과 응답")
-    public static class SaveDailyFootAnalysisResultDTO {
+    public static class DailyFootAnalysisResultDTO {
 
         @Schema(description = "종합 발 분석 결과 ID", example = "1")
         private Long id;

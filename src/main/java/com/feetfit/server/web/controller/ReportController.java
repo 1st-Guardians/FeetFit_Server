@@ -330,7 +330,7 @@ public class ReportController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
                     description = "종합 발 분석 결과 저장 성공",
-                    content = @Content(examples = @ExampleObject(value = SAVE_DAILY_FOOT_ANALYSIS_SUCCESS_RESPONSE))
+                    content = @Content(examples = @ExampleObject(value = DAILY_FOOT_ANALYSIS_SUCCESS_RESPONSE))
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "400",
@@ -361,12 +361,68 @@ public class ReportController {
                     content = @Content(examples = @ExampleObject(value = INTERNAL_SERVER_ERROR_RESPONSE))
             )
     })
-    public ApiResponse<ReportResponseDTO.SaveDailyFootAnalysisResultDTO> saveDailyFootAnalysis(
+    public ApiResponse<ReportResponseDTO.DailyFootAnalysisResultDTO> saveDailyFootAnalysis(
             @RequestBody @Valid ReportRequestDTO.SaveDailyFootAnalysisDTO request
     ) {
         Long userId = findLoginUser.getCurrentUserId();
         return ApiResponse.onSuccess(reportCommandService.saveDailyFootAnalysis(userId, request));
     }
+
+    @GetMapping("/daily-foot-analysis")
+    @Operation(
+            summary = "종합 발 분석 결과 조회 [민지]",
+            description = """
+                날짜를 지정하여 해당 날짜의 가장 마지막으로 저장된 종합 발 분석 결과를 조회합니다.
+                Authorization 헤더에 Bearer accessToken이 필요합니다.
+                - date 형식: yyyy-MM-dd
+                - 이전 측정 대비 균형 점수 변화(balanceScoreDiff)를 함께 반환합니다.
+                - 이전 측정 데이터가 없으면 balanceScoreDiff는 null을 반환합니다.
+                - 해당 날짜에 저장된 데이터가 없으면 404를 반환합니다.
+                """
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "종합 발 분석 결과 조회 성공",
+                    content = @Content(examples = @ExampleObject(value = DAILY_FOOT_ANALYSIS_SUCCESS_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "date 파라미터 누락 또는 형식 오류",
+                    content = @Content(examples = @ExampleObject(value = INVALID_DATE_PARAMETER_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = "Authorization 헤더 누락 또는 유효하지 않은 토큰",
+                    content = @Content(examples = @ExampleObject(value = UNAUTHORIZED_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "해당 날짜에 저장된 종합 발 분석 결과 없음",
+                    content = @Content(examples = @ExampleObject(value = DAILY_FOOT_ANALYSIS_NOT_FOUND_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "500",
+                    description = "서버 내부 오류",
+                    content = @Content(examples = @ExampleObject(value = INTERNAL_SERVER_ERROR_RESPONSE))
+            )
+    })
+    public ApiResponse<ReportResponseDTO.DailyFootAnalysisResultDTO> getDailyFootAnalysis(
+            @Parameter(description = "조회 날짜. yyyy-MM-dd 형식으로 입력합니다.", example = "2026-05-20")
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+    ) {
+        Long userId = findLoginUser.getCurrentUserId();
+        return ApiResponse.onSuccess(reportQueryService.getDailyFootAnalysis(userId, date));
+    }
+
+    private static final String DAILY_FOOT_ANALYSIS_NOT_FOUND_RESPONSE = """
+        {
+          "isSuccess": false,
+          "code": "REPORT4001",
+          "message": "리포트를 찾을 수 없습니다.",
+          "result": null
+        }
+        """;
 
     private static final String DAILY_FOOT_ANALYSIS_VALIDATION_ERROR_RESPONSE = """
             {
@@ -386,7 +442,7 @@ public class ReportController {
             }
             """;
 
-    private static final String SAVE_DAILY_FOOT_ANALYSIS_SUCCESS_RESPONSE = """
+    private static final String DAILY_FOOT_ANALYSIS_SUCCESS_RESPONSE = """
             {
               "isSuccess": true,
               "code": "COMMON200",

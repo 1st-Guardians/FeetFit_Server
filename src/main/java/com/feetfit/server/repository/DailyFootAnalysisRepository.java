@@ -13,4 +13,10 @@ public interface DailyFootAnalysisRepository extends JpaRepository<DailyFootAnal
     // 이전 측정 데이터 조회
     Optional<DailyFootAnalysis> findTopByMeasurementSessionUserIdAndCreatedAtLessThanOrderByCreatedAtDesc(
             Long userId, LocalDateTime startOfDay);
+
+    // 해당 날짜 가장 최근 데이터 조회
+    Optional<DailyFootAnalysis> findTopByMeasurementSessionUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThanOrderByCreatedAtDesc(
+            Long userId,
+            LocalDateTime startOfDay,
+            LocalDateTime endOfDay);
 }

@@ -166,7 +166,7 @@ public class ReportConverter {
                 .build();
     }
 
-    public static ReportResponseDTO.SaveDailyFootAnalysisResultDTO toSaveDailyFootAnalysisResultDTO(
+    public static ReportResponseDTO.DailyFootAnalysisResultDTO toDailyFootAnalysisResultDTO(
             DailyFootAnalysis analysis,
             Integer userFootSize,
             DailyFootAnalysis previousAnalysis) {
@@ -185,7 +185,7 @@ public class ReportConverter {
                 ? analysis.getMeasuredRightFootSizeMm() - userFootSize
                 : null;
 
-        return ReportResponseDTO.SaveDailyFootAnalysisResultDTO.builder()
+        return ReportResponseDTO.DailyFootAnalysisResultDTO.builder()
                 .id(analysis.getId())
                 .measurementSessionId(analysis.getMeasurementSession().getId())
                 .conditionLevel(analysis.getConditionLevel())
