@@ -12,4 +12,8 @@ public interface ReportCommandService {
     // 무좀 분석 결과 저장
     ReportResponseDTO.TinaPedisAnalysisResultDTO saveTinaPedisAnalysis(
             Long userId, ReportRequestDTO.SaveTinaPedisAnalysisDTO request);
+
+    // 종합 측정 분석 결과 저장
+    ReportResponseDTO.SaveDailyFootAnalysisResultDTO saveDailyFootAnalysis(
+            Long userId, ReportRequestDTO.SaveDailyFootAnalysisDTO request);
 }

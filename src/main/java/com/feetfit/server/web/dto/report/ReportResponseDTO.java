@@ -1,5 +1,6 @@
 package com.feetfit.server.web.dto.report;
 
+import com.feetfit.server.domain.enums.GaugeStatus;
 import com.feetfit.server.domain.enums.RiskLevel;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
@@ -8,6 +9,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 public class ReportResponseDTO {
@@ -161,6 +163,107 @@ public class ReportResponseDTO {
 
         @Schema(description = "분석 기록 시각", example = "2026-05-20T09:00:00")
         private LocalDateTime recordedAt;
+
+        @Schema(description = "생성 시각", example = "2026-05-20T09:00:00")
+        private LocalDateTime createdAt;
+
+        @Schema(description = "수정 시각", example = "2026-05-20T09:00:00")
+        private LocalDateTime updatedAt;
+    }
+
+    @Builder
+    @Getter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Schema(description = "종합 발 분석 결과 응답")
+    public static class SaveDailyFootAnalysisResultDTO {
+
+        @Schema(description = "종합 발 분석 결과 ID", example = "1")
+        private Long id;
+
+        @Schema(description = "측정 세션 ID", example = "1")
+        private Long measurementSessionId;
+
+        // 오늘의 발 컨디션
+        @Schema(description = "종합 상태", example = "ATTENTION_NEEDED",
+                allowableValues = {"VERY_GOOD", "ATTENTION_NEEDED", "NEED_IMPROVEMENT"})
+        private GaugeStatus conditionLevel;
+
+        @Schema(description = "컨디션 코멘트 목록",
+                example = "[\"오른발에 압력이 조금 더 실려 있어요.\", \"발 냄새 위험도는 낮은 편이에요.\"]")
+        private List<String> conditionComments;
+
+        // 자세 균형
+        @Schema(description = "자세 균형 점수", example = "72.0")
+        private Float balanceScore;
+
+        @Schema(description = "자세 균형 코멘트", example = "자세 균형에 대한 내용을 적을겁니다.")
+        private String balanceComment;
+
+        @Schema(description = "이전 측정 대비 균형 점수 변화. 양수면 증가, 음수면 감소. 이전 데이터 없으면 null",
+                example = "4.0", nullable = true)
+        private Float balanceScoreDiff;
+
+        // 압력 분포
+        @Schema(description = "왼발 압력 비율 (%)", example = "46.0")
+        private Float leftPressurePercent;
+
+        @Schema(description = "오른발 압력 비율 (%)", example = "54.0")
+        private Float rightPressurePercent;
+
+        @Schema(description = "왼발 압력 분포 이미지 URL", example = "https://example.com/left-pressure.jpg")
+        private String leftPressureImageUrl;
+
+        @Schema(description = "오른발 압력 분포 이미지 URL", example = "https://example.com/right-pressure.jpg")
+        private String rightPressureImageUrl;
+
+        // 발 수치
+        @Schema(description = "사용자가 최초 입력한 발 사이즈 (mm)", example = "250")
+        private Integer userFootSize;
+
+        @Schema(description = "측정된 왼발 길이 (mm)", example = "253.0")
+        private Float measuredLeftFootSizeMm;
+
+        @Schema(description = "측정된 오른발 길이 (mm)", example = "248.0")
+        private Float measuredRightFootSizeMm;
+
+        @Schema(description = "입력 사이즈 대비 왼발 변화 (mm). 양수면 증가, 음수면 감소. null이면 측정값 없음",
+                example = "3.0", nullable = true)
+        private Float leftFootSizeDiff;
+
+        @Schema(description = "입력 사이즈 대비 오른발 변화 (mm). 양수면 증가, 음수면 감소. null이면 측정값 없음",
+                example = "-2.0", nullable = true)
+        private Float rightFootSizeDiff;
+
+        @Schema(description = "왼발 너비 (mm)", example = "85.0")
+        private Float leftFootWidthMm;
+
+        @Schema(description = "오른발 너비 (mm)", example = "70.0")
+        private Float rightFootWidthMm;
+
+        // 발 냄새
+        @Schema(description = "발 냄새 수치 (ppm)", example = "76.0")
+        private Float footOdourPpm;
+
+        @Schema(description = "발 냄새 코멘트", example = "발 냄새 위험도는 76ppm으로 낮은 편이에요.")
+        private String footOdourComment;
+
+        // 발 환경 상태
+        @Schema(description = "평균 온도 (°C)", example = "34.0")
+        private Float avgTemperatureCelsius;
+
+        @Schema(description = "평균 습도 (%)", example = "50.0")
+        private Float avgHumidityPercent;
+
+        // 오늘의 관리 팁
+        @Schema(description = "관리 팁 목록 (3가지)",
+                example = "[\"오른발 앞꿈치 스트레칭을 해주세요.\", \"신발은 착용 후 충분히 말려주세요.\", \"발볼이 좁은 신발은 피하는 것이 좋아요.\"]")
+        private List<String> careTips;
+
+        // 신발 리스트 페이지용
+        @Schema(description = "발 타입 텍스트 (신발 리스트 페이지 - 00님의 발 타입은요...)",
+                example = "발의 아치가 낮아 발바닥이 넓게 닿는 편이에요. 오래 걷거나 서 있으면 피로가 커질 수 있어 아치를 잘 받쳐주는 신발이 더 편안할 수 있어요.")
+        private String typeText;
 
         @Schema(description = "생성 시각", example = "2026-05-20T09:00:00")
         private LocalDateTime createdAt;
