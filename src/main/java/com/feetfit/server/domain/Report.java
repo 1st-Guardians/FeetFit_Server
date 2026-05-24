@@ -35,13 +35,6 @@ public class Report extends BaseEntity {
     @Column(nullable = false)
     private Integer totalScore;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private GaugeStatus totalStatus;
-
-    @Column(columnDefinition = "TEXT")
-    private String summaryText;
-
     @OneToMany(mappedBy = "report", cascade = CascadeType.ALL)
     @Builder.Default
     private List<MetricAnalysisResult> metricAnalysisResults = new ArrayList<>();
