@@ -447,6 +447,128 @@ public class ReportController {
         return ApiResponse.onSuccess(reportQueryService.getFootTypeText(userId));
     }
 
+    @GetMapping("/summary")
+    @Operation(
+            summary = "요약 페이지 조회 [민지]",
+            description = """
+                    날짜를 지정하여 해당 날짜의 발 종합 점수, 지표별 점수, 1년간 변화 추이를 조회합니다.
+                    Authorization 헤더에 Bearer accessToken이 필요합니다.
+                    - date 형식: yyyy-MM-dd
+                    - 지표 타입: PRESSURE_BALANCE(압력 균형), HALLUX_VALGUS(무지외반), ATHLETES_FOOT(무좀), FOOT_ODOR(발냄새), FOOT_ENVIRONMENT(환경 상태)
+                    - monthlyScores: 지난 1년간 월별 종합 점수 평균
+                    - advice: 각 지표별 설명 2개
+                    - 해당 날짜에 저장된 데이터가 없으면 404를 반환합니다.
+                    """
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "요약 페이지 조회 성공",
+                    content = @Content(examples = @ExampleObject(value = REPORT_SUMMARY_SUCCESS_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "date 파라미터 누락 또는 형식 오류",
+                    content = @Content(examples = @ExampleObject(value = INVALID_DATE_PARAMETER_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = "Authorization 헤더 누락 또는 유효하지 않은 토큰",
+                    content = @Content(examples = @ExampleObject(value = UNAUTHORIZED_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "해당 날짜에 저장된 리포트 없음",
+                    content = @Content(examples = @ExampleObject(value = REPORT_NOT_FOUND_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "500",
+                    description = "서버 내부 오류",
+                    content = @Content(examples = @ExampleObject(value = INTERNAL_SERVER_ERROR_RESPONSE))
+            )
+    })
+    public ApiResponse<ReportResponseDTO.ReportSummaryResultDTO> getReportSummary(
+            @Parameter(description = "조회 날짜. yyyy-MM-dd 형식으로 입력합니다.", example = "2026-05-20")
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+    ) {
+        Long userId = findLoginUser.getCurrentUserId();
+        return ApiResponse.onSuccess(reportQueryService.getReportSummary(userId, date));
+    }
+
+    private static final String REPORT_SUMMARY_SUCCESS_RESPONSE = """
+            {
+              "isSuccess": true,
+              "code": "COMMON200",
+              "message": "성공입니다.",
+              "result": {
+                "totalScore": 83,
+                "metricScores": [
+                  {
+                    "metricType": "PRESSURE_BALANCE",
+                    "score": 85.0,
+                    "status": "VERY_GOOD",
+                    "advice": [
+                      "좌우 발의 압력 분포에 다소 차이가 나타나고 있습니다.",
+                      "보행 시 체중을 양쪽 발에 고르게 분산하는 습관을 의식하는 것이 필요합니다."
+                    ]
+                  },
+                  {
+                    "metricType": "HALLUX_VALGUS",
+                    "score": 72.0,
+                    "status": "ATTENTION_NEEDED",
+                    "advice": [
+                      "엄지발가락이 안쪽으로 약간 기울어지는 변화가 관찰되며, 발 앞쪽 부담에 주의가 필요합니다.",
+                      "앞쪽 발에 부담이 커지지 않도록 편한 신발을 착용하고, 발가락 스트레칭과 상태 관리를 꾸준히 해주세요."
+                    ]
+                  },
+                  {
+                    "metricType": "ATHLETES_FOOT",
+                    "score": 90.0,
+                    "status": "VERY_GOOD",
+                    "advice": [
+                      "무좀 의심 징후가 거의 나타나지 않으며, 발 피부 상태가 전반적으로 매우 안정적인 상태입니다.",
+                      "현재처럼 발을 청결하고 건조하게 관리하면 무좀 발생 가능성을 낮추는 데 도움이 됩니다."
+                    ]
+                  },
+                  {
+                    "metricType": "FOOT_ODOR",
+                    "score": 88.0,
+                    "status": "VERY_GOOD",
+                    "advice": [
+                      "발냄새를 유발할 수 있는 습도와 냄새 관련 수치가 전반적으로 매우 안정적인 상태입니다.",
+                      "현재처럼 발을 청결하고 건조하게 관리하면 쾌적한 발 환경을 유지하는 데 도움이 됩니다."
+                    ]
+                  },
+                  {
+                    "metricType": "FOOT_ENVIRONMENT",
+                    "score": 65.0,
+                    "status": "NEED_IMPROVEMENT",
+                    "advice": [
+                      "발 주변의 온도와 습도가 전반적으로 높게 나타나며, 발 환경 관리 개선이 필요한 상태입니다.",
+                      "피부 트러블이나 무좀 위험을 줄이기 위해 발을 청결하고 건조하게 유지하고, 통풍이 잘 되는 신발을 착용해주세요."
+                    ]
+                  }
+                ],
+                "monthlyScores": [
+                  { "month": 1, "avgScore": 75.0 },
+                  { "month": 2, "avgScore": 77.5 },
+                  { "month": 3, "avgScore": 78.0 },
+                  { "month": 4, "avgScore": 80.0 },
+                  { "month": 5, "avgScore": 83.0 }
+                ]
+              }
+            }
+            """;
+
+    private static final String REPORT_NOT_FOUND_RESPONSE = """
+            {
+              "isSuccess": false,
+              "code": "REPORT4001",
+              "message": "리포트를 찾을 수 없습니다.",
+              "result": null
+            }
+            """;
+
     private static final String FOOT_TYPE_TEXT_SUCCESS_RESPONSE = """
             {
               "isSuccess": true,

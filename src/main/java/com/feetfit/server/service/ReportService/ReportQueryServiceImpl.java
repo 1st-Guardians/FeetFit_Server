@@ -4,14 +4,8 @@ import com.feetfit.server.apiPayload.code.status.ErrorStatus;
 import com.feetfit.server.apiPayload.exception.handler.ReportHandler;
 import com.feetfit.server.apiPayload.exception.handler.UserHandler;
 import com.feetfit.server.converter.ReportConverter;
-import com.feetfit.server.domain.DailyFootAnalysis;
-import com.feetfit.server.domain.HalluxValgusAnalysis;
-import com.feetfit.server.domain.TinaPedisAnalysis;
-import com.feetfit.server.domain.User;
-import com.feetfit.server.repository.DailyFootAnalysisRepository;
-import com.feetfit.server.repository.HalluxValgusAnalysisRepository;
-import com.feetfit.server.repository.TinaPedisAnalysisRepository;
-import com.feetfit.server.repository.UserRepository;
+import com.feetfit.server.domain.*;
+import com.feetfit.server.repository.*;
 import com.feetfit.server.web.dto.report.ReportResponseDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -19,6 +13,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional(readOnly = true)
@@ -29,6 +26,7 @@ public class ReportQueryServiceImpl implements ReportQueryService {
     private final TinaPedisAnalysisRepository tinaPedisAnalysisRepository;
     private final UserRepository userRepository;
     private final DailyFootAnalysisRepository dailyFootAnalysisRepository;
+    private final ReportRepository reportRepository;
 
     @Override
     public ReportResponseDTO.HalluxValgusResultDTO getHalluxValgusAnalysis(Long userId, LocalDate date) {
@@ -110,5 +108,46 @@ public class ReportQueryServiceImpl implements ReportQueryService {
                 .orElse(null);
 
         return ReportConverter.toFootTypeTextResultDTO(user.getNickname(), typeText);
+    }
+
+    @Override
+    public ReportResponseDTO.ReportSummaryResultDTO getReportSummary(Long userId, LocalDate date) {
+
+        userRepository.findById(userId)
+                .orElseThrow(() -> new UserHandler(ErrorStatus.USER_NOT_FOUND));
+
+        LocalDateTime startOfDay = date.atStartOfDay();
+        LocalDateTime endOfDay = date.plusDays(1).atStartOfDay();
+
+        Report report = reportRepository
+                .findTopByUserIdAndReportDateGreaterThanEqualAndReportDateLessThanOrderByReportDateDesc(
+                        userId, startOfDay, endOfDay)
+                .orElseThrow(() -> new ReportHandler(ErrorStatus.REPORT_NOT_FOUND));
+
+        // 1년간 리포트 목록 조회
+        LocalDateTime oneYearAgo = date.minusYears(1).atStartOfDay();
+        List<Report> yearlyReports = reportRepository.findByUserIdAndReportDateBetween(
+                userId, oneYearAgo, endOfDay);
+
+        // 월별 평균 점수 계산 (서버에서 직접 계산)
+        List<ReportResponseDTO.MonthlyScoreDTO> monthlyScores = yearlyReports.stream()
+                .collect(Collectors.groupingBy(
+                        r -> r.getReportDate().getMonthValue(),
+                        Collectors.averagingDouble(r ->
+                                r.getMetricAnalysisResults().stream()
+                                        .mapToDouble(m -> m.getScore())
+                                        .average()
+                                        .orElse(0.0)
+                        )
+                ))
+                .entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .map(entry -> ReportResponseDTO.MonthlyScoreDTO.builder()
+                        .month(entry.getKey())
+                        .avgScore(Math.round(entry.getValue() * 10) / 10.0f)  // 소수점 1자리 반올림
+                        .build())
+                .collect(Collectors.toList());
+
+        return ReportConverter.toReportSummaryResultDTO(report, monthlyScores);
     }
 }

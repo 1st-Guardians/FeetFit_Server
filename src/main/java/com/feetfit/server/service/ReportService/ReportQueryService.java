@@ -12,4 +12,6 @@ public interface ReportQueryService {
     ReportResponseDTO.DailyFootAnalysisResultDTO getDailyFootAnalysis(Long userId, LocalDate date);
 
     ReportResponseDTO.FootTypeTextResultDTO getFootTypeText(Long userId);
+
+    ReportResponseDTO.ReportSummaryResultDTO getReportSummary(Long userId, LocalDate date);
 }
