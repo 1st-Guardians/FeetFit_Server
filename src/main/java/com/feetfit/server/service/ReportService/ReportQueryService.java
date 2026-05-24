@@ -10,4 +10,6 @@ public interface ReportQueryService {
     ReportResponseDTO.TinaPedisAnalysisResultDTO getTinaPedisAnalysis(Long userId, LocalDate date);
 
     ReportResponseDTO.DailyFootAnalysisResultDTO getDailyFootAnalysis(Long userId, LocalDate date);
+
+    ReportResponseDTO.FootTypeTextResultDTO getFootTypeText(Long userId);
 }

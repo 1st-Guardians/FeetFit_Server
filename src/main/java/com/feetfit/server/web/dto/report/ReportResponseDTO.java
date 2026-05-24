@@ -271,4 +271,20 @@ public class ReportResponseDTO {
         @Schema(description = "수정 시각", example = "2026-05-20T09:00:00")
         private LocalDateTime updatedAt;
     }
+
+    @Builder
+    @Getter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Schema(description = "발 타입 텍스트 조회 응답")
+    public static class FootTypeTextResultDTO {
+
+        @Schema(description = "유저 닉네임", example = "민지")
+        private String nickname;
+
+        @Schema(description = "발 타입 텍스트. 측정 이력 없으면 null",
+                example = "발의 아치가 낮아 발바닥이 넓게 닿는 편이에요.",
+                nullable = true)
+        private String typeText;
+    }
 }
