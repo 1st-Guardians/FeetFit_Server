@@ -19,4 +19,7 @@ public interface DailyFootAnalysisRepository extends JpaRepository<DailyFootAnal
             Long userId,
             LocalDateTime startOfDay,
             LocalDateTime endOfDay);
+
+    // 사용자의 발타입 조회
+    Optional<DailyFootAnalysis> findTopByMeasurementSessionUserIdOrderByCreatedAtDesc(Long userId);
 }

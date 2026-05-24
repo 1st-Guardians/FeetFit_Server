@@ -96,4 +96,19 @@ public class ReportQueryServiceImpl implements ReportQueryService {
 
         return ReportConverter.toDailyFootAnalysisResultDTO(analysis, user.getFootSize(), previousAnalysis);
     }
+
+    @Override
+    public ReportResponseDTO.FootTypeTextResultDTO getFootTypeText(Long userId) {
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserHandler(ErrorStatus.USER_NOT_FOUND));
+
+        // 가장 최근 DailyFootAnalysis의 typeText 조회 (없으면 null)
+        String typeText = dailyFootAnalysisRepository
+                .findTopByMeasurementSessionUserIdOrderByCreatedAtDesc(userId)
+                .map(DailyFootAnalysis::getTypeText)
+                .orElse(null);
+
+        return ReportConverter.toFootTypeTextResultDTO(user.getNickname(), typeText);
+    }
 }

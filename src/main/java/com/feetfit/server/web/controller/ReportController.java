@@ -415,14 +415,58 @@ public class ReportController {
         return ApiResponse.onSuccess(reportQueryService.getDailyFootAnalysis(userId, date));
     }
 
+    @GetMapping("/foot-type-text")
+    @Operation(
+            summary = "발 타입 텍스트 조회 [민지]",
+            description = """
+                신발 리스트 페이지에서 사용자의 발 타입 설명 텍스트를 조회합니다.
+                Authorization 헤더에 Bearer accessToken이 필요합니다.
+                - 가장 최근 종합 발 분석 결과의 typeText를 반환합니다.
+                - 측정 이력이 없는 유저는 typeText가 null로 반환됩니다.
+                """
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "발 타입 텍스트 조회 성공",
+                    content = @Content(examples = @ExampleObject(value = FOOT_TYPE_TEXT_SUCCESS_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = "Authorization 헤더 누락 또는 유효하지 않은 토큰",
+                    content = @Content(examples = @ExampleObject(value = UNAUTHORIZED_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "500",
+                    description = "서버 내부 오류",
+                    content = @Content(examples = @ExampleObject(value = INTERNAL_SERVER_ERROR_RESPONSE))
+            )
+    })
+    public ApiResponse<ReportResponseDTO.FootTypeTextResultDTO> getFootTypeText() {
+        Long userId = findLoginUser.getCurrentUserId();
+        return ApiResponse.onSuccess(reportQueryService.getFootTypeText(userId));
+    }
+
+    private static final String FOOT_TYPE_TEXT_SUCCESS_RESPONSE = """
+            {
+              "isSuccess": true,
+              "code": "COMMON200",
+              "message": "성공입니다.",
+              "result": {
+                "nickname": "민지",
+                "typeText": "발의 아치가 낮아 발바닥이 넓게 닿는 편이에요. 오래 걷거나 서 있으면 피로가 커질 수 있어 아치를 잘 받쳐주는 신발이 더 편안할 수 있어요."
+              }
+            }
+            """;
+
     private static final String DAILY_FOOT_ANALYSIS_NOT_FOUND_RESPONSE = """
-        {
-          "isSuccess": false,
-          "code": "REPORT4001",
-          "message": "리포트를 찾을 수 없습니다.",
-          "result": null
-        }
-        """;
+            {
+              "isSuccess": false,
+              "code": "REPORT4001",
+              "message": "리포트를 찾을 수 없습니다.",
+              "result": null
+            }
+            """;
 
     private static final String DAILY_FOOT_ANALYSIS_VALIDATION_ERROR_RESPONSE = """
             {

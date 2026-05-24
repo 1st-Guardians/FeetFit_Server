@@ -214,4 +214,12 @@ public class ReportConverter {
                 .updatedAt(analysis.getUpdatedAt())
                 .build();
     }
+
+    public static ReportResponseDTO.FootTypeTextResultDTO toFootTypeTextResultDTO(
+            String nickname, String typeText) {
+        return ReportResponseDTO.FootTypeTextResultDTO.builder()
+                .nickname(nickname)
+                .typeText(typeText)
+                .build();
+    }
 }
