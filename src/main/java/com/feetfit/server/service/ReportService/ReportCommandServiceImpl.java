@@ -2,20 +2,18 @@ package com.feetfit.server.service.ReportService;
 
 import com.feetfit.server.apiPayload.code.status.ErrorStatus;
 import com.feetfit.server.apiPayload.exception.handler.MeasurementHandler;
+import com.feetfit.server.apiPayload.exception.handler.UserHandler;
 import com.feetfit.server.converter.ReportConverter;
-import com.feetfit.server.domain.HalluxValgusAnalysis;
-import com.feetfit.server.domain.MeasurementSession;
-import com.feetfit.server.domain.TinaPedisAnalysis;
+import com.feetfit.server.domain.*;
 import com.feetfit.server.domain.enums.MeasurementStatus;
-import com.feetfit.server.repository.HalluxValgusAnalysisRepository;
-import com.feetfit.server.repository.MeasurementSessionRepository;
-import com.feetfit.server.repository.TinaPedisAnalysisRepository;
+import com.feetfit.server.repository.*;
 import com.feetfit.server.web.dto.report.ReportRequestDTO;
 import com.feetfit.server.web.dto.report.ReportResponseDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Service
@@ -26,6 +24,8 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     private final HalluxValgusAnalysisRepository halluxValgusAnalysisRepository;
     private final MeasurementSessionRepository measurementSessionRepository;
     private final TinaPedisAnalysisRepository tinaPedisAnalysisRepository;
+    private final DailyFootAnalysisRepository dailyFootAnalysisRepository;
+    private final UserRepository userRepository;
 
     @Override
     public ReportResponseDTO.SaveHalluxValgusResultDTO saveHalluxValgusAnalysis(
@@ -122,5 +122,56 @@ public class ReportCommandServiceImpl implements ReportCommandService {
         }
 
         return measurementSession;
+    }
+
+    @Override
+    public ReportResponseDTO.SaveDailyFootAnalysisResultDTO saveDailyFootAnalysis(
+            Long userId, ReportRequestDTO.SaveDailyFootAnalysisDTO request) {
+
+        MeasurementSession measurementSession = getValidatedCompletedMeasurementSession(
+                userId, request.getMeasurementSessionId()
+        );
+
+        DailyFootAnalysis saved = dailyFootAnalysisRepository
+                .findByMeasurementSessionId(measurementSession.getId())
+                .map(existing -> {
+                    existing.update(
+                            request.getConditionLevel(),
+                            request.getConditionComments(),
+                            request.getBalanceScore(),
+                            request.getBalanceComment(),
+                            request.getLeftPressurePercent(),
+                            request.getRightPressurePercent(),
+                            request.getLeftPressureImageUrl(),
+                            request.getRightPressureImageUrl(),
+                            request.getMeasuredLeftFootSizeMm(),
+                            request.getMeasuredRightFootSizeMm(),
+                            request.getLeftFootWidthMm(),
+                            request.getRightFootWidthMm(),
+                            request.getFootOdourPpm(),
+                            request.getFootOdourComment(),
+                            request.getAvgTemperatureCelsius(),
+                            request.getAvgHumidityPercent(),
+                            request.getCareTips(),
+                            request.getTypeText()
+                    );
+                    return existing;
+                })
+                .orElseGet(() -> dailyFootAnalysisRepository.save(
+                        ReportConverter.toDailyFootAnalysis(measurementSession, request)
+                ));
+
+        // 유저 발 사이즈 조회
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserHandler(ErrorStatus.USER_NOT_FOUND));
+
+        // 이전 측정 데이터 조회
+        DailyFootAnalysis previousAnalysis = dailyFootAnalysisRepository
+                .findTopByMeasurementSessionUserIdAndCreatedAtLessThanOrderByCreatedAtDesc(
+                        userId, saved.getCreatedAt().toLocalDate().atStartOfDay()
+                )
+                .orElse(null);
+
+        return ReportConverter.toSaveDailyFootAnalysisResultDTO(saved, user.getFootSize(), previousAnalysis);
     }
 }

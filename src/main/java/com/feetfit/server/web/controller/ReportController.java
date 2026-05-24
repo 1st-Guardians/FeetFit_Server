@@ -313,6 +313,100 @@ public class ReportController {
         return ApiResponse.onSuccess(reportQueryService.getTinaPedisAnalysis(userId, date));
     }
 
+    @PostMapping("/daily-foot-analysis")
+    @Operation(
+            summary = "종합 발 분석 결과 저장 [민지]",
+            description = """
+                AI 분석 결과로 받은 종합 발 분석 데이터를 저장합니다.
+                Authorization 헤더에 Bearer accessToken이 필요합니다.
+                - 같은 날짜에 이미 저장된 데이터가 있으면 덮어씁니다 (UPDATE).
+                - 같은 날짜에 저장된 데이터가 없으면 새로 저장합니다 (INSERT).
+                - 측정 세션의 status가 COMPLETED인 경우에만 저장됩니다.
+                - 본인의 측정 세션 ID만 사용 가능합니다.
+                """
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "종합 발 분석 결과 저장 성공",
+                    content = @Content(examples = @ExampleObject(value = SAVE_DAILY_FOOT_ANALYSIS_SUCCESS_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "필수값 누락, 완료되지 않은 측정 세션",
+                    content = @Content(examples = @ExampleObject(value = VALIDATION_ERROR_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = "Authorization 헤더 누락 또는 유효하지 않은 토큰",
+                    content = @Content(examples = @ExampleObject(value = UNAUTHORIZED_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "403",
+                    description = "본인의 측정 세션이 아님",
+                    content = @Content(examples = @ExampleObject(value = MEASUREMENT_FORBIDDEN_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "측정 세션을 찾을 수 없음",
+                    content = @Content(examples = @ExampleObject(value = MEASUREMENT_NOT_FOUND_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "500",
+                    description = "서버 내부 오류",
+                    content = @Content(examples = @ExampleObject(value = INTERNAL_SERVER_ERROR_RESPONSE))
+            )
+    })
+    public ApiResponse<ReportResponseDTO.SaveDailyFootAnalysisResultDTO> saveDailyFootAnalysis(
+            @RequestBody @Valid ReportRequestDTO.SaveDailyFootAnalysisDTO request
+    ) {
+        Long userId = findLoginUser.getCurrentUserId();
+        return ApiResponse.onSuccess(reportCommandService.saveDailyFootAnalysis(userId, request));
+    }
+
+    private static final String SAVE_DAILY_FOOT_ANALYSIS_SUCCESS_RESPONSE = """
+            {
+              "isSuccess": true,
+              "code": "COMMON200",
+              "message": "성공입니다.",
+              "result": {
+                "id": 1,
+                "measurementSessionId": 1,
+                "conditionLevel": "ATTENTION_NEEDED",
+                "conditionComments": [
+                  "오른발에 압력이 조금 더 실려 있어요.",
+                  "발 냄새 위험도는 낮은 편이에요."
+                ],
+                "balanceScore": 72.0,
+                "balanceComment": "자세 균형에 대한 내용을 적을겁니다.",
+                "balanceScoreDiff": 4.0,
+                "leftPressurePercent": 46.0,
+                "rightPressurePercent": 54.0,
+                "leftPressureImageUrl": "https://example.com/left-pressure.jpg",
+                "rightPressureImageUrl": "https://example.com/right-pressure.jpg",
+                "userFootSize": 250,
+                "measuredLeftFootSizeMm": 253.0,
+                "measuredRightFootSizeMm": 248.0,
+                "leftFootSizeDiff": 3.0,
+                "rightFootSizeDiff": -2.0,
+                "leftFootWidthMm": 85.0,
+                "rightFootWidthMm": 70.0,
+                "footOdourPpm": 76.0,
+                "footOdourComment": "발 냄새 위험도는 76ppm으로 낮은 편이에요.",
+                "avgTemperatureCelsius": 34.0,
+                "avgHumidityPercent": 50.0,
+                "careTips": [
+                  "오른발 앞꿈치 스트레칭을 해주세요.",
+                  "신발은 착용 후 충분히 말려주세요.",
+                  "발볼이 좁은 신발은 피하는 것이 좋아요."
+                ],
+                "typeText": "발의 아치가 낮아 발바닥이 넓게 닿는 편이에요. 오래 걷거나 서 있으면 피로가 커질 수 있어 아치를 잘 받쳐주는 신발이 더 편안할 수 있어요.",
+                "createdAt": "2026-05-20T09:00:00",
+                "updatedAt": "2026-05-20T09:00:00"
+              }
+            }
+            """;
+
     private static final String GET_HALLUX_VALGUS_SUCCESS_RESPONSE = """
             {
               "isSuccess": true,

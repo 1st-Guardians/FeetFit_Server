@@ -1,15 +1,14 @@
 package com.feetfit.server.web.dto.report;
 
+import com.feetfit.server.domain.enums.GaugeStatus;
 import com.feetfit.server.domain.enums.RiskLevel;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Getter
 public class ReportRequestDTO {
@@ -101,5 +100,49 @@ public class ReportRequestDTO {
         @Schema(description = "분석 기록 시각", example = "2026-05-20T09:00:00")
         @NotNull(message = "기록 시각은 필수입니다.")
         private LocalDateTime recordedAt;
+    }
+
+    @Getter
+    @NoArgsConstructor
+    public static class SaveDailyFootAnalysisDTO {
+
+        @NotNull(message = "측정 세션 ID는 필수입니다.")
+        private Long measurementSessionId;
+
+        @NotNull(message = "종합 상태는 필수입니다.")
+        private GaugeStatus conditionLevel;
+
+        @NotNull(message = "상태 코멘트는 필수입니다.")
+        private List<String> conditionComments;
+
+        @NotNull(message = "균형 점수는 필수입니다.")
+        private Float balanceScore;
+
+        @NotNull(message = "균형 코멘트는 필수입니다.")
+        private String balanceComment;
+
+        private Float leftPressurePercent;
+        private Float rightPressurePercent;
+        private String leftPressureImageUrl;
+        private String rightPressureImageUrl;
+        private Float measuredLeftFootSizeMm;
+        private Float measuredRightFootSizeMm;
+        private Float leftFootWidthMm;
+        private Float rightFootWidthMm;
+        private Float footOdourPpm;
+        private String footOdourComment;
+
+        @NotNull(message = "평균 온도는 필수입니다.")
+        private Float avgTemperatureCelsius;
+
+        @NotNull(message = "평균 습도는 필수입니다.")
+        private Float avgHumidityPercent;
+
+        @NotNull(message = "관리 팁은 필수입니다.")
+        @Size(min = 3, max = 3, message = "관리 팁은 3개여야 합니다.")
+        private List<String> careTips;
+
+        @NotNull(message = "발 타입 텍스트는 필수입니다.")
+        private String typeText;
     }
 }
