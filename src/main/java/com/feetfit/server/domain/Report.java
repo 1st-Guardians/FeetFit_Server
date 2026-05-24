@@ -6,8 +6,6 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
 @Table(name = "report")
@@ -41,13 +39,5 @@ public class Report extends BaseEntity {
 
     @Column(columnDefinition = "TEXT")
     private String summaryText;
-
-    @OneToMany(mappedBy = "report", cascade = CascadeType.ALL)
-    @Builder.Default
-    private List<ReportMetricScore> metricScores = new ArrayList<>();
-
-    @OneToMany(mappedBy = "report", cascade = CascadeType.ALL)
-    @Builder.Default
-    private List<Advice> advices = new ArrayList<>();
 
 }
