@@ -124,7 +124,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     }
 
     @Override
-    public ReportResponseDTO.SaveDailyFootAnalysisResultDTO saveDailyFootAnalysis(
+    public ReportResponseDTO.DailyFootAnalysisResultDTO saveDailyFootAnalysis(
             Long userId, ReportRequestDTO.SaveDailyFootAnalysisDTO request) {
 
         MeasurementSession measurementSession = getValidatedCompletedMeasurementSession(
@@ -171,6 +171,6 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                 )
                 .orElse(null);
 
-        return ReportConverter.toSaveDailyFootAnalysisResultDTO(saved, user.getFootSize(), previousAnalysis);
+        return ReportConverter.toDailyFootAnalysisResultDTO(saved, user.getFootSize(), previousAnalysis);
     }
 }

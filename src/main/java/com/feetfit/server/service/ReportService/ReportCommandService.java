@@ -14,6 +14,6 @@ public interface ReportCommandService {
             Long userId, ReportRequestDTO.SaveTinaPedisAnalysisDTO request);
 
     // 종합 측정 분석 결과 저장
-    ReportResponseDTO.SaveDailyFootAnalysisResultDTO saveDailyFootAnalysis(
+    ReportResponseDTO.DailyFootAnalysisResultDTO saveDailyFootAnalysis(
             Long userId, ReportRequestDTO.SaveDailyFootAnalysisDTO request);
 }

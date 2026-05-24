@@ -2,11 +2,16 @@ package com.feetfit.server.service.ReportService;
 
 import com.feetfit.server.apiPayload.code.status.ErrorStatus;
 import com.feetfit.server.apiPayload.exception.handler.ReportHandler;
+import com.feetfit.server.apiPayload.exception.handler.UserHandler;
 import com.feetfit.server.converter.ReportConverter;
+import com.feetfit.server.domain.DailyFootAnalysis;
 import com.feetfit.server.domain.HalluxValgusAnalysis;
 import com.feetfit.server.domain.TinaPedisAnalysis;
+import com.feetfit.server.domain.User;
+import com.feetfit.server.repository.DailyFootAnalysisRepository;
 import com.feetfit.server.repository.HalluxValgusAnalysisRepository;
 import com.feetfit.server.repository.TinaPedisAnalysisRepository;
+import com.feetfit.server.repository.UserRepository;
 import com.feetfit.server.web.dto.report.ReportResponseDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,6 +27,8 @@ public class ReportQueryServiceImpl implements ReportQueryService {
 
     private final HalluxValgusAnalysisRepository halluxValgusAnalysisRepository;
     private final TinaPedisAnalysisRepository tinaPedisAnalysisRepository;
+    private final UserRepository userRepository;
+    private final DailyFootAnalysisRepository dailyFootAnalysisRepository;
 
     @Override
     public ReportResponseDTO.HalluxValgusResultDTO getHalluxValgusAnalysis(Long userId, LocalDate date) {
@@ -65,5 +72,27 @@ public class ReportQueryServiceImpl implements ReportQueryService {
                 .orElse(null);
 
         return ReportConverter.toTinaPedisAnalysisResultDTO(tinaPedisAnalysis, previousAnalysis);
+    }
+
+    @Override
+    public ReportResponseDTO.DailyFootAnalysisResultDTO getDailyFootAnalysis(Long userId, LocalDate date) {
+
+        LocalDateTime startOfDay = date.atStartOfDay();
+        LocalDateTime endOfDay = date.plusDays(1).atStartOfDay();
+
+        DailyFootAnalysis analysis = dailyFootAnalysisRepository
+                .findTopByMeasurementSessionUserIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThanOrderByCreatedAtDesc(
+                        userId, startOfDay, endOfDay)
+                .orElseThrow(() -> new ReportHandler(ErrorStatus.REPORT_NOT_FOUND));
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserHandler(ErrorStatus.USER_NOT_FOUND));
+
+        DailyFootAnalysis previousAnalysis = dailyFootAnalysisRepository
+                .findTopByMeasurementSessionUserIdAndCreatedAtLessThanOrderByCreatedAtDesc(
+                        userId, startOfDay)
+                .orElse(null);
+
+        return ReportConverter.toDailyFootAnalysisResultDTO(analysis, user.getFootSize(), previousAnalysis);
     }
 }
