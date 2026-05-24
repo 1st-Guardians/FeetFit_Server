@@ -48,10 +48,6 @@ public class Report extends BaseEntity {
 
     @OneToMany(mappedBy = "report", cascade = CascadeType.ALL)
     @Builder.Default
-    private List<RiskAnalysis> riskAnalyses = new ArrayList<>();
-
-    @OneToMany(mappedBy = "report", cascade = CascadeType.ALL)
-    @Builder.Default
     private List<Advice> advices = new ArrayList<>();
 
 }
