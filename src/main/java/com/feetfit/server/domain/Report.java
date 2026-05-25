@@ -45,4 +45,8 @@ public class Report extends BaseEntity {
     public void updateReportDate(LocalDateTime reportDate) {
         this.reportDate = reportDate;
     }
+
+    public void updateMeasurementSession(MeasurementSession measurementSession) {
+        this.measurementSession = measurementSession;
+    }
 }

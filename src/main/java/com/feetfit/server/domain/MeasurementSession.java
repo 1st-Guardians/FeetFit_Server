@@ -69,6 +69,7 @@ public class MeasurementSession extends BaseEntity {
     private List<FootOdorAnalysis> footOdorAnalyses = new ArrayList<>();
 
     @OneToMany(mappedBy = "measurementSession")
+    @Builder.Default
     private List<Report> reports = new ArrayList<>();
 
     @OneToOne(mappedBy = "measurementSession", cascade = CascadeType.ALL)

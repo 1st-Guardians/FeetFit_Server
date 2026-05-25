@@ -200,6 +200,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                 .map(existing -> {
                     existing.updateTotalScore(totalScore);
                     existing.updateReportDate(LocalDateTime.now());
+                    existing.updateMeasurementSession(measurementSession);
                     return existing;
                 })
                 .orElseGet(() -> reportRepository.save(

@@ -4,6 +4,7 @@ import com.feetfit.server.domain.enums.GaugeStatus;
 import com.feetfit.server.domain.enums.MetricType;
 import com.feetfit.server.domain.enums.RiskLevel;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -156,6 +157,7 @@ public class ReportRequestDTO {
 
         @NotNull(message = "지표별 분석 결과는 필수입니다.")
         @Size(min = 5, max = 5, message = "지표별 분석 결과는 5개여야 합니다.")
+        @Valid
         private List<SaveMetricAnalysisResultDTO> metricAnalysisResults;
     }
 
