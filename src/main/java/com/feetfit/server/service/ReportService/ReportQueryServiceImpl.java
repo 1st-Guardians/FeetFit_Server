@@ -112,21 +112,23 @@ public class ReportQueryServiceImpl implements ReportQueryService {
     }
 
     @Override
-    public ReportResponseDTO.ReportSummaryResultDTO getReportSummary(Long userId, LocalDate date) {
+    public ReportResponseDTO.ReportSummaryResultDTO getReportSummary(Long userId) {
 
         userRepository.findById(userId)
                 .orElseThrow(() -> new UserHandler(ErrorStatus.USER_NOT_FOUND));
 
-        LocalDateTime startOfDay = date.atStartOfDay();
-        LocalDateTime endOfDay = date.plusDays(1).atStartOfDay();
+        // 오늘 날짜 기준
+        LocalDate today = LocalDate.now();
+        LocalDateTime startOfDay = today.atStartOfDay();
+        LocalDateTime endOfDay = today.plusDays(1).atStartOfDay();
 
         Report report = reportRepository
                 .findTopByUserIdAndReportDateGreaterThanEqualAndReportDateLessThanOrderByReportDateDesc(
                         userId, startOfDay, endOfDay)
                 .orElseThrow(() -> new ReportHandler(ErrorStatus.REPORT_NOT_FOUND));
 
-        // 이번 달을 포함한 최근 12개월 리포트 목록 조회
-        YearMonth currentMonth = YearMonth.from(date);
+        // 이번 달을 포함한 최근 12개월
+        YearMonth currentMonth = YearMonth.from(today);
         YearMonth startMonth = currentMonth.minusMonths(11);
 
         LocalDateTime startDateTime = startMonth.atDay(1).atStartOfDay();
@@ -135,7 +137,6 @@ public class ReportQueryServiceImpl implements ReportQueryService {
         List<Report> yearlyReports = reportRepository.findByUserIdAndReportDateBetween(
                 userId, startDateTime, endDateTime);
 
-        // 월별 평균 점수 계산
         List<ReportResponseDTO.MonthlyScoreDTO> monthlyScores = yearlyReports.stream()
                 .collect(Collectors.groupingBy(
                         r -> YearMonth.from(r.getReportDate()),

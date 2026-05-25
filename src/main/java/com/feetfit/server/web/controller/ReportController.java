@@ -447,62 +447,14 @@ public class ReportController {
         return ApiResponse.onSuccess(reportQueryService.getFootTypeText(userId));
     }
 
-    @GetMapping("/summary")
-    @Operation(
-            summary = "요약 페이지 조회 [민지]",
-            description = """
-                    날짜를 지정하여 해당 날짜의 발 종합 점수, 지표별 점수, 1년간 변화 추이를 조회합니다.
-                    Authorization 헤더에 Bearer accessToken이 필요합니다.
-                    - date 형식: yyyy-MM-dd
-                    - 지표 타입: PRESSURE_BALANCE(압력 균형), HALLUX_VALGUS(무지외반), ATHLETES_FOOT(무좀), FOOT_ODOR(발냄새), FOOT_ENVIRONMENT(환경 상태)
-                    - monthlyScores: 지난 1년간 월별 종합 점수 평균
-                    - advice: 각 지표별 설명 2개
-                    - 해당 날짜에 저장된 데이터가 없으면 404를 반환합니다.
-                    """
-    )
-    @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "200",
-                    description = "요약 페이지 조회 성공",
-                    content = @Content(examples = @ExampleObject(value = REPORT_SUMMARY_SUCCESS_RESPONSE))
-            ),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "400",
-                    description = "date 파라미터 누락 또는 형식 오류",
-                    content = @Content(examples = @ExampleObject(value = INVALID_DATE_PARAMETER_RESPONSE))
-            ),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "401",
-                    description = "Authorization 헤더 누락 또는 유효하지 않은 토큰",
-                    content = @Content(examples = @ExampleObject(value = UNAUTHORIZED_RESPONSE))
-            ),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "404",
-                    description = "해당 날짜에 저장된 리포트 없음",
-                    content = @Content(examples = @ExampleObject(value = REPORT_NOT_FOUND_RESPONSE))
-            ),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "500",
-                    description = "서버 내부 오류",
-                    content = @Content(examples = @ExampleObject(value = INTERNAL_SERVER_ERROR_RESPONSE))
-            )
-    })
-    public ApiResponse<ReportResponseDTO.ReportSummaryResultDTO> getReportSummary(
-            @Parameter(description = "조회 날짜. yyyy-MM-dd 형식으로 입력합니다.", example = "2026-05-20")
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
-    ) {
-        Long userId = findLoginUser.getCurrentUserId();
-        return ApiResponse.onSuccess(reportQueryService.getReportSummary(userId, date));
-    }
-
     @PostMapping("/summary")
     @Operation(
             summary = "요약 저장 [민지]",
             description = """
                 AI 분석 결과로 받은 지표별 데이터를 저장합니다.
                 Authorization 헤더에 Bearer accessToken이 필요합니다.
-                - 같은 측정 세션 ID에 이미 저장된 데이터가 있으면 덮어씁니다 (UPDATE).
-                - 같은 측정 세션 ID에 저장된 데이터가 없으면 새로 저장합니다 (INSERT).
+                - 오늘 날짜에 이미 저장된 데이터가 있으면 덮어씁니다 (UPDATE).
+                - 오늘 날짜에 저장된 데이터가 없으면 새로 저장합니다 (INSERT).
                 - totalScore는 5개 지표 균등 가중치 평균으로 서버에서 계산합니다.
                 - 측정 세션의 status가 COMPLETED인 경우에만 저장됩니다.
                 - 본인의 측정 세션 ID만 사용 가능합니다.
@@ -550,6 +502,45 @@ public class ReportController {
     ) {
         Long userId = findLoginUser.getCurrentUserId();
         return ApiResponse.onSuccess(reportCommandService.saveReport(userId, request));
+    }
+
+    @GetMapping("/summary")
+    @Operation(
+            summary = "요약 페이지 조회 [민지]",
+            description = """
+                오늘 날짜 기준으로 발 종합 점수, 지표별 점수, 1년간 변화 추이를 조회합니다.
+                Authorization 헤더에 Bearer accessToken이 필요합니다.
+                - 지표 타입: PRESSURE_BALANCE(압력 균형), HALLUX_VALGUS(무지외반), ATHLETES_FOOT(무좀), FOOT_ODOR(발냄새), FOOT_ENVIRONMENT(환경 상태)
+                - monthlyScores: 최근 12개월 월별 종합 점수 평균
+                - advice: 각 지표별 설명 2개
+                - 오늘 저장된 데이터가 없으면 404를 반환합니다.
+                """
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "요약 페이지 조회 성공",
+                    content = @Content(examples = @ExampleObject(value = REPORT_SUMMARY_SUCCESS_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = "Authorization 헤더 누락 또는 유효하지 않은 토큰",
+                    content = @Content(examples = @ExampleObject(value = UNAUTHORIZED_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "오늘 저장된 리포트 없음",
+                    content = @Content(examples = @ExampleObject(value = REPORT_NOT_FOUND_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "500",
+                    description = "서버 내부 오류",
+                    content = @Content(examples = @ExampleObject(value = INTERNAL_SERVER_ERROR_RESPONSE))
+            )
+    })
+    public ApiResponse<ReportResponseDTO.ReportSummaryResultDTO> getReportSummary() {
+        Long userId = findLoginUser.getCurrentUserId();
+        return ApiResponse.onSuccess(reportQueryService.getReportSummary(userId));
     }
 
     private static final String SAVE_REPORT_SUCCESS_RESPONSE = """

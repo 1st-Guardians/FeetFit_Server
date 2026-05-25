@@ -21,7 +21,7 @@ public class Report extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "measurement_session_id", nullable = false)
     private MeasurementSession measurementSession;
 
@@ -41,5 +41,9 @@ public class Report extends BaseEntity {
 
     public void updateTotalScore(int totalScore) {
         this.totalScore = totalScore;
+    }
+
+    public void updateReportDate(LocalDateTime reportDate) {
+        this.reportDate = reportDate;
     }
 }

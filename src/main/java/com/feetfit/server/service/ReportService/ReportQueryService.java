@@ -13,5 +13,5 @@ public interface ReportQueryService {
 
     ReportResponseDTO.FootTypeTextResultDTO getFootTypeText(Long userId);
 
-    ReportResponseDTO.ReportSummaryResultDTO getReportSummary(Long userId, LocalDate date);
+    ReportResponseDTO.ReportSummaryResultDTO getReportSummary(Long userId);
 }

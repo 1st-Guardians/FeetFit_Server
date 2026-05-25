@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -185,16 +186,20 @@ public class ReportCommandServiceImpl implements ReportCommandService {
         MeasurementSession measurementSession = getValidatedCompletedMeasurementSession(
                 userId, request.getMeasurementSessionId());
 
-        // totalScore 계산
         int totalScore = Math.round((float) request.getMetricAnalysisResults().stream()
-                .mapToDouble(ReportRequestDTO.SaveMetricAnalysisResultDTO::getScore)
+                .mapToDouble(dto -> dto.getScore())
                 .average()
                 .orElse(0.0));
 
-        Report report = reportRepository.findByMeasurementSessionId(measurementSession.getId())
+        LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
+        LocalDateTime endOfDay = LocalDate.now().plusDays(1).atStartOfDay();
+
+        Report report = reportRepository
+                .findTopByUserIdAndReportDateGreaterThanEqualAndReportDateLessThanOrderByReportDateDesc(
+                        userId, startOfDay, endOfDay)
                 .map(existing -> {
-                    existing.getMetricAnalysisResults().clear();
-                    existing.updateTotalScore(totalScore);  // ← UPDATE 시에도 totalScore 반영
+                    existing.updateTotalScore(totalScore);
+                    existing.updateReportDate(LocalDateTime.now());
                     return existing;
                 })
                 .orElseGet(() -> reportRepository.save(
@@ -202,16 +207,23 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                                 .measurementSession(measurementSession)
                                 .user(measurementSession.getUser())
                                 .reportDate(LocalDateTime.now())
-                                .totalScore(totalScore)  // ← INSERT 시 totalScore 저장
+                                .totalScore(totalScore)
                                 .build()
                 ));
 
-        // MetricAnalysisResult 저장
+        // 기존 MetricAnalysisResult 먼저 삭제
+        metricAnalysisResultRepository.deleteByReportId(report.getId());
+        metricAnalysisResultRepository.flush();  // ← DB에 즉시 반영
+
+        // 새 MetricAnalysisResult 저장
         List<MetricAnalysisResult> metricAnalysisResults = request.getMetricAnalysisResults().stream()
                 .map(dto -> ReportConverter.toMetricAnalysisResult(report, dto))
                 .collect(Collectors.toList());
 
         metricAnalysisResultRepository.saveAll(metricAnalysisResults);
+
+        // 연관관계 동기화
+        report.getMetricAnalysisResults().clear();
         report.getMetricAnalysisResults().addAll(metricAnalysisResults);
 
         return ReportConverter.toSaveReportResultDTO(report);
