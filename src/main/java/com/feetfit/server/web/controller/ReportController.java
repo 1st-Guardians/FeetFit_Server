@@ -495,6 +495,137 @@ public class ReportController {
         return ApiResponse.onSuccess(reportQueryService.getReportSummary(userId, date));
     }
 
+    @PostMapping("/summary")
+    @Operation(
+            summary = "요약 저장 [민지]",
+            description = """
+                AI 분석 결과로 받은 지표별 데이터를 저장합니다.
+                Authorization 헤더에 Bearer accessToken이 필요합니다.
+                - 같은 측정 세션 ID에 이미 저장된 데이터가 있으면 덮어씁니다 (UPDATE).
+                - 같은 측정 세션 ID에 저장된 데이터가 없으면 새로 저장합니다 (INSERT).
+                - totalScore는 5개 지표 균등 가중치 평균으로 서버에서 계산합니다.
+                - 측정 세션의 status가 COMPLETED인 경우에만 저장됩니다.
+                - 본인의 측정 세션 ID만 사용 가능합니다.
+                - metricAnalysisResults는 정확히 5개여야 합니다.
+                - advice는 각 지표별 정확히 2개여야 합니다.
+                """
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "요약 저장 성공",
+                    content = @Content(examples = @ExampleObject(value = SAVE_REPORT_SUCCESS_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "필수값 누락, 완료되지 않은 측정 세션, 지표 개수 오류",
+                    content = @Content(examples = {
+                            @ExampleObject(name = "유효성 검사 실패", value = REPORT_VALIDATION_ERROR_RESPONSE),
+                            @ExampleObject(name = "완료되지 않은 측정 세션", value = MEASUREMENT_NOT_COMPLETED_RESPONSE)
+                    })
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = "Authorization 헤더 누락 또는 유효하지 않은 토큰",
+                    content = @Content(examples = @ExampleObject(value = UNAUTHORIZED_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "403",
+                    description = "본인의 측정 세션이 아님",
+                    content = @Content(examples = @ExampleObject(value = MEASUREMENT_FORBIDDEN_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "측정 세션을 찾을 수 없음",
+                    content = @Content(examples = @ExampleObject(value = MEASUREMENT_NOT_FOUND_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "500",
+                    description = "서버 내부 오류",
+                    content = @Content(examples = @ExampleObject(value = INTERNAL_SERVER_ERROR_RESPONSE))
+            )
+    })
+    public ApiResponse<ReportResponseDTO.SaveReportResultDTO> saveReport(
+            @RequestBody @Valid ReportRequestDTO.SaveReportDTO request
+    ) {
+        Long userId = findLoginUser.getCurrentUserId();
+        return ApiResponse.onSuccess(reportCommandService.saveReport(userId, request));
+    }
+
+    private static final String SAVE_REPORT_SUCCESS_RESPONSE = """
+        {
+          "isSuccess": true,
+          "code": "COMMON200",
+          "message": "성공입니다.",
+          "result": {
+            "id": 1,
+            "measurementSessionId": 1,
+            "totalScore": 83,
+            "metricAnalysisResults": [
+              {
+                "metricType": "PRESSURE_BALANCE",
+                "score": 85.0,
+                "status": "VERY_GOOD",
+                "advice": [
+                  "좌우 발의 압력 분포에 다소 차이가 나타나고 있습니다.",
+                  "보행 시 체중을 양쪽 발에 고르게 분산하는 습관을 의식하는 것이 필요합니다."
+                ]
+              },
+              {
+                "metricType": "HALLUX_VALGUS",
+                "score": 72.0,
+                "status": "ATTENTION_NEEDED",
+                "advice": [
+                  "엄지발가락이 안쪽으로 약간 기울어지는 변화가 관찰되며, 발 앞쪽 부담에 주의가 필요합니다.",
+                  "앞쪽 발에 부담이 커지지 않도록 편한 신발을 착용하고, 발가락 스트레칭과 상태 관리를 꾸준히 해주세요."
+                ]
+              },
+              {
+                "metricType": "ATHLETES_FOOT",
+                "score": 90.0,
+                "status": "VERY_GOOD",
+                "advice": [
+                  "무좀 의심 징후가 거의 나타나지 않으며, 발 피부 상태가 전반적으로 매우 안정적인 상태입니다.",
+                  "현재처럼 발을 청결하고 건조하게 관리하면 무좀 발생 가능성을 낮추는 데 도움이 됩니다."
+                ]
+              },
+              {
+                "metricType": "FOOT_ODOR",
+                "score": 88.0,
+                "status": "VERY_GOOD",
+                "advice": [
+                  "발냄새를 유발할 수 있는 습도와 냄새 관련 수치가 전반적으로 매우 안정적인 상태입니다.",
+                  "현재처럼 발을 청결하고 건조하게 관리하면 쾌적한 발 환경을 유지하는 데 도움이 됩니다."
+                ]
+              },
+              {
+                "metricType": "FOOT_ENVIRONMENT",
+                "score": 65.0,
+                "status": "NEED_IMPROVEMENT",
+                "advice": [
+                  "발 주변의 온도와 습도가 전반적으로 높게 나타나며, 발 환경 관리 개선이 필요한 상태입니다.",
+                  "피부 트러블이나 무좀 위험을 줄이기 위해 발을 청결하고 건조하게 유지하고, 통풍이 잘 되는 신발을 착용해주세요."
+                ]
+              }
+            ],
+            "createdAt": "2026-05-20T09:00:00",
+            "updatedAt": "2026-05-20T09:00:00"
+          }
+        }
+        """;
+
+    private static final String REPORT_VALIDATION_ERROR_RESPONSE = """
+        {
+          "isSuccess": false,
+          "code": "COMMON400",
+          "message": "잘못된 요청입니다.",
+          "result": {
+            "measurementSessionId": "측정 세션 ID는 필수입니다.",
+            "metricAnalysisResults": "지표별 분석 결과는 5개여야 합니다."
+          }
+        }
+        """;
+
     private static final String REPORT_SUMMARY_SUCCESS_RESPONSE = """
             {
               "isSuccess": true,

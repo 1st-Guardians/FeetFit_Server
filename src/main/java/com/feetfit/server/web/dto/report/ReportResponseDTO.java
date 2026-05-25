@@ -342,4 +342,30 @@ public class ReportResponseDTO {
         @Schema(description = "해당 월 종합 점수 평균", example = "78.5")
         private Float avgScore;
     }
+
+    @Builder
+    @Getter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Schema(description = "요약 저장 응답")
+    public static class SaveReportResultDTO {
+
+        @Schema(description = "리포트 ID", example = "1")
+        private Long id;
+
+        @Schema(description = "측정 세션 ID", example = "1")
+        private Long measurementSessionId;
+
+        @Schema(description = "발 종합 점수", example = "83")
+        private Integer totalScore;
+
+        @Schema(description = "지표별 분석 결과 목록")
+        private List<MetricScoreDTO> metricAnalysisResults;
+
+        @Schema(description = "생성 시각", example = "2026-05-20T09:00:00")
+        private LocalDateTime createdAt;
+
+        @Schema(description = "수정 시각", example = "2026-05-20T09:00:00")
+        private LocalDateTime updatedAt;
+    }
 }

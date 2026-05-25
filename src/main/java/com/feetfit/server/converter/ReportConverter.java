@@ -259,4 +259,37 @@ public class ReportConverter {
                 .monthlyScores(monthlyScores)
                 .build();
     }
+
+    public static MetricAnalysisResult toMetricAnalysisResult(
+            Report report,
+            ReportRequestDTO.SaveMetricAnalysisResultDTO dto) {
+        return MetricAnalysisResult.builder()
+                .report(report)
+                .metricType(dto.getMetricType())
+                .score(dto.getScore())
+                .status(dto.getStatus())
+                .advice(dto.getAdvice())
+                .build();
+    }
+
+    public static ReportResponseDTO.SaveReportResultDTO toSaveReportResultDTO(Report report) {
+
+        List<ReportResponseDTO.MetricScoreDTO> metricScoreDTOs = report.getMetricAnalysisResults().stream()
+                .map(ReportConverter::toMetricScoreDTO)
+                .collect(Collectors.toList());
+
+        float totalScore = (float) metricScoreDTOs.stream()
+                .mapToDouble(ReportResponseDTO.MetricScoreDTO::getScore)
+                .average()
+                .orElse(0.0);
+
+        return ReportResponseDTO.SaveReportResultDTO.builder()
+                .id(report.getId())
+                .measurementSessionId(report.getMeasurementSession().getId())
+                .totalScore(Math.round(totalScore))
+                .metricAnalysisResults(metricScoreDTOs)
+                .createdAt(report.getCreatedAt())
+                .updatedAt(report.getUpdatedAt())
+                .build();
+    }
 }

@@ -14,6 +14,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -25,6 +27,8 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     private final TinaPedisAnalysisRepository tinaPedisAnalysisRepository;
     private final DailyFootAnalysisRepository dailyFootAnalysisRepository;
     private final UserRepository userRepository;
+    private final ReportRepository reportRepository;
+    private final MetricAnalysisResultRepository metricAnalysisResultRepository;
 
     @Override
     public ReportResponseDTO.SaveHalluxValgusResultDTO saveHalluxValgusAnalysis(
@@ -172,5 +176,44 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                 .orElse(null);
 
         return ReportConverter.toDailyFootAnalysisResultDTO(saved, user.getFootSize(), previousAnalysis);
+    }
+
+    @Override
+    public ReportResponseDTO.SaveReportResultDTO saveReport(
+            Long userId, ReportRequestDTO.SaveReportDTO request) {
+
+        MeasurementSession measurementSession = getValidatedCompletedMeasurementSession(
+                userId, request.getMeasurementSessionId());
+
+        // totalScore 계산
+        int totalScore = Math.round((float) request.getMetricAnalysisResults().stream()
+                .mapToDouble(ReportRequestDTO.SaveMetricAnalysisResultDTO::getScore)
+                .average()
+                .orElse(0.0));
+
+        Report report = reportRepository.findByMeasurementSessionId(measurementSession.getId())
+                .map(existing -> {
+                    existing.getMetricAnalysisResults().clear();
+                    existing.updateTotalScore(totalScore);  // ← UPDATE 시에도 totalScore 반영
+                    return existing;
+                })
+                .orElseGet(() -> reportRepository.save(
+                        Report.builder()
+                                .measurementSession(measurementSession)
+                                .user(measurementSession.getUser())
+                                .reportDate(LocalDateTime.now())
+                                .totalScore(totalScore)  // ← INSERT 시 totalScore 저장
+                                .build()
+                ));
+
+        // MetricAnalysisResult 저장
+        List<MetricAnalysisResult> metricAnalysisResults = request.getMetricAnalysisResults().stream()
+                .map(dto -> ReportConverter.toMetricAnalysisResult(report, dto))
+                .collect(Collectors.toList());
+
+        metricAnalysisResultRepository.saveAll(metricAnalysisResults);
+        report.getMetricAnalysisResults().addAll(metricAnalysisResults);
+
+        return ReportConverter.toSaveReportResultDTO(report);
     }
 }

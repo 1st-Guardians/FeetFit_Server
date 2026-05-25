@@ -38,4 +38,8 @@ public class Report extends BaseEntity {
     @OneToMany(mappedBy = "report", cascade = CascadeType.ALL)
     @Builder.Default
     private List<MetricAnalysisResult> metricAnalysisResults = new ArrayList<>();
+
+    public void updateTotalScore(int totalScore) {
+        this.totalScore = totalScore;
+    }
 }
