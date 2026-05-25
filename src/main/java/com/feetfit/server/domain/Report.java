@@ -1,7 +1,6 @@
 package com.feetfit.server.domain;
 
 import com.feetfit.server.domain.common.BaseEntity;
-import com.feetfit.server.domain.enums.GaugeStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -21,7 +20,7 @@ public class Report extends BaseEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @OneToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "measurement_session_id", nullable = false)
     private MeasurementSession measurementSession;
 
@@ -38,4 +37,16 @@ public class Report extends BaseEntity {
     @OneToMany(mappedBy = "report", cascade = CascadeType.ALL)
     @Builder.Default
     private List<MetricAnalysisResult> metricAnalysisResults = new ArrayList<>();
+
+    public void updateTotalScore(int totalScore) {
+        this.totalScore = totalScore;
+    }
+
+    public void updateReportDate(LocalDateTime reportDate) {
+        this.reportDate = reportDate;
+    }
+
+    public void updateMeasurementSession(MeasurementSession measurementSession) {
+        this.measurementSession = measurementSession;
+    }
 }

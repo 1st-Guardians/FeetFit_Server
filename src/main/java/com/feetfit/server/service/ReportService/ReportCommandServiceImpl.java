@@ -13,7 +13,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -25,6 +28,8 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     private final TinaPedisAnalysisRepository tinaPedisAnalysisRepository;
     private final DailyFootAnalysisRepository dailyFootAnalysisRepository;
     private final UserRepository userRepository;
+    private final ReportRepository reportRepository;
+    private final MetricAnalysisResultRepository metricAnalysisResultRepository;
 
     @Override
     public ReportResponseDTO.SaveHalluxValgusResultDTO saveHalluxValgusAnalysis(
@@ -172,5 +177,56 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                 .orElse(null);
 
         return ReportConverter.toDailyFootAnalysisResultDTO(saved, user.getFootSize(), previousAnalysis);
+    }
+
+    @Override
+    public ReportResponseDTO.SaveReportResultDTO saveReport(
+            Long userId, ReportRequestDTO.SaveReportDTO request) {
+
+        MeasurementSession measurementSession = getValidatedCompletedMeasurementSession(
+                userId, request.getMeasurementSessionId());
+
+        int totalScore = Math.round((float) request.getMetricAnalysisResults().stream()
+                .mapToDouble(dto -> dto.getScore())
+                .average()
+                .orElse(0.0));
+
+        LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
+        LocalDateTime endOfDay = LocalDate.now().plusDays(1).atStartOfDay();
+
+        Report report = reportRepository
+                .findTopByUserIdAndReportDateGreaterThanEqualAndReportDateLessThanOrderByReportDateDesc(
+                        userId, startOfDay, endOfDay)
+                .map(existing -> {
+                    existing.updateTotalScore(totalScore);
+                    existing.updateReportDate(LocalDateTime.now());
+                    existing.updateMeasurementSession(measurementSession);
+                    return existing;
+                })
+                .orElseGet(() -> reportRepository.save(
+                        Report.builder()
+                                .measurementSession(measurementSession)
+                                .user(measurementSession.getUser())
+                                .reportDate(LocalDateTime.now())
+                                .totalScore(totalScore)
+                                .build()
+                ));
+
+        // 기존 MetricAnalysisResult 먼저 삭제
+        metricAnalysisResultRepository.deleteByReportId(report.getId());
+        metricAnalysisResultRepository.flush();  // ← DB에 즉시 반영
+
+        // 새 MetricAnalysisResult 저장
+        List<MetricAnalysisResult> metricAnalysisResults = request.getMetricAnalysisResults().stream()
+                .map(dto -> ReportConverter.toMetricAnalysisResult(report, dto))
+                .collect(Collectors.toList());
+
+        metricAnalysisResultRepository.saveAll(metricAnalysisResults);
+
+        // 연관관계 동기화
+        report.getMetricAnalysisResults().clear();
+        report.getMetricAnalysisResults().addAll(metricAnalysisResults);
+
+        return ReportConverter.toSaveReportResultDTO(report);
     }
 }

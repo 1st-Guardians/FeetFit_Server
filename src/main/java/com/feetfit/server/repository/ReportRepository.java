@@ -30,4 +30,6 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
             @Param("userId") Long userId,
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate);
+
+    Optional<Report> findByMeasurementSessionId(Long measurementSessionId);
 }
