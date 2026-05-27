@@ -31,7 +31,16 @@ public class ImageResponseDTO {
         @Schema(description = "파일 크기(byte)", example = "152340")
         private Long size;
 
-        @Schema(description = "업로드된 이미지 접근 URL", example = "/uploads/reports/7f6a8f5e-8b9a-4b12-9f89-4ff7ad2e3a20.png")
+        @Schema(description = "S3 버킷 이름", example = "project5-42-oregon-feetfit-s3")
+        private String bucketName;
+
+        @Schema(description = "S3 객체 키", example = "reports/7f6a8f5e-8b9a-4b12-9f89-4ff7ad2e3a20.png")
+        private String s3Key;
+
+        @Schema(description = "S3 URI", example = "s3://project5-42-oregon-feetfit-s3/reports/7f6a8f5e-8b9a-4b12-9f89-4ff7ad2e3a20.png")
+        private String s3Uri;
+
+        @Schema(description = "업로드된 이미지 접근 URL", example = "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/reports/7f6a8f5e-8b9a-4b12-9f89-4ff7ad2e3a20.png")
         private String imageUrl;
     }
 }

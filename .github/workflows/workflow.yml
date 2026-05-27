@@ -39,13 +39,11 @@ jobs:
       # dockerfile을 통해 이미지를 빌드하고, 이를 docker repo로 push
       - name: Docker build & push to docker repo
         run: |
-          docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_PASSWORD }}
+          echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
           docker build -f Dockerfile -t ${{ secrets.DOCKER_REPO }}/feetfit .
           docker push ${{ secrets.DOCKER_REPO }}/feetfit
 
-        # 기존에 실행되는 컨테이너 모두 멈춤
-        # 서버에 접속하여 pull 한 후 실행
-        # docker-comppose에 작성해둔 컨테이너 백그라운드로 실행
+        # 서버에 접속하여 pull 한 후 docker compose v2로 컨테이너 재생성
       - name: Deploy to server
         uses: appleboy/ssh-action@master
         id: deploy
@@ -55,8 +53,9 @@ jobs:
           key: ${{ secrets.KEY }}
           envs: GITHUB_SHA
           script: |
-            sudo docker rm -f $(docker ps -qa)
-            sudo docker stop $(docker ps -a -q)
+            set -e
+            sudo docker rm -f $(sudo docker ps -qa) || true
+            sudo docker compose down || true
             sudo docker pull ${{ secrets.DOCKER_REPO }}/feetfit
-            sudo docker-compose up --build -d
+            sudo docker compose up -d
             sudo docker image prune -f

@@ -8,7 +8,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -29,12 +28,11 @@ public class ImageController {
     @Operation(
             summary = "이미지 업로드 [은서]",
             description = """
-                    배포 서버 로컬 파일시스템에 이미지를 업로드합니다.
+                    EC2 서버에서 AWS CLI를 사용해 이미지를 S3에 업로드합니다.
                     Authorization 헤더에 Bearer accessToken이 필요합니다.
-                    - 배포 서버 Host로 요청한 경우에만 업로드할 수 있습니다.
                     - folderName은 영문, 숫자, -, _만 허용합니다.
                     - image는 jpg, jpeg, png, webp, gif만 허용합니다.
-                    - 업로드 후 imageUrl 경로로 이미지에 접근할 수 있습니다.
+                    - EC2 서버에 AWS CLI가 설치되어 있고 S3 접근 권한이 있어야 합니다.
                     """
     )
     @ApiResponses({
@@ -53,21 +51,16 @@ public class ImageController {
                     description = "Authorization 헤더 누락 또는 유효하지 않은 토큰"
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "403",
-                    description = "로컬 서버 등 허용되지 않은 Host에서 업로드 요청",
-                    content = @Content(examples = @ExampleObject(value = UPLOAD_IMAGE_FORBIDDEN_RESPONSE))
-            ),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "500",
-                    description = "이미지 저장 실패 또는 서버 내부 오류"
+                    description = "AWS CLI 미설치, S3 권한 없음, S3 업로드 실패 또는 서버 내부 오류",
+                    content = @Content(examples = @ExampleObject(value = UPLOAD_IMAGE_INTERNAL_SERVER_ERROR_RESPONSE))
             )
     })
     public ApiResponse<ImageResponseDTO.UploadImageResultDTO> uploadImage(
-            HttpServletRequest request,
             @RequestParam String folderName,
             @RequestParam MultipartFile image
     ) {
-        return ApiResponse.onSuccess(imageUploadService.upload(request.getHeader("Host"), folderName, image));
+        return ApiResponse.onSuccess(imageUploadService.upload(folderName, image));
     }
 
     private static final String UPLOAD_IMAGE_SUCCESS_RESPONSE = """
@@ -81,7 +74,10 @@ public class ImageController {
                 "storedFileName": "7f6a8f5e-8b9a-4b12-9f89-4ff7ad2e3a20.png",
                 "contentType": "image/png",
                 "size": 152340,
-                "imageUrl": "/uploads/reports/7f6a8f5e-8b9a-4b12-9f89-4ff7ad2e3a20.png"
+                "bucketName": "project5-42-oregon-feetfit-s3",
+                "s3Key": "reports/7f6a8f5e-8b9a-4b12-9f89-4ff7ad2e3a20.png",
+                "s3Uri": "s3://project5-42-oregon-feetfit-s3/reports/7f6a8f5e-8b9a-4b12-9f89-4ff7ad2e3a20.png",
+                "imageUrl": "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/reports/7f6a8f5e-8b9a-4b12-9f89-4ff7ad2e3a20.png"
               }
             }
             """;
@@ -95,11 +91,11 @@ public class ImageController {
             }
             """;
 
-    private static final String UPLOAD_IMAGE_FORBIDDEN_RESPONSE = """
+    private static final String UPLOAD_IMAGE_INTERNAL_SERVER_ERROR_RESPONSE = """
             {
               "isSuccess": false,
-              "code": "COMMON403",
-              "message": "배포 서버에서만 이미지 업로드가 가능합니다.",
+              "code": "COMMON500",
+              "message": "EC2 서버에 AWS CLI가 설치되어 있지 않거나 실행할 수 없습니다.",
               "result": null
             }
             """;
