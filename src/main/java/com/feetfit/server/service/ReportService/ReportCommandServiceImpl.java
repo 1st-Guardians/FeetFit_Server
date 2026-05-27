@@ -20,6 +20,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -98,6 +99,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                 userId,
                 request.getMeasurementSessionId()
         );
+        LocalDateTime recordedAt = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
 
         ImageResponseDTO.UploadImageResultDTO suspiciousAreaMapUpload =
                 imageUploadService.upload("tina-pedis-map", suspiciousAreaMapImage);
@@ -114,7 +116,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                             request.getTotalScoreDescription(),
                             suspiciousAreaMapUpload.getImageUrl(),
                             originalFootUpload.getImageUrl(),
-                            request.getRecordedAt()
+                            recordedAt
                     );
                     return existing;
                 })
@@ -123,7 +125,8 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                                 measurementSession,
                                 request,
                                 suspiciousAreaMapUpload.getImageUrl(),
-                                originalFootUpload.getImageUrl()
+                                originalFootUpload.getImageUrl(),
+                                recordedAt
                         )
                 ));
 

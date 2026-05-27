@@ -9,7 +9,6 @@ import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
@@ -90,10 +89,6 @@ public class ReportRequestDTO {
         @Schema(description = "종합 점수 설명", example = "전반적으로 안전하지만 발 건조 관리가 필요합니다.")
         @NotBlank(message = "종합 점수 설명은 필수입니다.")
         private String totalScoreDescription;
-
-        @Schema(description = "분석 기록 시각", example = "2026-05-20T09:00:00")
-        @NotNull(message = "기록 시각은 필수입니다.")
-        private LocalDateTime recordedAt;
     }
 
     @Getter
@@ -111,8 +106,7 @@ public class ReportRequestDTO {
                           "skinReactionSafetyScore": 76,
                           "fungalSuspicionSafetyDescription": "발가락 사이 일부 영역에서 진균 의심도가 낮게 관찰됩니다.",
                           "skinReactionSafetyDescription": "피부 발적과 자극 반응은 경미한 수준입니다.",
-                          "totalScoreDescription": "전반적으로 안전하지만 발 건조 관리가 필요합니다.",
-                          "recordedAt": "2026-05-20T09:00:00"
+                          "totalScoreDescription": "전반적으로 안전하지만 발 건조 관리가 필요합니다."
                         }
                         """
         )

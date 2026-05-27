@@ -70,8 +70,7 @@ class ReportControllerTest {
                                   "skinReactionSafetyScore": 76,
                                   "fungalSuspicionSafetyDescription": "발가락 사이 일부 영역에서 진균 의심도가 낮게 관찰됩니다.",
                                   "skinReactionSafetyDescription": "피부 발적과 자극 반응은 경미한 수준입니다.",
-                                  "totalScoreDescription": "전반적으로 안전하지만 발 건조 관리가 필요합니다.",
-                                  "recordedAt": "2026-05-20T09:00:00"
+                                  "totalScoreDescription": "전반적으로 안전하지만 발 건조 관리가 필요합니다."
                                 }
                                 """.getBytes()
         );

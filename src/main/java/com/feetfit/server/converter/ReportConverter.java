@@ -5,6 +5,7 @@ import com.feetfit.server.domain.enums.HealthType;
 import com.feetfit.server.web.dto.report.ReportRequestDTO;
 import com.feetfit.server.web.dto.report.ReportResponseDTO;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -80,7 +81,8 @@ public class ReportConverter {
             MeasurementSession measurementSession,
             ReportRequestDTO.SaveTinaPedisAnalysisDTO request,
             String suspiciousAreaMapImageUrl,
-            String originalFootImageUrl
+            String originalFootImageUrl,
+            LocalDateTime recordedAt
     ) {
         return TinaPedisAnalysis.builder()
                 .measurementSession(measurementSession)
@@ -91,7 +93,7 @@ public class ReportConverter {
                 .totalScoreDescription(request.getTotalScoreDescription())
                 .suspiciousAreaMapImageUrl(suspiciousAreaMapImageUrl)
                 .originalFootImageUrl(originalFootImageUrl)
-                .recordedAt(request.getRecordedAt())
+                .recordedAt(recordedAt)
                 .build();
     }
 
