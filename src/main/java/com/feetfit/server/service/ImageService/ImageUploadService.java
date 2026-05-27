@@ -29,7 +29,7 @@ public class ImageUploadService {
     @Value("${file.upload.public-url-prefix:/uploads}")
     private String publicUrlPrefix;
 
-    @Value("${file.upload.allowed-hosts:54.184.58.176,54.184.58.176:8080}")
+    @Value("${file.upload.allowed-hosts:54.184.58.176}")
     private String allowedHosts;
 
     public ImageResponseDTO.UploadImageResultDTO upload(String requestHost, String folderName, MultipartFile image) {
