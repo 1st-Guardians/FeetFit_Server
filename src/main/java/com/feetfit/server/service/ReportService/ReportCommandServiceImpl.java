@@ -5,7 +5,9 @@ import com.feetfit.server.apiPayload.exception.handler.MeasurementHandler;
 import com.feetfit.server.apiPayload.exception.handler.UserHandler;
 import com.feetfit.server.converter.ReportConverter;
 import com.feetfit.server.domain.*;
+import com.feetfit.server.domain.enums.HealthType;
 import com.feetfit.server.domain.enums.MeasurementStatus;
+import com.feetfit.server.domain.enums.MetricType;
 import com.feetfit.server.repository.*;
 import com.feetfit.server.web.dto.report.ReportRequestDTO;
 import com.feetfit.server.web.dto.report.ReportResponseDTO;
@@ -15,7 +17,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -30,6 +39,8 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     private final UserRepository userRepository;
     private final ReportRepository reportRepository;
     private final MetricAnalysisResultRepository metricAnalysisResultRepository;
+    private final UserStretchingTodoRepository userStretchingTodoRepository;
+    private final UserStretchingTodoAssignmentRepository userStretchingTodoAssignmentRepository;
 
     @Override
     public ReportResponseDTO.SaveHalluxValgusResultDTO saveHalluxValgusAnalysis(
@@ -186,10 +197,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
         MeasurementSession measurementSession = getValidatedCompletedMeasurementSession(
                 userId, request.getMeasurementSessionId());
 
-        int totalScore = Math.round((float) request.getMetricAnalysisResults().stream()
-                .mapToDouble(dto -> dto.getScore())
-                .average()
-                .orElse(0.0));
+        int totalScore = calculateWeightedTotalScore(request.getMetricAnalysisResults());
 
         LocalDateTime startOfDay = LocalDate.now().atStartOfDay();
         LocalDateTime endOfDay = LocalDate.now().plusDays(1).atStartOfDay();
@@ -227,6 +235,164 @@ public class ReportCommandServiceImpl implements ReportCommandService {
         report.getMetricAnalysisResults().clear();
         report.getMetricAnalysisResults().addAll(metricAnalysisResults);
 
-        return ReportConverter.toSaveReportResultDTO(report);
+        List<UserStretchingTodo> matchedTodos = replaceTodayTodoAssignments(
+                measurementSession.getUser(),
+                request.getMetricAnalysisResults(),
+                LocalDate.now()
+        );
+        List<HealthType> matchedHealthTypes = matchedTodos.stream()
+                .map(UserStretchingTodo::getHealthType)
+                .collect(Collectors.collectingAndThen(
+                        Collectors.toCollection(LinkedHashSet::new),
+                        ArrayList::new
+                ));
+
+        return ReportConverter.toSaveReportResultDTO(report, matchedHealthTypes, matchedTodos.size());
+    }
+
+    private int calculateWeightedTotalScore(List<ReportRequestDTO.SaveMetricAnalysisResultDTO> metricAnalysisResults) {
+        double weightedScoreSum = metricAnalysisResults.stream()
+                .mapToDouble(dto -> safeScore(dto.getScore()) * metricWeight(dto.getMetricType()))
+                .sum();
+        double weightSum = metricAnalysisResults.stream()
+                .mapToDouble(dto -> metricWeight(dto.getMetricType()))
+                .sum();
+
+        if (weightSum == 0.0) {
+            return 0;
+        }
+        return Math.round((float) (weightedScoreSum / weightSum));
+    }
+
+    private List<UserStretchingTodo> replaceTodayTodoAssignments(
+            User user,
+            List<ReportRequestDTO.SaveMetricAnalysisResultDTO> metricAnalysisResults,
+            LocalDate reportDate
+    ) {
+        LocalDateTime startOfDay = reportDate.atStartOfDay();
+        LocalDateTime startOfNextDay = reportDate.plusDays(1).atStartOfDay();
+
+        userStretchingTodoAssignmentRepository.deleteByUserIdAndTodoDateBetween(
+                user.getId(),
+                startOfDay,
+                startOfNextDay
+        );
+
+        List<WeightedMetric> weightedMetrics = metricAnalysisResults.stream()
+                .map(dto -> new WeightedMetric(
+                        metricToHealthType(dto.getMetricType()),
+                        safeScore(dto.getScore()),
+                        metricWeight(dto.getMetricType()),
+                        weightedDeficit(dto.getScore(), dto.getMetricType())
+                ))
+                .sorted((left, right) -> Double.compare(right.weightedDeficit(), left.weightedDeficit()))
+                .toList();
+
+        Set<HealthType> healthTypes = weightedMetrics.stream()
+                .map(WeightedMetric::healthType)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        Map<HealthType, Queue<UserStretchingTodo>> todosByHealthType = new EnumMap<>(HealthType.class);
+        userStretchingTodoRepository
+                .findByHealthTypeInAndTodoDateGreaterThanEqualAndTodoDateLessThanOrderByIdAsc(
+                        healthTypes,
+                        startOfDay,
+                        startOfNextDay
+                )
+                .forEach(todo -> todosByHealthType
+                        .computeIfAbsent(todo.getHealthType(), ignored -> new ArrayDeque<>())
+                        .add(todo));
+
+        List<UserStretchingTodo> selectedTodos = selectWeightedTodos(weightedMetrics, todosByHealthType, 3);
+        if (selectedTodos.isEmpty()) {
+            return selectedTodos;
+        }
+
+        List<UserStretchingTodoAssignment> assignments = selectedTodos.stream()
+                .map(todo -> UserStretchingTodoAssignment.builder()
+                        .user(user)
+                        .stretchingTodo(todo)
+                        .isCompleted(false)
+                        .build())
+                .toList();
+
+        userStretchingTodoAssignmentRepository.saveAll(assignments);
+        return selectedTodos;
+    }
+
+    private List<UserStretchingTodo> selectWeightedTodos(
+            List<WeightedMetric> weightedMetrics,
+            Map<HealthType, Queue<UserStretchingTodo>> todosByHealthType,
+            int limit
+    ) {
+        Map<HealthType, Integer> selectedCountByHealthType = new EnumMap<>(HealthType.class);
+        List<UserStretchingTodo> selectedTodos = new ArrayList<>();
+
+        while (selectedTodos.size() < limit) {
+            WeightedMetric selectedMetric = null;
+            double selectedPriority = -1.0;
+
+            for (WeightedMetric metric : weightedMetrics) {
+                Queue<UserStretchingTodo> todos = todosByHealthType.get(metric.healthType());
+                if (todos == null || todos.isEmpty()) {
+                    continue;
+                }
+
+                int alreadySelectedCount = selectedCountByHealthType.getOrDefault(metric.healthType(), 0);
+                double priority = metric.weightedDeficit() / (alreadySelectedCount + 1.0);
+                if (selectedMetric == null || priority > selectedPriority) {
+                    selectedMetric = metric;
+                    selectedPriority = priority;
+                }
+            }
+
+            if (selectedMetric == null) {
+                break;
+            }
+
+            selectedTodos.add(todosByHealthType.get(selectedMetric.healthType()).poll());
+            selectedCountByHealthType.merge(selectedMetric.healthType(), 1, Integer::sum);
+        }
+
+        return selectedTodos;
+    }
+
+    private double weightedDeficit(Float score, MetricType metricType) {
+        return (100.0 - safeScore(score)) * metricWeight(metricType);
+    }
+
+    private float metricWeight(MetricType metricType) {
+        return switch (metricType) {
+            case FOOT_ENVIRONMENT -> 1.25f;
+            case ATHLETES_FOOT -> 1.2f;
+            case HALLUX_VALGUS -> 1.15f;
+            case PRESSURE_BALANCE -> 1.1f;
+            case FOOT_ODOR -> 1.0f;
+        };
+    }
+
+    private HealthType metricToHealthType(MetricType metricType) {
+        return switch (metricType) {
+            case PRESSURE_BALANCE -> HealthType.POSTURE;
+            case FOOT_ENVIRONMENT -> HealthType.FOOT_ENVIRONMENT;
+            case ATHLETES_FOOT -> HealthType.ATHLETES_FOOT;
+            case HALLUX_VALGUS -> HealthType.HALLUX_VALGUS;
+            case FOOT_ODOR -> HealthType.FOOT_ODOR;
+        };
+    }
+
+    private float safeScore(Float score) {
+        if (score == null) {
+            return 0.0f;
+        }
+        return Math.max(0.0f, Math.min(100.0f, score));
+    }
+
+    private record WeightedMetric(
+            HealthType healthType,
+            float score,
+            float weight,
+            double weightedDeficit
+    ) {
     }
 }

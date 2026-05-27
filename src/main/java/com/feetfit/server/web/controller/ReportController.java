@@ -455,11 +455,13 @@ public class ReportController {
                 Authorization 헤더에 Bearer accessToken이 필요합니다.
                 - 오늘 날짜에 이미 저장된 데이터가 있으면 덮어씁니다 (UPDATE).
                 - 오늘 날짜에 저장된 데이터가 없으면 새로 저장합니다 (INSERT).
-                - totalScore는 5개 지표 균등 가중치 평균으로 서버에서 계산합니다.
+                - totalScore는 5개 지표별 가중치 평균으로 서버에서 계산합니다.
                 - 측정 세션의 status가 COMPLETED인 경우에만 저장됩니다.
                 - 본인의 측정 세션 ID만 사용 가능합니다.
                 - metricAnalysisResults는 정확히 5개여야 합니다.
                 - advice는 각 지표별 정확히 2개여야 합니다.
+                - 점수와 가중치 기반으로 부족도가 큰 카테고리의 오늘 스트레칭 투두 3개를 사용자에게 새로 매칭합니다.
+                - 기존 오늘 스트레칭 투두 매칭은 삭제하고 새 결과 기준으로 다시 연결합니다.
                 """
     )
     @ApiResponses({
@@ -599,6 +601,11 @@ public class ReportController {
                 ]
               }
             ],
+            "matchedHealthTypes": [
+              "FOOT_ENVIRONMENT",
+              "HALLUX_VALGUS"
+            ],
+            "matchedTodoCount": 3,
             "createdAt": "2026-05-20T09:00:00",
             "updatedAt": "2026-05-20T09:00:00"
           }

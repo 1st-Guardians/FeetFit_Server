@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: ${DB_URL}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    url: jdbc:mysql://feetfit-db.cloquck0gnqu.us-west-2.rds.amazonaws.com:3306/feetfit?serverTimezone=Asia/Seoul&characterEncoding=UTF-8&useSSL=false&allowPublicKeyRetrieval=true
+    username: feetfit
+    password: feetfit1234
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
@@ -20,20 +20,7 @@ spring:
       max-request-size: 10MB
 
 jwt:
-  secret: ${JWT_SECRET}
-
-cloud:
-  aws:
-    s3:
-      bucket: ${S3_BUCKET}
-      profile-image-path: ${S3_PROFILE_IMAGE_PATH}
-    credentials:
-      access-key: ${S3_ACCESS_KEY}
-      secret-key: ${S3_SECRET_KEY}
-    region:
-      static: ${S3_REGION}
-    stack:
-      auto: false
+  secret: "q9dgU72LFwp03/beozN8fB3vUbOdrMwGJmuXrAt7BbM="
 
 springdoc:
   swagger-ui:

@@ -1,6 +1,7 @@
 package com.feetfit.server.web.dto.report;
 
 import com.feetfit.server.domain.enums.GaugeStatus;
+import com.feetfit.server.domain.enums.HealthType;
 import com.feetfit.server.domain.enums.MetricType;
 import com.feetfit.server.domain.enums.RiskLevel;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -361,6 +362,12 @@ public class ReportResponseDTO {
 
         @Schema(description = "지표별 분석 결과 목록")
         private List<MetricScoreDTO> metricAnalysisResults;
+
+        @Schema(description = "점수 분포와 가중치 기반으로 투두가 매칭된 건강 타입", example = "[FOOT_ENVIRONMENT, HALLUX_VALGUS]")
+        private List<HealthType> matchedHealthTypes;
+
+        @Schema(description = "사용자에게 새로 매칭된 스트레칭 투두 개수", example = "3")
+        private Integer matchedTodoCount;
 
         @Schema(description = "생성 시각", example = "2026-05-20T09:00:00")
         private LocalDateTime createdAt;
