@@ -48,7 +48,9 @@ application-prod.yml
 *.log
 logs/
 
+### Uploaded files ###
+uploads/
+
 ### Env ###
 .env
 *.env
-

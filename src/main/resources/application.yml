@@ -29,5 +29,11 @@ springdoc:
     path: /v3/api-docs
 
 swagger:
-  server-url: ${SWAGGER_SERVER_URL:http://54.184.58.176}
-  server-description: ${SWAGGER_SERVER_DESCRIPTION:Deploy server}
+  local-server-url: ${SWAGGER_LOCAL_SERVER_URL:http://localhost:8080}
+  deploy-server-url: ${SWAGGER_DEPLOY_SERVER_URL:http://54.184.58.176}
+
+file:
+  upload:
+    root-path: ${FILE_UPLOAD_ROOT:uploads}
+    public-url-prefix: ${FILE_PUBLIC_URL_PREFIX:/uploads}
+    allowed-hosts: ${FILE_UPLOAD_ALLOWED_HOSTS:54.184.58.176,54.184.58.176:8080}
