@@ -27,3 +27,7 @@ springdoc:
     path: /swagger-ui.html
   api-docs:
     path: /v3/api-docs
+
+swagger:
+  server-url: ${SWAGGER_SERVER_URL:http://54.184.58.176}
+  server-description: ${SWAGGER_SERVER_DESCRIPTION:Deploy server}
