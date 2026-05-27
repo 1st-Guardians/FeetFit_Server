@@ -36,4 +36,4 @@ file:
   upload:
     root-path: ${FILE_UPLOAD_ROOT:uploads}
     public-url-prefix: ${FILE_PUBLIC_URL_PREFIX:/uploads}
-    allowed-hosts: ${FILE_UPLOAD_ALLOWED_HOSTS:54.184.58.176,54.184.58.176:8080}
+    allowed-hosts: ${FILE_UPLOAD_ALLOWED_HOSTS:54.184.58.176}
