@@ -13,11 +13,11 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class SwaggerConfig {
 
-    @Value("${swagger.server-url:http://localhost:8080}")
-    private String serverUrl;
+    @Value("${swagger.local-server-url:http://localhost:8080}")
+    private String localServerUrl;
 
-    @Value("${swagger.server-description:Local server}")
-    private String serverDescription;
+    @Value("${swagger.deploy-server-url:http://54.184.58.176}")
+    private String deployServerUrl;
 
     @Bean
     public OpenAPI feetFitSwaggerAPI() {
@@ -31,8 +31,11 @@ public class SwaggerConfig {
                         .bearerFormat("JWT"));
         return new OpenAPI()
                 .addServersItem(new Server()
-                        .url(serverUrl)
-                        .description(serverDescription))
+                        .url(localServerUrl)
+                        .description("Local server"))
+                .addServersItem(new Server()
+                        .url(deployServerUrl)
+                        .description("Deploy server"))
                 .addSecurityItem(securityRequirement)
                 .components(components)
                 .info(new Info()
