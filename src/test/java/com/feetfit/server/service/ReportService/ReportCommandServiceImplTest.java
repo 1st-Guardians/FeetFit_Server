@@ -92,8 +92,8 @@ class ReportCommandServiceImplTest {
                 .willAnswer(invocation -> invocation.getArgument(0));
         given(tinaPedisAnalysisRepository
                 .findTopByMeasurementSessionUserIdAndRecordedAtLessThanOrderByRecordedAtDesc(
-                        1L,
-                        LocalDateTime.of(2026, 5, 20, 0, 0)
+                        eq(1L),
+                        any(LocalDateTime.class)
                 ))
                 .willReturn(Optional.empty());
 
@@ -107,6 +107,7 @@ class ReportCommandServiceImplTest {
         assertThat(response.getPreviousTotalScore()).isNull();
         assertThat(response.getTotalScoreDiff()).isNull();
         assertThat(response.getTotalScoreDescription()).isEqualTo("전반적으로 안전하지만 발 건조 관리가 필요합니다.");
+        assertThat(response.getRecordedAt()).isNotNull();
     }
 
     @Test
@@ -129,8 +130,8 @@ class ReportCommandServiceImplTest {
         givenImageUploads();
         given(tinaPedisAnalysisRepository
                 .findTopByMeasurementSessionUserIdAndRecordedAtLessThanOrderByRecordedAtDesc(
-                        1L,
-                        LocalDateTime.of(2026, 5, 20, 0, 0)
+                        eq(1L),
+                        any(LocalDateTime.class)
                 ))
                 .willReturn(Optional.empty());
 
@@ -144,6 +145,7 @@ class ReportCommandServiceImplTest {
         assertThat(response.getTotalScoreDiff()).isNull();
         assertThat(existingAnalysis.getFungalSuspicionSafetyScore()).isEqualTo(93);
         assertThat(existingAnalysis.getSkinReactionSafetyScore()).isEqualTo(93);
+        assertThat(existingAnalysis.getRecordedAt()).isNotEqualTo(LocalDateTime.of(2026, 5, 19, 9, 0));
     }
 
     @Test
@@ -214,7 +216,6 @@ class ReportCommandServiceImplTest {
         ReflectionTestUtils.setField(request, "fungalSuspicionSafetyDescription", "발가락 사이 일부 영역에서 진균 의심도가 낮게 관찰됩니다.");
         ReflectionTestUtils.setField(request, "skinReactionSafetyDescription", "피부 발적과 자극 반응은 경미한 수준입니다.");
         ReflectionTestUtils.setField(request, "totalScoreDescription", "전반적으로 안전하지만 발 건조 관리가 필요합니다.");
-        ReflectionTestUtils.setField(request, "recordedAt", LocalDateTime.of(2026, 5, 20, 9, 0));
         return request;
     }
 
