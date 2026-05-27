@@ -91,17 +91,38 @@ public class ReportRequestDTO {
         @NotBlank(message = "종합 점수 설명은 필수입니다.")
         private String totalScoreDescription;
 
-        @Schema(description = "의심 부위 표시 이미지 URL", example = "https://example.com/tina-pedis/map.png")
-        @NotBlank(message = "의심 부위 맵 이미지 URL은 필수입니다.")
-        private String suspiciousAreaMapImageUrl;
-
-        @Schema(description = "원본 발 이미지 URL", example = "https://example.com/tina-pedis/original.png")
-        @NotBlank(message = "원본 발 이미지 URL은 필수입니다.")
-        private String originalFootImageUrl;
-
         @Schema(description = "분석 기록 시각", example = "2026-05-20T09:00:00")
         @NotNull(message = "기록 시각은 필수입니다.")
         private LocalDateTime recordedAt;
+    }
+
+    @Getter
+    @NoArgsConstructor
+    @Schema(description = "무좀 분석 결과 저장 multipart 요청")
+    public static class SaveTinaPedisAnalysisMultipartDTO {
+
+        @Schema(
+                description = "무좀 분석 JSON 문자열 파트",
+                type = "string",
+                example = """
+                        {
+                          "measurementSessionId": 1,
+                          "fungalSuspicionSafetyScore": 82,
+                          "skinReactionSafetyScore": 76,
+                          "fungalSuspicionSafetyDescription": "발가락 사이 일부 영역에서 진균 의심도가 낮게 관찰됩니다.",
+                          "skinReactionSafetyDescription": "피부 발적과 자극 반응은 경미한 수준입니다.",
+                          "totalScoreDescription": "전반적으로 안전하지만 발 건조 관리가 필요합니다.",
+                          "recordedAt": "2026-05-20T09:00:00"
+                        }
+                        """
+        )
+        private String request;
+
+        @Schema(description = "의심 부위 표시 이미지 파일", type = "string", format = "binary")
+        private String suspiciousAreaMapImage;
+
+        @Schema(description = "원본 발 이미지 파일", type = "string", format = "binary")
+        private String originalFootImage;
     }
 
     @Getter

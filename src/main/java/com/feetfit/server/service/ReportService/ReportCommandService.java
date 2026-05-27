@@ -2,6 +2,7 @@ package com.feetfit.server.service.ReportService;
 
 import com.feetfit.server.web.dto.report.ReportRequestDTO;
 import com.feetfit.server.web.dto.report.ReportResponseDTO;
+import org.springframework.web.multipart.MultipartFile;
 
 public interface ReportCommandService {
 
@@ -11,7 +12,11 @@ public interface ReportCommandService {
 
     // 무좀 분석 결과 저장
     ReportResponseDTO.TinaPedisAnalysisResultDTO saveTinaPedisAnalysis(
-            Long userId, ReportRequestDTO.SaveTinaPedisAnalysisDTO request);
+            Long userId,
+            ReportRequestDTO.SaveTinaPedisAnalysisDTO request,
+            MultipartFile suspiciousAreaMapImage,
+            MultipartFile originalFootImage
+    );
 
     // 종합 측정 분석 결과 저장
     ReportResponseDTO.DailyFootAnalysisResultDTO saveDailyFootAnalysis(

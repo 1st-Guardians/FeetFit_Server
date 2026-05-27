@@ -9,11 +9,14 @@ import com.feetfit.server.domain.enums.HealthType;
 import com.feetfit.server.domain.enums.MeasurementStatus;
 import com.feetfit.server.domain.enums.MetricType;
 import com.feetfit.server.repository.*;
+import com.feetfit.server.service.ImageService.ImageUploadService;
+import com.feetfit.server.web.dto.image.ImageResponseDTO;
 import com.feetfit.server.web.dto.report.ReportRequestDTO;
 import com.feetfit.server.web.dto.report.ReportResponseDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -41,6 +44,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     private final MetricAnalysisResultRepository metricAnalysisResultRepository;
     private final UserStretchingTodoRepository userStretchingTodoRepository;
     private final UserStretchingTodoAssignmentRepository userStretchingTodoAssignmentRepository;
+    private final ImageUploadService imageUploadService;
 
     @Override
     public ReportResponseDTO.SaveHalluxValgusResultDTO saveHalluxValgusAnalysis(
@@ -86,12 +90,19 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     @Override
     public ReportResponseDTO.TinaPedisAnalysisResultDTO saveTinaPedisAnalysis(
             Long userId,
-            ReportRequestDTO.SaveTinaPedisAnalysisDTO request
+            ReportRequestDTO.SaveTinaPedisAnalysisDTO request,
+            MultipartFile suspiciousAreaMapImage,
+            MultipartFile originalFootImage
     ) {
         MeasurementSession measurementSession = getValidatedCompletedMeasurementSession(
                 userId,
                 request.getMeasurementSessionId()
         );
+
+        ImageResponseDTO.UploadImageResultDTO suspiciousAreaMapUpload =
+                imageUploadService.upload("tina-pedis-map", suspiciousAreaMapImage);
+        ImageResponseDTO.UploadImageResultDTO originalFootUpload =
+                imageUploadService.upload("tina-pedis-original", originalFootImage);
 
         TinaPedisAnalysis saved = tinaPedisAnalysisRepository.findByMeasurementSessionId(measurementSession.getId())
                 .map(existing -> {
@@ -101,14 +112,19 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                             request.getFungalSuspicionSafetyDescription(),
                             request.getSkinReactionSafetyDescription(),
                             request.getTotalScoreDescription(),
-                            request.getSuspiciousAreaMapImageUrl(),
-                            request.getOriginalFootImageUrl(),
+                            suspiciousAreaMapUpload.getImageUrl(),
+                            originalFootUpload.getImageUrl(),
                             request.getRecordedAt()
                     );
                     return existing;
                 })
                 .orElseGet(() -> tinaPedisAnalysisRepository.save(
-                        ReportConverter.toTinaPedisAnalysis(measurementSession, request)
+                        ReportConverter.toTinaPedisAnalysis(
+                                measurementSession,
+                                request,
+                                suspiciousAreaMapUpload.getImageUrl(),
+                                originalFootUpload.getImageUrl()
+                        )
                 ));
 
         tinaPedisAnalysisRepository.flush();
