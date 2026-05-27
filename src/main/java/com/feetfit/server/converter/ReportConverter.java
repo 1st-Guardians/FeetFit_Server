@@ -78,7 +78,9 @@ public class ReportConverter {
 
     public static TinaPedisAnalysis toTinaPedisAnalysis(
             MeasurementSession measurementSession,
-            ReportRequestDTO.SaveTinaPedisAnalysisDTO request
+            ReportRequestDTO.SaveTinaPedisAnalysisDTO request,
+            String suspiciousAreaMapImageUrl,
+            String originalFootImageUrl
     ) {
         return TinaPedisAnalysis.builder()
                 .measurementSession(measurementSession)
@@ -87,8 +89,8 @@ public class ReportConverter {
                 .fungalSuspicionSafetyDescription(request.getFungalSuspicionSafetyDescription())
                 .skinReactionSafetyDescription(request.getSkinReactionSafetyDescription())
                 .totalScoreDescription(request.getTotalScoreDescription())
-                .suspiciousAreaMapImageUrl(request.getSuspiciousAreaMapImageUrl())
-                .originalFootImageUrl(request.getOriginalFootImageUrl())
+                .suspiciousAreaMapImageUrl(suspiciousAreaMapImageUrl)
+                .originalFootImageUrl(originalFootImageUrl)
                 .recordedAt(request.getRecordedAt())
                 .build();
     }

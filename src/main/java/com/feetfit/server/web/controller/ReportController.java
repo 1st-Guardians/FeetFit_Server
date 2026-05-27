@@ -1,6 +1,10 @@
 package com.feetfit.server.web.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.feetfit.server.apiPayload.ApiResponse;
+import com.feetfit.server.apiPayload.code.status.ErrorStatus;
+import com.feetfit.server.apiPayload.exception.GeneralException;
 import com.feetfit.server.jwt.FindLoginUser;
 import com.feetfit.server.service.ReportService.ReportCommandService;
 import com.feetfit.server.service.ReportService.ReportQueryService;
@@ -10,14 +14,23 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.servers.Server;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Valid;
+import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Set;
 
 @Tag(name = "Report", description = "리포트 API")
 @RestController
@@ -28,6 +41,8 @@ public class ReportController {
     private final ReportCommandService reportCommandService;
     private final ReportQueryService reportQueryService;
     private final FindLoginUser findLoginUser;
+    private final ObjectMapper objectMapper;
+    private final Validator validator;
 
     @PostMapping("/hallux-valgus")
     @Operation(
@@ -80,8 +95,12 @@ public class ReportController {
     @Operation(
             summary = "무좀 분석 결과 저장 [은서]",
             description = """
-                    AI 분석 결과로 받은 무좀 분석 데이터를 저장합니다.
+                    AI 분석 결과로 받은 무좀 분석 데이터와 실제 발 이미지를 저장합니다.
                     Authorization 헤더에 Bearer accessToken이 필요합니다.
+                    - request 파트에는 무좀 분석 JSON 데이터를 문자열로 넣습니다.
+                    - suspiciousAreaMapImage 파트에는 의심 부위 표시 이미지를 넣습니다.
+                    - originalFootImage 파트에는 원본 발 이미지를 넣습니다.
+                    - 이미지는 EC2 서버에서 AWS CLI를 사용해 S3에 업로드하고, 업로드된 S3 URL을 DB에 저장합니다.
                     - safetyScore 값은 0 이상 100 이하만 허용합니다.
                     - totalScore는 진균 의심 안전 점수 70%, 피부 반응 안전 점수 30%로 계산됩니다.
                     - 오늘 날짜를 제외한 과거 측정 결과 중 가장 최근 결과가 있으면 previousTotalScore, totalScoreDiff를 함께 반환합니다.
@@ -90,7 +109,17 @@ public class ReportController {
                     - 같은 측정 세션에 저장된 데이터가 없으면 새로 저장합니다 (INSERT).
                     - 측정 세션의 status가 COMPLETED인 경우에만 저장됩니다.
                     - 본인의 측정 세션 ID만 사용 가능합니다.
-                    """
+                    """,
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = true,
+                    content = @Content(
+                            mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+                            schema = @Schema(implementation = ReportRequestDTO.SaveTinaPedisAnalysisMultipartDTO.class)
+                    )
+            ),
+            servers = {
+                    @Server(url = "http://54.184.58.176", description = "Deploy server - S3 image upload")
+            }
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -100,9 +129,10 @@ public class ReportController {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "400",
-                    description = "필수값 누락, 점수 범위 오류, 잘못된 JSON, 완료되지 않은 측정 세션",
+                    description = "필수값 누락, 이미지 파일 누락, 점수 범위 오류, 잘못된 JSON, 완료되지 않은 측정 세션",
                     content = @Content(examples = {
                             @ExampleObject(name = "유효성 검사 실패", value = TINA_PEDIS_VALIDATION_ERROR_RESPONSE),
+                            @ExampleObject(name = "이미지 파일 누락", value = IMAGE_REQUIRED_RESPONSE),
                             @ExampleObject(name = "잘못된 JSON", value = INVALID_JSON_RESPONSE),
                             @ExampleObject(name = "완료되지 않은 측정 세션", value = MEASUREMENT_NOT_COMPLETED_RESPONSE)
                     })
@@ -124,15 +154,57 @@ public class ReportController {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "500",
-                    description = "서버 내부 오류",
-                    content = @Content(examples = @ExampleObject(value = INTERNAL_SERVER_ERROR_RESPONSE))
+                    description = "AWS CLI 미설치, S3 권한 없음, S3 업로드 실패 또는 서버 내부 오류",
+                    content = @Content(examples = {
+                            @ExampleObject(name = "S3 업로드 실패", value = S3_UPLOAD_ERROR_RESPONSE),
+                            @ExampleObject(name = "서버 내부 오류", value = INTERNAL_SERVER_ERROR_RESPONSE)
+                    })
             )
     })
     public ApiResponse<ReportResponseDTO.TinaPedisAnalysisResultDTO> saveTinaPedisAnalysis(
-            @RequestBody @Valid ReportRequestDTO.SaveTinaPedisAnalysisDTO request
+            @Parameter(description = "무좀 분석 JSON 문자열 파트", required = true)
+            @RequestPart("request") String requestJson,
+            @Parameter(description = "의심 부위 표시 이미지 파일", required = true)
+            @RequestPart("suspiciousAreaMapImage") MultipartFile suspiciousAreaMapImage,
+            @Parameter(description = "원본 발 이미지 파일", required = true)
+            @RequestPart("originalFootImage") MultipartFile originalFootImage
     ) {
         Long userId = findLoginUser.getCurrentUserId();
-        return ApiResponse.onSuccess(reportCommandService.saveTinaPedisAnalysis(userId, request));
+        ReportRequestDTO.SaveTinaPedisAnalysisDTO request = parseTinaPedisRequest(requestJson);
+        return ApiResponse.onSuccess(reportCommandService.saveTinaPedisAnalysis(
+                userId,
+                request,
+                suspiciousAreaMapImage,
+                originalFootImage
+        ));
+    }
+
+    private ReportRequestDTO.SaveTinaPedisAnalysisDTO parseTinaPedisRequest(String requestJson) {
+        if (requestJson == null || requestJson.isBlank()) {
+            throw new GeneralException(ErrorStatus._BAD_REQUEST, "request 파트는 필수입니다.");
+        }
+
+        ReportRequestDTO.SaveTinaPedisAnalysisDTO request;
+        try {
+            request = objectMapper.readValue(requestJson, ReportRequestDTO.SaveTinaPedisAnalysisDTO.class);
+        } catch (JsonProcessingException e) {
+            throw new GeneralException(
+                    ErrorStatus._BAD_REQUEST,
+                    "요청 본문 형식이 잘못되었습니다. enum 값은 허용된 대문자 값으로 입력해야 합니다."
+            );
+        }
+
+        Set<ConstraintViolation<ReportRequestDTO.SaveTinaPedisAnalysisDTO>> violations = validator.validate(request);
+        if (!violations.isEmpty()) {
+            Map<String, String> errors = new LinkedHashMap<>();
+            violations.forEach(violation -> errors.put(
+                    violation.getPropertyPath().toString(),
+                    violation.getMessage()
+            ));
+            throw new GeneralException(ErrorStatus._BAD_REQUEST, "잘못된 요청입니다.", errors);
+        }
+
+        return request;
     }
 
     private static final String SAVE_HALLUX_VALGUS_SUCCESS_RESPONSE = """
@@ -173,8 +245,8 @@ public class ReportController {
                 "fungalSuspicionSafetyDescription": "발가락 사이 일부 영역에서 진균 의심도가 낮게 관찰됩니다.",
                 "skinReactionSafetyDescription": "피부 발적과 자극 반응은 경미한 수준입니다.",
                 "totalScoreDescription": "전반적으로 안전하지만 발 건조 관리가 필요합니다.",
-                "suspiciousAreaMapImageUrl": "https://example.com/tina-pedis/map.png",
-                "originalFootImageUrl": "https://example.com/tina-pedis/original.png",
+                "suspiciousAreaMapImageUrl": "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/tina-pedis-map/7f6a8f5e-8b9a-4b12-9f89-4ff7ad2e3a20.png",
+                "originalFootImageUrl": "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/tina-pedis-original/9d6c9a1f-5b54-41b8-a5dd-34b76dd77f11.png",
                 "recordedAt": "2026-05-20T09:00:00",
                 "createdAt": "2026-05-20T09:00:00",
                 "updatedAt": "2026-05-20T09:00:00"
@@ -206,10 +278,26 @@ public class ReportController {
                 "fungalSuspicionSafetyDescription": "진균 의심 안전 설명은 필수입니다.",
                 "skinReactionSafetyDescription": "피부 반응 안전 설명은 필수입니다.",
                 "totalScoreDescription": "종합 점수 설명은 필수입니다.",
-                "suspiciousAreaMapImageUrl": "의심 부위 맵 이미지 URL은 필수입니다.",
-                "originalFootImageUrl": "원본 발 이미지 URL은 필수입니다.",
                 "recordedAt": "기록 시각은 필수입니다."
               }
+            }
+            """;
+
+    private static final String IMAGE_REQUIRED_RESPONSE = """
+            {
+              "isSuccess": false,
+              "code": "COMMON400",
+              "message": "업로드할 이미지 파일은 필수입니다.",
+              "result": null
+            }
+            """;
+
+    private static final String S3_UPLOAD_ERROR_RESPONSE = """
+            {
+              "isSuccess": false,
+              "code": "COMMON500",
+              "message": "S3 이미지 업로드에 실패했습니다.",
+              "result": null
             }
             """;
 

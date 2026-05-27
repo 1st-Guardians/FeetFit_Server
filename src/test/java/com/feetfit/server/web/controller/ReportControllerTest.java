@@ -16,6 +16,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
@@ -25,7 +26,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -55,12 +56,14 @@ class ReportControllerTest {
     @Test
     void saveTinaPedisAnalysis_success_returnsAnalysis() throws Exception {
         given(findLoginUser.getCurrentUserId()).willReturn(1L);
-        given(reportCommandService.saveTinaPedisAnalysis(eq(1L), any()))
+        given(reportCommandService.saveTinaPedisAnalysis(eq(1L), any(), any(), any()))
                 .willReturn(tinaPedisResponse());
 
-        mockMvc.perform(post("/api/reports/tina-pedis")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
+        MockMultipartFile request = new MockMultipartFile(
+                "request",
+                "",
+                MediaType.APPLICATION_OCTET_STREAM_VALUE,
+                """
                                 {
                                   "measurementSessionId": 1,
                                   "fungalSuspicionSafetyScore": 82,
@@ -68,11 +71,27 @@ class ReportControllerTest {
                                   "fungalSuspicionSafetyDescription": "발가락 사이 일부 영역에서 진균 의심도가 낮게 관찰됩니다.",
                                   "skinReactionSafetyDescription": "피부 발적과 자극 반응은 경미한 수준입니다.",
                                   "totalScoreDescription": "전반적으로 안전하지만 발 건조 관리가 필요합니다.",
-                                  "suspiciousAreaMapImageUrl": "https://example.com/tina-pedis/map.png",
-                                  "originalFootImageUrl": "https://example.com/tina-pedis/original.png",
                                   "recordedAt": "2026-05-20T09:00:00"
                                 }
-                                """))
+                                """.getBytes()
+        );
+        MockMultipartFile suspiciousAreaMapImage = new MockMultipartFile(
+                "suspiciousAreaMapImage",
+                "map.png",
+                MediaType.IMAGE_PNG_VALUE,
+                "map-image".getBytes()
+        );
+        MockMultipartFile originalFootImage = new MockMultipartFile(
+                "originalFootImage",
+                "foot.png",
+                MediaType.IMAGE_PNG_VALUE,
+                "foot-image".getBytes()
+        );
+
+        mockMvc.perform(multipart("/api/reports/tina-pedis")
+                        .file(request)
+                        .file(suspiciousAreaMapImage)
+                        .file(originalFootImage))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isSuccess").value(true))
                 .andExpect(jsonPath("$.code").value("COMMON200"))
