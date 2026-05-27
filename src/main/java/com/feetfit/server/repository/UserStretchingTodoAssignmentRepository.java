@@ -2,6 +2,7 @@ package com.feetfit.server.repository;
 
 import com.feetfit.server.domain.UserStretchingTodoAssignment;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -36,5 +37,22 @@ public interface UserStretchingTodoAssignmentRepository extends JpaRepository<Us
     Optional<UserStretchingTodoAssignment> findByUserIdAndTodoId(
             @Param("userId") Long userId,
             @Param("todoId") Long todoId
+    );
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            DELETE FROM UserStretchingTodoAssignment assignment
+            WHERE assignment.user.id = :userId
+              AND assignment.stretchingTodo.id IN (
+                  SELECT todo.id
+                  FROM UserStretchingTodo todo
+                  WHERE todo.todoDate >= :startOfDay
+                    AND todo.todoDate < :startOfNextDay
+              )
+            """)
+    void deleteByUserIdAndTodoDateBetween(
+            @Param("userId") Long userId,
+            @Param("startOfDay") LocalDateTime startOfDay,
+            @Param("startOfNextDay") LocalDateTime startOfNextDay
     );
 }

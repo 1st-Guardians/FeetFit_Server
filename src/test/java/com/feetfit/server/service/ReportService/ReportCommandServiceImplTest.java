@@ -1,12 +1,24 @@
 package com.feetfit.server.service.ReportService;
 
 import com.feetfit.server.apiPayload.exception.handler.MeasurementHandler;
+import com.feetfit.server.domain.Report;
+import com.feetfit.server.domain.UserStretchingTodo;
+import com.feetfit.server.domain.UserStretchingTodoAssignment;
 import com.feetfit.server.domain.MeasurementSession;
 import com.feetfit.server.domain.TinaPedisAnalysis;
 import com.feetfit.server.domain.User;
+import com.feetfit.server.domain.enums.GaugeStatus;
+import com.feetfit.server.domain.enums.HealthType;
+import com.feetfit.server.domain.enums.MetricType;
 import com.feetfit.server.domain.enums.MeasurementStatus;
 import com.feetfit.server.domain.enums.SocialType;
 import com.feetfit.server.domain.enums.UserStatus;
+import com.feetfit.server.repository.DailyFootAnalysisRepository;
+import com.feetfit.server.repository.MetricAnalysisResultRepository;
+import com.feetfit.server.repository.ReportRepository;
+import com.feetfit.server.repository.UserRepository;
+import com.feetfit.server.repository.UserStretchingTodoAssignmentRepository;
+import com.feetfit.server.repository.UserStretchingTodoRepository;
 import com.feetfit.server.repository.HalluxValgusAnalysisRepository;
 import com.feetfit.server.repository.MeasurementSessionRepository;
 import com.feetfit.server.repository.TinaPedisAnalysisRepository;
@@ -14,18 +26,23 @@ import com.feetfit.server.web.dto.report.ReportRequestDTO;
 import com.feetfit.server.web.dto.report.ReportResponseDTO;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.StreamSupport;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class ReportCommandServiceImplTest {
@@ -38,6 +55,24 @@ class ReportCommandServiceImplTest {
 
     @Mock
     private TinaPedisAnalysisRepository tinaPedisAnalysisRepository;
+
+    @Mock
+    private DailyFootAnalysisRepository dailyFootAnalysisRepository;
+
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private ReportRepository reportRepository;
+
+    @Mock
+    private MetricAnalysisResultRepository metricAnalysisResultRepository;
+
+    @Mock
+    private UserStretchingTodoRepository userStretchingTodoRepository;
+
+    @Mock
+    private UserStretchingTodoAssignmentRepository userStretchingTodoAssignmentRepository;
 
     @InjectMocks
     private ReportCommandServiceImpl reportCommandService;
@@ -111,6 +146,54 @@ class ReportCommandServiceImplTest {
                 .isInstanceOf(MeasurementHandler.class);
     }
 
+    @Test
+    @SuppressWarnings("unchecked")
+    void saveReport_matchesThreeTodosByWeightedLowScoreDistribution() {
+        MeasurementSession measurementSession = measurementSession(MeasurementStatus.COMPLETED);
+        ReportRequestDTO.SaveReportDTO request = saveReportRequest();
+        List<UserStretchingTodo> todos = List.of(
+                stretchingTodo(1L, HealthType.FOOT_ENVIRONMENT, "발 건조 관리"),
+                stretchingTodo(2L, HealthType.FOOT_ENVIRONMENT, "통풍 스트레칭"),
+                stretchingTodo(3L, HealthType.FOOT_ENVIRONMENT, "발 환경 관리"),
+                stretchingTodo(4L, HealthType.HALLUX_VALGUS, "발가락 벌리기"),
+                stretchingTodo(5L, HealthType.POSTURE, "균형 스트레칭")
+        );
+
+        given(measurementSessionRepository.findById(1L)).willReturn(Optional.of(measurementSession));
+        given(reportRepository.findTopByUserIdAndReportDateGreaterThanEqualAndReportDateLessThanOrderByReportDateDesc(
+                eq(1L), any(LocalDateTime.class), any(LocalDateTime.class)
+        )).willReturn(Optional.empty());
+        given(reportRepository.save(any(Report.class))).willAnswer(invocation -> {
+            Report report = invocation.getArgument(0);
+            ReflectionTestUtils.setField(report, "id", 1L);
+            return report;
+        });
+        given(metricAnalysisResultRepository.saveAll(any()))
+                .willAnswer(invocation -> invocation.getArgument(0));
+        given(userStretchingTodoRepository.findByHealthTypeInAndTodoDateGreaterThanEqualAndTodoDateLessThanOrderByIdAsc(
+                any(), any(LocalDateTime.class), any(LocalDateTime.class)
+        )).willReturn(todos);
+
+        ReportResponseDTO.SaveReportResultDTO response = reportCommandService.saveReport(1L, request);
+
+        assertThat(response.getTotalScore()).isEqualTo(73);
+        assertThat(response.getMatchedTodoCount()).isEqualTo(3);
+        assertThat(response.getMatchedHealthTypes()).containsExactly(HealthType.FOOT_ENVIRONMENT, HealthType.HALLUX_VALGUS);
+        verify(userStretchingTodoAssignmentRepository).deleteByUserIdAndTodoDateBetween(
+                eq(1L), any(LocalDateTime.class), any(LocalDateTime.class)
+        );
+
+        ArgumentCaptor<Iterable<UserStretchingTodoAssignment>> captor = ArgumentCaptor.forClass(Iterable.class);
+        verify(userStretchingTodoAssignmentRepository).saveAll(captor.capture());
+        List<UserStretchingTodoAssignment> assignments = StreamSupport.stream(captor.getValue().spliterator(), false)
+                .toList();
+
+        assertThat(assignments).hasSize(3);
+        assertThat(assignments)
+                .extracting(assignment -> assignment.getStretchingTodo().getHealthType())
+                .containsExactly(HealthType.FOOT_ENVIRONMENT, HealthType.HALLUX_VALGUS, HealthType.FOOT_ENVIRONMENT);
+    }
+
     private static ReportRequestDTO.SaveTinaPedisAnalysisDTO tinaPedisRequest() {
         return tinaPedisRequest(82, 76);
     }
@@ -127,6 +210,38 @@ class ReportCommandServiceImplTest {
         ReflectionTestUtils.setField(request, "originalFootImageUrl", "https://example.com/tina-pedis/original.png");
         ReflectionTestUtils.setField(request, "recordedAt", LocalDateTime.of(2026, 5, 20, 9, 0));
         return request;
+    }
+
+    private static ReportRequestDTO.SaveReportDTO saveReportRequest() {
+        ReportRequestDTO.SaveReportDTO request = new ReportRequestDTO.SaveReportDTO();
+        ReflectionTestUtils.setField(request, "measurementSessionId", 1L);
+        ReflectionTestUtils.setField(request, "metricAnalysisResults", List.of(
+                metricAnalysisResult(MetricType.PRESSURE_BALANCE, 75.0f),
+                metricAnalysisResult(MetricType.FOOT_ENVIRONMENT, 50.0f),
+                metricAnalysisResult(MetricType.ATHLETES_FOOT, 90.0f),
+                metricAnalysisResult(MetricType.HALLUX_VALGUS, 70.0f),
+                metricAnalysisResult(MetricType.FOOT_ODOR, 80.0f)
+        ));
+        return request;
+    }
+
+    private static ReportRequestDTO.SaveMetricAnalysisResultDTO metricAnalysisResult(MetricType metricType, Float score) {
+        ReportRequestDTO.SaveMetricAnalysisResultDTO request = new ReportRequestDTO.SaveMetricAnalysisResultDTO();
+        ReflectionTestUtils.setField(request, "metricType", metricType);
+        ReflectionTestUtils.setField(request, "score", score);
+        ReflectionTestUtils.setField(request, "status", score >= 80.0f ? GaugeStatus.VERY_GOOD : GaugeStatus.ATTENTION_NEEDED);
+        ReflectionTestUtils.setField(request, "advice", List.of("첫 번째 어드바이스", "두 번째 어드바이스"));
+        return request;
+    }
+
+    private static UserStretchingTodo stretchingTodo(Long id, HealthType healthType, String title) {
+        return UserStretchingTodo.builder()
+                .id(id)
+                .title(title)
+                .healthType(healthType)
+                .youtubeUrl("https://www.youtube.com/watch?v=stretching" + id)
+                .todoDate(LocalDateTime.of(2026, 5, 20, 9, 0))
+                .build();
     }
 
     private static MeasurementSession measurementSession(MeasurementStatus status) {

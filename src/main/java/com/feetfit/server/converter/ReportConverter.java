@@ -1,6 +1,7 @@
 package com.feetfit.server.converter;
 
 import com.feetfit.server.domain.*;
+import com.feetfit.server.domain.enums.HealthType;
 import com.feetfit.server.web.dto.report.ReportRequestDTO;
 import com.feetfit.server.web.dto.report.ReportResponseDTO;
 
@@ -247,14 +248,8 @@ public class ReportConverter {
                 .map(ReportConverter::toMetricScoreDTO)
                 .collect(Collectors.toList());
 
-        // 균등 가중치로 totalScore 계산
-        float totalScore = (float) metricScoreDTOs.stream()
-                .mapToDouble(ReportResponseDTO.MetricScoreDTO::getScore)
-                .average()
-                .orElse(0.0);
-
         return ReportResponseDTO.ReportSummaryResultDTO.builder()
-                .totalScore(Math.round(totalScore))  // 반올림
+                .totalScore(report.getTotalScore())
                 .metricScores(metricScoreDTOs)
                 .monthlyScores(monthlyScores)
                 .build();
@@ -272,22 +267,23 @@ public class ReportConverter {
                 .build();
     }
 
-    public static ReportResponseDTO.SaveReportResultDTO toSaveReportResultDTO(Report report) {
+    public static ReportResponseDTO.SaveReportResultDTO toSaveReportResultDTO(
+            Report report,
+            List<HealthType> matchedHealthTypes,
+            Integer matchedTodoCount
+    ) {
 
         List<ReportResponseDTO.MetricScoreDTO> metricScoreDTOs = report.getMetricAnalysisResults().stream()
                 .map(ReportConverter::toMetricScoreDTO)
                 .collect(Collectors.toList());
 
-        float totalScore = (float) metricScoreDTOs.stream()
-                .mapToDouble(ReportResponseDTO.MetricScoreDTO::getScore)
-                .average()
-                .orElse(0.0);
-
         return ReportResponseDTO.SaveReportResultDTO.builder()
                 .id(report.getId())
                 .measurementSessionId(report.getMeasurementSession().getId())
-                .totalScore(Math.round(totalScore))
+                .totalScore(report.getTotalScore())
                 .metricAnalysisResults(metricScoreDTOs)
+                .matchedHealthTypes(matchedHealthTypes)
+                .matchedTodoCount(matchedTodoCount)
                 .createdAt(report.getCreatedAt())
                 .updatedAt(report.getUpdatedAt())
                 .build();

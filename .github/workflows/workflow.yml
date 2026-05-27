@@ -1,0 +1,62 @@
+name: CD with Gradle
+
+# pull request가 close 되었을 때 실행
+on:
+  pull_request:
+    types: [ closed ]
+
+# github action이 읽을 수 있도록 수정
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      # jdk 17 버전 환경을 세팅
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: "adopt"
+
+      # 깃에 없는 application.yml 파일 생성
+      - name: Make application.yml
+        run: |
+          cd ./src/main/resources
+          echo "${{ secrets.YML }}" > ./application.yml
+        shell: bash
+
+      # 소스 빌드
+      - name: Build with Gradle
+        run: |
+          chmod +x ./gradlew
+          ./gradlew clean build -x test
+
+      # dockerfile을 통해 이미지를 빌드하고, 이를 docker repo로 push
+      - name: Docker build & push to docker repo
+        run: |
+          docker login -u ${{ secrets.DOCKERHUB_USERNAME }} -p ${{ secrets.DOCKERHUB_PASSWORD }}
+          docker build -f Dockerfile -t ${{ secrets.DOCKER_REPO }}/feetfit .
+          docker push ${{ secrets.DOCKER_REPO }}/feetfit
+
+        # 기존에 실행되는 컨테이너 모두 멈춤
+        # 서버에 접속하여 pull 한 후 실행
+        # docker-comppose에 작성해둔 컨테이너 백그라운드로 실행
+      - name: Deploy to server
+        uses: appleboy/ssh-action@master
+        id: deploy
+        with:
+          host: ${{ secrets.HOST }}
+          username: ubuntu
+          key: ${{ secrets.KEY }}
+          envs: GITHUB_SHA
+          script: |
+            sudo docker rm -f $(docker ps -qa)
+            sudo docker stop $(docker ps -a -q)
+            sudo docker pull ${{ secrets.DOCKER_REPO }}/feetfit
+            sudo docker-compose up --build -d
+            sudo docker image prune -f
