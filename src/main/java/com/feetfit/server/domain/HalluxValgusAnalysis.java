@@ -29,20 +29,12 @@ public class HalluxValgusAnalysis extends BaseEntity {
     @Column
     private Float leftToeAngleDegree;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private RiskLevel leftRiskLevel;
-
     @Column
     private String leftAnalysisText;
 
     // 오른발
     @Column
     private Float rightToeAngleDegree;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private RiskLevel rightRiskLevel;
 
     @Column
     private String rightAnalysisText;
@@ -56,16 +48,14 @@ public class HalluxValgusAnalysis extends BaseEntity {
 
     public void updateHalluxValgusAnalysis(
             String imageUrl,
-            Float leftToeAngleDegree, RiskLevel leftRiskLevel, String leftAnalysisText,
-            Float rightToeAngleDegree, RiskLevel rightRiskLevel, String rightAnalysisText,
+            Float leftToeAngleDegree, String leftAnalysisText,
+            Float rightToeAngleDegree, String rightAnalysisText,
             Float riskScore, String scoreAnalysisText) {
 
         this.imageUrl = imageUrl;
         this.leftToeAngleDegree = leftToeAngleDegree;
-        this.leftRiskLevel = leftRiskLevel;
         this.leftAnalysisText = leftAnalysisText;
         this.rightToeAngleDegree = rightToeAngleDegree;
-        this.rightRiskLevel = rightRiskLevel;
         this.rightAnalysisText = rightAnalysisText;
         this.riskScore = riskScore;
         this.scoreAnalysisText = scoreAnalysisText;
