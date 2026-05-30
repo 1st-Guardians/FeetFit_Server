@@ -22,30 +22,46 @@ public class ReportRequestDTO {
         @NotNull(message = "측정 세션 ID는 필수입니다.")
         private Long measurementSessionId;
 
-        @Schema(description = "분석 이미지 URL", example = "https://example.com/hallux/foot-001.jpg")
-        private String imageUrl;
-
         // 왼발
         @Schema(description = "왼발 엄지발가락 각도", example = "23.5")
+        @NotNull(message = "왼발 엄지발가락 각도는 필수입니다.")
         private Float leftToeAngleDegree;
-
-        @Schema(description = "왼발 분석 설명", example = "왼발 엄지발가락 각도가 정상 범위보다 커 주기적인 스트레칭이 필요합니다.")
-        private String leftAnalysisText;
 
         // 오른발
         @Schema(description = "오른발 엄지발가락 각도", example = "15.2")
+        @NotNull(message = "오른발 엄지발가락 각도는 필수입니다.")
         private Float rightToeAngleDegree;
 
-        @Schema(description = "오른발 분석 설명", example = "오른발은 현재 정상 범위에 가깝습니다.")
-        private String rightAnalysisText;
-
         // 종합
-        @Schema(description = "종합 위험도 점수", example = "75.5")
-        @NotNull(message = "종합 위험도 점수는 필수입니다.")
-        private Float riskScore;
-
         @Schema(description = "종합 점수 분석 설명", example = "왼발 중심으로 무지외반 진행 가능성이 있어 관리가 필요합니다.")
+        @NotBlank(message = "종합 점수 분석 설명은 필수입니다.")
         private String scoreAnalysisText;
+    }
+
+    @Getter
+    @NoArgsConstructor
+    @Schema(description = "무지외반 분석 결과 저장 multipart 요청")
+    public static class SaveHalluxValgusMultipartDTO {
+
+        @Schema(
+                description = "무지외반 분석 JSON 문자열 파트",
+                type = "string",
+                example = """
+                    {
+                      "measurementSessionId": 1,
+                      "leftToeAngleDegree": 23.5,
+                      "rightToeAngleDegree": 15.2,
+                      "scoreAnalysisText": "왼발 중심으로 무지외반 진행 가능성이 있어 관리가 필요합니다."
+                    }
+                    """
+        )
+        private String request;
+
+        @Schema(description = "왼발 키포인트+선분 추출 이미지 파일", type = "string", format = "binary")
+        private String leftFootImage;
+
+        @Schema(description = "오른발 키포인트+선분 추출 이미지 파일", type = "string", format = "binary")
+        private String rightFootImage;
     }
 
     @Getter

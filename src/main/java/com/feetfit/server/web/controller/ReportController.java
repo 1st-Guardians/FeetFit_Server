@@ -48,13 +48,28 @@ public class ReportController {
     @Operation(
             summary = "무지외반 분석 결과 저장 [민지]",
             description = """
-                    AI 분석 결과로 받은 왼발/오른발 무지외반 데이터를 저장합니다.
-                    Authorization 헤더에 Bearer accessToken이 필요합니다.
-                    - 같은 날짜에 이미 저장된 데이터가 있으면 덮어씁니다 (UPDATE).
-                    - 같은 날짜에 저장된 데이터가 없으면 새로 저장합니다 (INSERT).
-                    - 측정 세션의 status가 COMPLETED인 경우에만 저장됩니다.
-                    - 본인의 측정 세션 ID만 사용 가능합니다.
-                    """
+                AI 분석 결과로 받은 왼발/오른발 무지외반 데이터를 저장합니다.
+                Authorization 헤더에 Bearer accessToken이 필요합니다.
+                - request 파트에는 무지외반 분석 JSON 데이터를 문자열로 넣습니다.
+                - leftFootImage 파트에는 왼발 키포인트+선분 추출 이미지를 넣습니다.
+                - rightFootImage 파트에는 오른발 키포인트+선분 추출 이미지를 넣습니다.
+                - 각 발의 각도(HVA) 기반으로 분석 텍스트를 서버에서 자동 생성합니다.
+                - riskScore는 max(0, 100 - 2.5 × HVA) 공식으로 서버에서 계산합니다.
+                - 같은 측정 세션 ID에 이미 저장된 데이터가 있으면 덮어씁니다 (UPDATE).
+                - 같은 측정 세션 ID에 저장된 데이터가 없으면 새로 저장합니다 (INSERT).
+                - 측정 세션의 status가 COMPLETED인 경우에만 저장됩니다.
+                - 본인의 측정 세션 ID만 사용 가능합니다.
+                """,
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = true,
+                    content = @Content(
+                            mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+                            schema = @Schema(implementation = ReportRequestDTO.SaveHalluxValgusMultipartDTO.class)
+                    )
+            ),
+            servers = {
+                    @Server(url = "http://54.184.58.176", description = "Deploy server - S3 image upload")
+            }
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -64,13 +79,23 @@ public class ReportController {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "400",
-                    description = "필수값 누락, 잘못된 enum 값",
-                    content = @Content(examples = @ExampleObject(value = VALIDATION_ERROR_RESPONSE))
+                    description = "필수값 누락, 이미지 파일 누락, 잘못된 JSON, 완료되지 않은 측정 세션",
+                    content = @Content(examples = {
+                            @ExampleObject(name = "유효성 검사 실패", value = VALIDATION_ERROR_RESPONSE),
+                            @ExampleObject(name = "이미지 파일 누락", value = IMAGE_REQUIRED_RESPONSE),
+                            @ExampleObject(name = "잘못된 JSON", value = INVALID_JSON_RESPONSE),
+                            @ExampleObject(name = "완료되지 않은 측정 세션", value = MEASUREMENT_NOT_COMPLETED_RESPONSE)
+                    })
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "401",
                     description = "Authorization 헤더 누락 또는 유효하지 않은 토큰",
                     content = @Content(examples = @ExampleObject(value = UNAUTHORIZED_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "403",
+                    description = "본인의 측정 세션이 아님",
+                    content = @Content(examples = @ExampleObject(value = MEASUREMENT_FORBIDDEN_RESPONSE))
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "404",
@@ -79,15 +104,53 @@ public class ReportController {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "500",
-                    description = "서버 내부 오류",
-                    content = @Content(examples = @ExampleObject(value = INTERNAL_SERVER_ERROR_RESPONSE))
+                    description = "AWS CLI 미설치, S3 권한 없음, S3 업로드 실패 또는 서버 내부 오류",
+                    content = @Content(examples = {
+                            @ExampleObject(name = "S3 업로드 실패", value = S3_UPLOAD_ERROR_RESPONSE),
+                            @ExampleObject(name = "서버 내부 오류", value = INTERNAL_SERVER_ERROR_RESPONSE)
+                    })
             )
     })
     public ApiResponse<ReportResponseDTO.SaveHalluxValgusResultDTO> saveHalluxValgusAnalysis(
-            @RequestBody @Valid ReportRequestDTO.SaveHalluxValgusDTO request
+            @Parameter(description = "무지외반 분석 JSON 문자열 파트", required = true)
+            @RequestPart("request") String requestJson,
+            @Parameter(description = "왼발 키포인트+선분 추출 이미지 파일", required = true)
+            @RequestPart("leftFootImage") MultipartFile leftFootImage,
+            @Parameter(description = "오른발 키포인트+선분 추출 이미지 파일", required = true)
+            @RequestPart("rightFootImage") MultipartFile rightFootImage
     ) {
         Long userId = findLoginUser.getCurrentUserId();
-        return ApiResponse.onSuccess(reportCommandService.saveHalluxValgusAnalysis(userId, request));
+        ReportRequestDTO.SaveHalluxValgusDTO request = parseHalluxValgusRequest(requestJson);
+        return ApiResponse.onSuccess(reportCommandService.saveHalluxValgusAnalysis(
+                userId, request, leftFootImage, rightFootImage));
+    }
+
+    private ReportRequestDTO.SaveHalluxValgusDTO parseHalluxValgusRequest(String requestJson) {
+        if (requestJson == null || requestJson.isBlank()) {
+            throw new GeneralException(ErrorStatus._BAD_REQUEST, "request 파트는 필수입니다.");
+        }
+
+        ReportRequestDTO.SaveHalluxValgusDTO request;
+        try {
+            request = objectMapper.readValue(requestJson, ReportRequestDTO.SaveHalluxValgusDTO.class);
+        } catch (JsonProcessingException e) {
+            throw new GeneralException(
+                    ErrorStatus._BAD_REQUEST,
+                    "요청 본문 형식이 잘못되었습니다."
+            );
+        }
+
+        Set<ConstraintViolation<ReportRequestDTO.SaveHalluxValgusDTO>> violations = validator.validate(request);
+        if (!violations.isEmpty()) {
+            Map<String, String> errors = new LinkedHashMap<>();
+            violations.forEach(violation -> errors.put(
+                    violation.getPropertyPath().toString(),
+                    violation.getMessage()
+            ));
+            throw new GeneralException(ErrorStatus._BAD_REQUEST, "잘못된 요청입니다.", errors);
+        }
+
+        return request;
     }
 
     @PostMapping("/tina-pedis")
@@ -214,13 +277,15 @@ public class ReportController {
               "message": "성공입니다.",
               "result": {
                 "id": 1,
-                "imageUrl": "https://example.com/hallux.jpg",
+                "measurementSessionId": 1,
                 "leftToeAngleDegree": 23.5,
-                "leftAnalysisText": "왼발 무지외반 주의 필요",
+                "leftAnalysisText": "엄지발가락이 두 번째 발가락 쪽으로 기울어진 각도(HVA)가 23.5°로 측정되었습니다. 변형이 진행된 범위(20~40°)에 해당합니다.",
+                "leftImageUrl": "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/hallux-valgus-left/7f6a8f5e-8b9a-4b12-9f89-4ff7ad2e3a20.png",
                 "rightToeAngleDegree": 15.2,
-                "rightAnalysisText": "오른발 양호",
-                "riskScore": 75.5,
-                "scoreAnalysisText": "전반적으로 주의가 필요합니다.",
+                "rightAnalysisText": "엄지발가락이 두 번째 발가락 쪽으로 기울어진 각도(HVA)가 15.2°로 측정되었습니다. 경미한 변형 범위(15~20°)에 해당합니다.",
+                "rightImageUrl": "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/hallux-valgus-right/9d6c9a1f-5b54-41b8-a5dd-34b76dd77f11.png",
+                "riskScore": 75.4,
+                "scoreAnalysisText": "왼발 중심으로 무지외반 진행 가능성이 있어 관리가 필요합니다.",
                 "createdAt": "2026-05-20T01:55:09",
                 "updatedAt": "2026-05-20T01:55:09"
               }

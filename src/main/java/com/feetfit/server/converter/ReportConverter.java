@@ -11,33 +11,80 @@ import java.util.stream.Collectors;
 
 public class ReportConverter {
 
+    // HVA 각도 기반 분석 텍스트 생성
+    /*
+    - **1단계: 정상 범위** (15도 미만)
+        엄지발가락이 두 번째 발가락 쪽으로 기울어진 각도(HVA)가 00°로 측정되었습니다. 정상 기준(15° 이하)에 해당합니다.
+    - **2단계: 경미한 변형 의심** (15~20도)
+        엄지발가락이 두 번째 발가락 쪽으로 기울어진 각도(HVA)가 00°로 측정되었습니다. 경미한 변형 범위(15~20°)에 해당합니다.
+    - **3단계: 변형 진행 단계** (20~40도)
+        엄지발가락이 두 번째 발가락 쪽으로 기울어진 각도(HVA)가 00°로 측정되었습니다. 변형이 진행된 범위(20~40°)에 해당합니다.
+    - **4단계: 심한 변형 단계** (40도 이상)
+        엄지발가락이 두 번째 발가락 쪽으로 기울어진 각도(HVA)가 00°로 측정되었습니다. 심한 변형 범위(40° 이상)에 해당합니다.
+    */
+    public static String generateHvaAnalysisText(Float toeAngleDegree) {
+        if (toeAngleDegree == null) return null;
+        if (toeAngleDegree <= 15) {
+            return String.format(
+                    "엄지발가락이 두 번째 발가락 쪽으로 기울어진 각도(HVA)가 %.1f°로 측정되었습니다. 정상 기준(15° 이하)에 해당합니다.",
+                    toeAngleDegree);
+        } else if (toeAngleDegree <= 20) {
+            return String.format(
+                    "엄지발가락이 두 번째 발가락 쪽으로 기울어진 각도(HVA)가 %.1f°로 측정되었습니다. 경미한 변형 범위(15~20°)에 해당합니다.",
+                    toeAngleDegree);
+        } else if (toeAngleDegree <= 40) {
+            return String.format(
+                    "엄지발가락이 두 번째 발가락 쪽으로 기울어진 각도(HVA)가 %.1f°로 측정되었습니다. 변형이 진행된 범위(20~40°)에 해당합니다.",
+                    toeAngleDegree);
+        } else {
+            return String.format(
+                    "엄지발가락이 두 번째 발가락 쪽으로 기울어진 각도(HVA)가 %.1f°로 측정되었습니다. 심한 변형 범위(40° 이상)에 해당합니다.",
+                    toeAngleDegree);
+        }
+    }
+
+    // riskScore 계산: Score = max(0, 100 - 2.5 × HVA)
+    // 왼발/오른발 평균으로 계산
+    public static float calculateHvaRiskScore(Float left, Float right) {
+        float leftScore = left != null ? Math.max(0, 100 - 2.5f * left) : 100f;
+        float rightScore = right != null ? Math.max(0, 100 - 2.5f * right) : 100f;
+        return (leftScore + rightScore) / 2f;
+    }
+
     public static HalluxValgusAnalysis toHalluxValgusAnalysis(
             MeasurementSession measurementSession,
-            ReportRequestDTO.SaveHalluxValgusDTO request) {
+            ReportRequestDTO.SaveHalluxValgusDTO request,
+            String leftImageUrl,
+            String rightImageUrl) {
+
+        String leftAnalysisText = generateHvaAnalysisText(request.getLeftToeAngleDegree());
+        String rightAnalysisText = generateHvaAnalysisText(request.getRightToeAngleDegree());
+        float riskScore = calculateHvaRiskScore(request.getLeftToeAngleDegree(), request.getRightToeAngleDegree());
 
         return HalluxValgusAnalysis.builder()
                 .measurementSession(measurementSession)
-                .imageUrl(request.getImageUrl())
                 .leftToeAngleDegree(request.getLeftToeAngleDegree())
-                .leftAnalysisText(request.getLeftAnalysisText())
+                .leftAnalysisText(leftAnalysisText)
+                .leftImageUrl(leftImageUrl)
                 .rightToeAngleDegree(request.getRightToeAngleDegree())
-                .rightAnalysisText(request.getRightAnalysisText())
-                .riskScore(request.getRiskScore())
+                .rightAnalysisText(rightAnalysisText)
+                .rightImageUrl(rightImageUrl)
+                .riskScore(riskScore)
                 .scoreAnalysisText(request.getScoreAnalysisText())
                 .build();
     }
 
     public static ReportResponseDTO.SaveHalluxValgusResultDTO toSaveHalluxValgusResultDTO(
             HalluxValgusAnalysis analysis) {
-
         return ReportResponseDTO.SaveHalluxValgusResultDTO.builder()
                 .id(analysis.getId())
                 .measurementSessionId(analysis.getMeasurementSession().getId())
-                .imageUrl(analysis.getImageUrl())
                 .leftToeAngleDegree(analysis.getLeftToeAngleDegree())
                 .leftAnalysisText(analysis.getLeftAnalysisText())
+                .leftImageUrl(analysis.getLeftImageUrl())
                 .rightToeAngleDegree(analysis.getRightToeAngleDegree())
                 .rightAnalysisText(analysis.getRightAnalysisText())
+                .rightImageUrl(analysis.getRightImageUrl())
                 .riskScore(analysis.getRiskScore())
                 .scoreAnalysisText(analysis.getScoreAnalysisText())
                 .createdAt(analysis.getCreatedAt())
@@ -57,11 +104,12 @@ public class ReportConverter {
         return ReportResponseDTO.HalluxValgusResultDTO.builder()
                 .id(analysis.getId())
                 .measurementSessionId(analysis.getMeasurementSession().getId())
-                .imageUrl(analysis.getImageUrl())
                 .leftToeAngleDegree(analysis.getLeftToeAngleDegree())
                 .leftAnalysisText(analysis.getLeftAnalysisText())
+                .leftImageUrl(analysis.getLeftImageUrl())
                 .rightToeAngleDegree(analysis.getRightToeAngleDegree())
                 .rightAnalysisText(analysis.getRightAnalysisText())
+                .rightImageUrl(analysis.getRightImageUrl())
                 .riskScore(analysis.getRiskScore())
                 .scoreAnalysisText(analysis.getScoreAnalysisText())
                 .previousRiskScore(previousRiskScore)

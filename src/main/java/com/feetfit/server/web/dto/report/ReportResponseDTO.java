@@ -27,28 +27,31 @@ public class ReportResponseDTO {
         @Schema(description = "측정 세션 ID", example = "1")
         private Long measurementSessionId;
 
-        @Schema(description = "분석 이미지 URL", example = "https://example.com/hallux/foot-001.jpg")
-        private String imageUrl;
-
         // 왼발
         @Schema(description = "왼발 엄지발가락 각도", example = "23.5")
         private Float leftToeAngleDegree;
 
-        @Schema(description = "왼발 분석 설명", example = "왼발 무지외반 주의가 필요합니다.")
+        @Schema(description = "왼발 분석 설명")
         private String leftAnalysisText;
+
+        @Schema(description = "왼발 키포인트+선분 추출 이미지 URL")
+        private String leftImageUrl;
 
         // 오른발
         @Schema(description = "오른발 엄지발가락 각도", example = "15.2")
         private Float rightToeAngleDegree;
 
-        @Schema(description = "오른발 분석 설명", example = "오른발은 현재 정상 범위에 가깝습니다.")
+        @Schema(description = "오른발 분석 설명")
         private String rightAnalysisText;
+
+        @Schema(description = "오른발 키포인트+선분 추출 이미지 URL")
+        private String rightImageUrl;
 
         // 종합
         @Schema(description = "종합 위험도 점수", example = "75.5")
         private Float riskScore;
 
-        @Schema(description = "종합 점수 분석 설명", example = "왼발 중심으로 관리가 필요합니다.")
+        @Schema(description = "종합 점수 분석 설명")
         private String scoreAnalysisText;
 
         @Schema(description = "생성 시각", example = "2026-05-20T09:00:00")
@@ -70,36 +73,38 @@ public class ReportResponseDTO {
         @Schema(description = "측정 세션 ID", example = "1")
         private Long measurementSessionId;
 
-        @Schema(description = "분석 이미지 URL", example = "https://example.com/hallux/foot-001.jpg")
-        private String imageUrl;
-
         // 왼발
         @Schema(description = "왼발 엄지발가락 각도", example = "23.5")
         private Float leftToeAngleDegree;
 
-        @Schema(description = "왼발 분석 설명", example = "왼발 무지외반 주의가 필요합니다.")
+        @Schema(description = "왼발 분석 설명")
         private String leftAnalysisText;
+
+        @Schema(description = "왼발 키포인트+선분 추출 이미지 URL")
+        private String leftImageUrl;
 
         // 오른발
         @Schema(description = "오른발 엄지발가락 각도", example = "15.2")
         private Float rightToeAngleDegree;
 
-        @Schema(description = "오른발 분석 설명", example = "오른발은 현재 정상 범위에 가깝습니다.")
+        @Schema(description = "오른발 분석 설명")
         private String rightAnalysisText;
+
+        @Schema(description = "오른발 키포인트+선분 추출 이미지 URL")
+        private String rightImageUrl;
 
         // 종합
         @Schema(description = "종합 위험도 점수", example = "75.5")
         private Float riskScore;
 
-        @Schema(description = "종합 점수 분석 설명", example = "왼발 중심으로 관리가 필요합니다.")
+        @Schema(description = "종합 점수 분석 설명")
         private String scoreAnalysisText;
 
-        // 이전 측정 대비 점수 변화 (이전 데이터 없으면 null)
-        @Schema(description = "이전 측정 종합 위험도 점수. 이전 데이터가 없으면 null", example = "70.0", nullable = true)
+        @Schema(description = "이전 측정 종합 위험도 점수. 이전 데이터가 없으면 null", nullable = true)
         private Float previousRiskScore;
 
-        @Schema(description = "이전 측정 대비 점수 변화. 양수면 증가, 음수면 감소", example = "5.5", nullable = true)
-        private Float riskScoreDiff;        // 양수면 +, 음수면 -
+        @Schema(description = "이전 측정 대비 점수 변화. 양수면 증가, 음수면 감소", nullable = true)
+        private Float riskScoreDiff;
 
         @Schema(description = "생성 시각", example = "2026-05-20T09:00:00")
         private LocalDateTime createdAt;

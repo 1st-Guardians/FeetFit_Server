@@ -49,41 +49,40 @@ public class ReportCommandServiceImpl implements ReportCommandService {
 
     @Override
     public ReportResponseDTO.SaveHalluxValgusResultDTO saveHalluxValgusAnalysis(
-            Long userId, ReportRequestDTO.SaveHalluxValgusDTO request) {
+            Long userId,
+            ReportRequestDTO.SaveHalluxValgusDTO request,
+            MultipartFile leftFootImage,
+            MultipartFile rightFootImage) {
 
-        MeasurementSession measurementSession = measurementSessionRepository
-                .findById(request.getMeasurementSessionId())
-                .orElseThrow(() -> new MeasurementHandler(ErrorStatus.MEASUREMENT_NOT_FOUND));
+        MeasurementSession measurementSession = getValidatedCompletedMeasurementSession(
+                userId, request.getMeasurementSessionId());
 
-        // 본인 측정 세션인지 검증
-        if (!measurementSession.getUser().getId().equals(userId)) {
-            throw new MeasurementHandler(ErrorStatus.MEASUREMENT_FORBIDDEN);
-        }
+        // 이미지 S3 업로드
+        ImageResponseDTO.UploadImageResultDTO leftImageUpload =
+                imageUploadService.upload("hallux-valgus-left", leftFootImage);
+        ImageResponseDTO.UploadImageResultDTO rightImageUpload =
+                imageUploadService.upload("hallux-valgus-right", rightFootImage);
 
-        // COMPLETED 상태인지 검증
-        if (!measurementSession.getStatus().equals(MeasurementStatus.COMPLETED)) {
-            throw new MeasurementHandler(ErrorStatus.MEASUREMENT_NOT_COMPLETED);
-        }
+        String leftAnalysisText = ReportConverter.generateHvaAnalysisText(request.getLeftToeAngleDegree());
+        String rightAnalysisText = ReportConverter.generateHvaAnalysisText(request.getRightToeAngleDegree());
+        float riskScore = ReportConverter.calculateHvaRiskScore(
+                request.getLeftToeAngleDegree(), request.getRightToeAngleDegree());
 
-        // 오늘 날짜에 이미 저장된 데이터 있는지 조회
         HalluxValgusAnalysis saved = halluxValgusAnalysisRepository
-                .findByUserIdAndDate(userId, LocalDateTime.now())
+                .findByMeasurementSessionId(measurementSession.getId())
                 .map(existing -> {
-                    // 있으면 UPDATE
                     existing.updateHalluxValgusAnalysis(
-                            request.getImageUrl(),
-                            request.getLeftToeAngleDegree(), request.getLeftAnalysisText(),
-                            request.getRightToeAngleDegree(), request.getRightAnalysisText(),
-                            request.getRiskScore(), request.getScoreAnalysisText()
+                            request.getLeftToeAngleDegree(), leftAnalysisText, leftImageUpload.getImageUrl(),
+                            request.getRightToeAngleDegree(), rightAnalysisText, rightImageUpload.getImageUrl(),
+                            riskScore, request.getScoreAnalysisText()
                     );
                     return existing;
                 })
-                .orElseGet(() ->
-                        // 없으면 INSERT
-                        halluxValgusAnalysisRepository.save(
-                                ReportConverter.toHalluxValgusAnalysis(measurementSession, request)
-                        )
-                );
+                .orElseGet(() -> halluxValgusAnalysisRepository.save(
+                        ReportConverter.toHalluxValgusAnalysis(
+                                measurementSession, request,
+                                leftImageUpload.getImageUrl(), rightImageUpload.getImageUrl())
+                ));
 
         return ReportConverter.toSaveHalluxValgusResultDTO(saved);
     }

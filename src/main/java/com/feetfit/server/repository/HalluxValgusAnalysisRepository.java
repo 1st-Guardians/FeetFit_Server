@@ -5,7 +5,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
@@ -28,4 +27,7 @@ public interface HalluxValgusAnalysisRepository extends JpaRepository<HalluxValg
     Optional<HalluxValgusAnalysis> findTopByMeasurementSessionUserIdAndUpdatedAtLessThanOrderByUpdatedAtDesc(
             Long userId,
             LocalDateTime startOfDay);
+
+    Optional<HalluxValgusAnalysis> findByMeasurementSessionId(Long measurementSessionId);
+
 }
