@@ -24,10 +24,12 @@ public class ReportRequestDTO {
 
         // 왼발
         @Schema(description = "왼발 엄지발가락 각도", example = "23.5")
+        @NotNull(message = "왼발 엄지발가락 각도는 필수입니다.")
         private Float leftToeAngleDegree;
 
         // 오른발
         @Schema(description = "오른발 엄지발가락 각도", example = "15.2")
+        @NotNull(message = "오른발 엄지발가락 각도는 필수입니다.")
         private Float rightToeAngleDegree;
 
         // 종합
