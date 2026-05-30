@@ -1,7 +1,6 @@
 package com.feetfit.server.domain;
 
 import com.feetfit.server.domain.common.BaseEntity;
-import com.feetfit.server.domain.enums.RiskLevel;
 import jakarta.persistence.*;
 import lombok.*;
 
