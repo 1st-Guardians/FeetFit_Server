@@ -28,4 +28,7 @@ public interface HalluxValgusAnalysisRepository extends JpaRepository<HalluxValg
     Optional<HalluxValgusAnalysis> findTopByMeasurementSessionUserIdAndUpdatedAtLessThanOrderByUpdatedAtDesc(
             Long userId,
             LocalDateTime startOfDay);
+
+    Optional<HalluxValgusAnalysis> findByMeasurementSessionId(Long measurementSessionId);
+
 }

@@ -21,23 +21,25 @@ public class HalluxValgusAnalysis extends BaseEntity {
     @JoinColumn(name = "measurement_session_id", nullable = false)
     private MeasurementSession measurementSession;
 
-    // 양 발 이미지
-    @Column
-    private String imageUrl;
-
     // 왼발
     @Column
     private Float leftToeAngleDegree;
 
-    @Column
+    @Column(columnDefinition = "TEXT")
     private String leftAnalysisText;
+
+    @Column(columnDefinition = "TEXT")
+    private String leftImageUrl;  // ← 왼발 이미지 URL
 
     // 오른발
     @Column
     private Float rightToeAngleDegree;
 
-    @Column
+    @Column(columnDefinition = "TEXT")
     private String rightAnalysisText;
+
+    @Column(columnDefinition = "TEXT")
+    private String rightImageUrl;  // ← 오른발 이미지 URL
 
     // 종합
     @Column(nullable = false)
@@ -47,16 +49,16 @@ public class HalluxValgusAnalysis extends BaseEntity {
     private String scoreAnalysisText;
 
     public void updateHalluxValgusAnalysis(
-            String imageUrl,
-            Float leftToeAngleDegree, String leftAnalysisText,
-            Float rightToeAngleDegree, String rightAnalysisText,
+            Float leftToeAngleDegree, String leftAnalysisText, String leftImageUrl,
+            Float rightToeAngleDegree, String rightAnalysisText, String rightImageUrl,
             Float riskScore, String scoreAnalysisText) {
 
-        this.imageUrl = imageUrl;
         this.leftToeAngleDegree = leftToeAngleDegree;
         this.leftAnalysisText = leftAnalysisText;
+        this.leftImageUrl = leftImageUrl;
         this.rightToeAngleDegree = rightToeAngleDegree;
         this.rightAnalysisText = rightAnalysisText;
+        this.rightImageUrl = rightImageUrl;
         this.riskScore = riskScore;
         this.scoreAnalysisText = scoreAnalysisText;
     }
