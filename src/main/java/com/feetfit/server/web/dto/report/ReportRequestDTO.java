@@ -2,7 +2,6 @@ package com.feetfit.server.web.dto.report;
 
 import com.feetfit.server.domain.enums.GaugeStatus;
 import com.feetfit.server.domain.enums.MetricType;
-import com.feetfit.server.domain.enums.RiskLevel;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
@@ -30,20 +29,12 @@ public class ReportRequestDTO {
         @Schema(description = "왼발 엄지발가락 각도", example = "23.5")
         private Float leftToeAngleDegree;
 
-        @Schema(description = "왼발 위험도", example = "MEDIUM", allowableValues = {"LOW", "MEDIUM", "HIGH"})
-        @NotNull(message = "왼발 위험도 레벨은 필수입니다.")
-        private RiskLevel leftRiskLevel;
-
         @Schema(description = "왼발 분석 설명", example = "왼발 엄지발가락 각도가 정상 범위보다 커 주기적인 스트레칭이 필요합니다.")
         private String leftAnalysisText;
 
         // 오른발
         @Schema(description = "오른발 엄지발가락 각도", example = "15.2")
         private Float rightToeAngleDegree;
-
-        @Schema(description = "오른발 위험도", example = "LOW", allowableValues = {"LOW", "MEDIUM", "HIGH"})
-        @NotNull(message = "오른발 위험도 레벨은 필수입니다.")
-        private RiskLevel rightRiskLevel;
 
         @Schema(description = "오른발 분석 설명", example = "오른발은 현재 정상 범위에 가깝습니다.")
         private String rightAnalysisText;

@@ -72,8 +72,8 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                     // 있으면 UPDATE
                     existing.updateHalluxValgusAnalysis(
                             request.getImageUrl(),
-                            request.getLeftToeAngleDegree(), request.getLeftRiskLevel(), request.getLeftAnalysisText(),
-                            request.getRightToeAngleDegree(), request.getRightRiskLevel(), request.getRightAnalysisText(),
+                            request.getLeftToeAngleDegree(), request.getLeftAnalysisText(),
+                            request.getRightToeAngleDegree(), request.getRightAnalysisText(),
                             request.getRiskScore(), request.getScoreAnalysisText()
                     );
                     return existing;

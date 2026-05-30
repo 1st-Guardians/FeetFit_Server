@@ -50,7 +50,6 @@ public class ReportController {
             description = """
                     AI 분석 결과로 받은 왼발/오른발 무지외반 데이터를 저장합니다.
                     Authorization 헤더에 Bearer accessToken이 필요합니다.
-                    - riskLevel은 LOW, MEDIUM, HIGH만 허용합니다.
                     - 같은 날짜에 이미 저장된 데이터가 있으면 덮어씁니다 (UPDATE).
                     - 같은 날짜에 저장된 데이터가 없으면 새로 저장합니다 (INSERT).
                     - 측정 세션의 status가 COMPLETED인 경우에만 저장됩니다.
@@ -217,10 +216,8 @@ public class ReportController {
                 "id": 1,
                 "imageUrl": "https://example.com/hallux.jpg",
                 "leftToeAngleDegree": 23.5,
-                "leftRiskLevel": "MEDIUM",
                 "leftAnalysisText": "왼발 무지외반 주의 필요",
                 "rightToeAngleDegree": 15.2,
-                "rightRiskLevel": "LOW",
                 "rightAnalysisText": "오른발 양호",
                 "riskScore": 75.5,
                 "scoreAnalysisText": "전반적으로 주의가 필요합니다.",
@@ -877,10 +874,8 @@ public class ReportController {
                 "id": 1,
                 "imageUrl": "https://example.com/hallux.jpg",
                 "leftToeAngleDegree": 23.5,
-                "leftRiskLevel": "MEDIUM",
                 "leftAnalysisText": "왼발 무지외반 주의 필요",
                 "rightToeAngleDegree": 15.2,
-                "rightRiskLevel": "LOW",
                 "rightAnalysisText": "오른발 양호",
                 "riskScore": 75.5,
                 "scoreAnalysisText": "전반적으로 주의가 필요합니다.",

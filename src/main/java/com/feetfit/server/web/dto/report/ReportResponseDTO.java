@@ -3,7 +3,6 @@ package com.feetfit.server.web.dto.report;
 import com.feetfit.server.domain.enums.GaugeStatus;
 import com.feetfit.server.domain.enums.HealthType;
 import com.feetfit.server.domain.enums.MetricType;
-import com.feetfit.server.domain.enums.RiskLevel;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -35,18 +34,12 @@ public class ReportResponseDTO {
         @Schema(description = "왼발 엄지발가락 각도", example = "23.5")
         private Float leftToeAngleDegree;
 
-        @Schema(description = "왼발 위험도", example = "MEDIUM", allowableValues = {"LOW", "MEDIUM", "HIGH"})
-        private RiskLevel leftRiskLevel;
-
         @Schema(description = "왼발 분석 설명", example = "왼발 무지외반 주의가 필요합니다.")
         private String leftAnalysisText;
 
         // 오른발
         @Schema(description = "오른발 엄지발가락 각도", example = "15.2")
         private Float rightToeAngleDegree;
-
-        @Schema(description = "오른발 위험도", example = "LOW", allowableValues = {"LOW", "MEDIUM", "HIGH"})
-        private RiskLevel rightRiskLevel;
 
         @Schema(description = "오른발 분석 설명", example = "오른발은 현재 정상 범위에 가깝습니다.")
         private String rightAnalysisText;
@@ -84,18 +77,12 @@ public class ReportResponseDTO {
         @Schema(description = "왼발 엄지발가락 각도", example = "23.5")
         private Float leftToeAngleDegree;
 
-        @Schema(description = "왼발 위험도", example = "MEDIUM", allowableValues = {"LOW", "MEDIUM", "HIGH"})
-        private RiskLevel leftRiskLevel;
-
         @Schema(description = "왼발 분석 설명", example = "왼발 무지외반 주의가 필요합니다.")
         private String leftAnalysisText;
 
         // 오른발
         @Schema(description = "오른발 엄지발가락 각도", example = "15.2")
         private Float rightToeAngleDegree;
-
-        @Schema(description = "오른발 위험도", example = "LOW", allowableValues = {"LOW", "MEDIUM", "HIGH"})
-        private RiskLevel rightRiskLevel;
 
         @Schema(description = "오른발 분석 설명", example = "오른발은 현재 정상 범위에 가깝습니다.")
         private String rightAnalysisText;
