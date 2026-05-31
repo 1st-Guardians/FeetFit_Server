@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
@@ -79,9 +80,10 @@ public class MeasurementController {
             )
     })
     public ApiResponse<MeasurementResponseDTO.CreateMeasurementSessionResultDTO> createMeasurementSession(
-            @RequestHeader(HttpHeaders.AUTHORIZATION) String authorizationHeader
+            @Parameter(hidden = true) HttpServletRequest request
     ) {
         Long userId = findLoginUser.getCurrentUserId();
+        String authorizationHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
         return ApiResponse.onSuccess(measurementCommandService.createMeasurementSession(userId, authorizationHeader));
     }
 
