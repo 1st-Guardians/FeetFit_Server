@@ -150,8 +150,9 @@ public class ReportCommandServiceImpl implements ReportCommandService {
             throw new MeasurementHandler(ErrorStatus.MEASUREMENT_FORBIDDEN);
         }
 
-        if (!measurementSession.getStatus().equals(MeasurementStatus.COMPLETED)) {
-            throw new MeasurementHandler(ErrorStatus.MEASUREMENT_NOT_COMPLETED);
+        // TRANSFERRING 상태일 때만, 리포트 저장 가능
+        if (!measurementSession.getStatus().equals(MeasurementStatus.TRANSFERRING)) {
+            throw new MeasurementHandler(ErrorStatus.MEASUREMENT_NOT_TRANSFERRING);
         }
 
         return measurementSession;

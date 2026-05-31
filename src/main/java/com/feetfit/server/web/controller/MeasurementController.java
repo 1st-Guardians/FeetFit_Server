@@ -102,7 +102,7 @@ public class MeasurementController {
                 Authorization 헤더에 Bearer accessToken이 필요합니다.
                 - PENDING: 측정 대기 중. 측정 세션이 생성된 초기 상태입니다.
                 - MEASURING: 측정 진행 중. 기기에서 센서 데이터를 수집하고 있는 상태입니다.
-                - TRANSFERRING: 데이터 전송 중. 수집된 데이터를 서버로 전송하고 있는 상태입니다.
+                - TRANSFERRING: 데이터 전송 중. 수집된 데이터를 서버로 전송하고 있는 상태입니다. 이 상태에서 리포트 저장이 가능합니다.
                 - COMPLETED: 측정 완료. 무지외반, 무좀 분석 결과가 모두 저장된 경우에만 완료 처리가 가능합니다. measurementDurationSec을 함께 전달해주세요.
                 - FAILED: 측정 실패. 측정 중 오류가 발생한 상태입니다.
                 - 본인의 측정 세션 ID만 사용 가능합니다.
