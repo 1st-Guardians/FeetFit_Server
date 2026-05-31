@@ -5,6 +5,7 @@ import com.feetfit.server.domain.enums.HealthType;
 import com.feetfit.server.web.dto.report.ReportRequestDTO;
 import com.feetfit.server.web.dto.report.ReportResponseDTO;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -332,6 +333,13 @@ public class ReportConverter {
                 .matchedTodoCount(matchedTodoCount)
                 .createdAt(report.getCreatedAt())
                 .updatedAt(report.getUpdatedAt())
+                .build();
+    }
+
+    public static ReportResponseDTO.MeasuredDateListResultDTO toMeasuredDateListResultDTO(
+            List<LocalDate> measuredDates) {
+        return ReportResponseDTO.MeasuredDateListResultDTO.builder()
+                .measuredDates(measuredDates)
                 .build();
     }
 }
