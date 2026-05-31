@@ -10,15 +10,11 @@ import com.feetfit.server.domain.enums.MeasurementStatus;
 import com.feetfit.server.domain.enums.MetricType;
 import com.feetfit.server.repository.*;
 import com.feetfit.server.service.ImageService.ImageUploadService;
-import com.feetfit.server.service.MeasurementService.MeasurementCompletionService;
 import com.feetfit.server.web.dto.image.ImageResponseDTO;
 import com.feetfit.server.web.dto.report.ReportRequestDTO;
 import com.feetfit.server.web.dto.report.ReportResponseDTO;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -38,7 +34,6 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 @RequiredArgsConstructor
-@Slf4j
 public class ReportCommandServiceImpl implements ReportCommandService {
 
     private final HalluxValgusAnalysisRepository halluxValgusAnalysisRepository;
@@ -51,7 +46,6 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     private final UserStretchingTodoRepository userStretchingTodoRepository;
     private final UserStretchingTodoAssignmentRepository userStretchingTodoAssignmentRepository;
     private final ImageUploadService imageUploadService;
-    private final MeasurementCompletionService measurementCompletionService;
 
     @Override
     public ReportResponseDTO.SaveHalluxValgusResultDTO saveHalluxValgusAnalysis(
@@ -89,10 +83,6 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                                 measurementSession, request,
                                 leftImageUpload.getImageUrl(), rightImageUpload.getImageUrl())
                 ));
-
-        halluxValgusAnalysisRepository.flush();
-        log.info("Hallux valgus analysis saved. measurementSessionId={}", measurementSession.getId());
-        completeMeasurementIfRequiredAnalysesSaved(measurementSession.getId());
 
         return ReportConverter.toSaveHalluxValgusResultDTO(saved);
     }
@@ -140,7 +130,6 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                 ));
 
         tinaPedisAnalysisRepository.flush();
-        log.info("Tina pedis analysis saved. measurementSessionId={}", measurementSession.getId());
 
         TinaPedisAnalysis previousAnalysis = tinaPedisAnalysisRepository
                 .findTopByMeasurementSessionUserIdAndRecordedAtLessThanOrderByRecordedAtDesc(
@@ -149,23 +138,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                 )
                 .orElse(null);
 
-        completeMeasurementIfRequiredAnalysesSaved(measurementSession.getId());
-
         return ReportConverter.toTinaPedisAnalysisResultDTO(saved, previousAnalysis);
-    }
-
-    private void completeMeasurementIfRequiredAnalysesSaved(Long measurementSessionId) {
-        if (TransactionSynchronizationManager.isSynchronizationActive()) {
-            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                @Override
-                public void afterCommit() {
-                    measurementCompletionService.completeIfRequiredAnalysesSaved(measurementSessionId);
-                }
-            });
-            return;
-        }
-
-        measurementCompletionService.completeIfRequiredAnalysesSaved(measurementSessionId);
     }
 
     private MeasurementSession getValidatedCompletedMeasurementSession(Long userId, Long measurementSessionId) {
