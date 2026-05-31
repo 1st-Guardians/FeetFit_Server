@@ -3,6 +3,7 @@ package com.feetfit.server.web.controller;
 import com.feetfit.server.apiPayload.code.status.ErrorStatus;
 import com.feetfit.server.apiPayload.exception.ExceptionAdvice;
 import com.feetfit.server.apiPayload.exception.handler.UserHandler;
+import com.feetfit.server.domain.enums.MeasurementStatus;
 import com.feetfit.server.jwt.FindLoginUser;
 import com.feetfit.server.jwt.TokenProvider;
 import com.feetfit.server.service.MeasurementService.MeasurementCommandService;
@@ -19,10 +20,13 @@ import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -64,6 +68,30 @@ class MeasurementControllerTest {
                 .andExpect(jsonPath("$.code").value("COMMON200"))
                 .andExpect(jsonPath("$.result.today").value("2026-05-20"))
                 .andExpect(jsonPath("$.result.hasTodayMeasurement").value(true));
+    }
+
+    @Test
+    void updateMeasurementStatus_toCompleted_success_returnsCompletedStatus() throws Exception {
+        given(findLoginUser.getCurrentUserId()).willReturn(1L);
+        given(measurementCommandService.updateMeasurementStatus(
+                eq(1L),
+                eq(9L),
+                org.mockito.ArgumentMatchers.argThat(request ->
+                        request.getStatus() == MeasurementStatus.COMPLETED
+                                && request.getMeasurementDurationSec().equals(180)
+                )
+        ))
+                .willReturn(updateMeasurementStatusResponse());
+
+        mockMvc.perform(patch("/api/measurement-sessions/{measurementSessionId}/status", 9L)
+                        .param("status", "COMPLETED")
+                        .param("measurementDurationSec", "180"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.isSuccess").value(true))
+                .andExpect(jsonPath("$.code").value("COMMON200"))
+                .andExpect(jsonPath("$.result.id").value(9))
+                .andExpect(jsonPath("$.result.status").value("COMPLETED"))
+                .andExpect(jsonPath("$.result.measurementDurationSec").value(180));
     }
 
     @Test
@@ -136,6 +164,15 @@ class MeasurementControllerTest {
         return MeasurementResponseDTO.TodayMeasurementStatusResultDTO.builder()
                 .today(LocalDate.of(2026, 5, 20))
                 .hasTodayMeasurement(hasTodayMeasurement)
+                .build();
+    }
+
+    private static MeasurementResponseDTO.UpdateMeasurementStatusResultDTO updateMeasurementStatusResponse() {
+        return MeasurementResponseDTO.UpdateMeasurementStatusResultDTO.builder()
+                .id(9L)
+                .status(MeasurementStatus.COMPLETED)
+                .measurementDurationSec(180)
+                .updatedAt(LocalDateTime.of(2026, 5, 20, 9, 3))
                 .build();
     }
 

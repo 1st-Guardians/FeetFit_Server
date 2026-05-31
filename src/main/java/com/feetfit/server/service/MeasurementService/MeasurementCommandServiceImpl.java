@@ -20,6 +20,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
+
 @Service
 @Transactional
 @RequiredArgsConstructor
@@ -62,37 +65,63 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
     public MeasurementResponseDTO.UpdateMeasurementStatusResultDTO updateMeasurementStatus(
             Long userId, Long measurementSessionId, MeasurementRequestDTO.UpdateMeasurementStatusDTO request) {
 
+        MeasurementSession measurementSession = getOwnedMeasurementSession(userId, measurementSessionId);
+
+        if (request.getStatus() == MeasurementStatus.COMPLETED) {
+            completeMeasurement(measurementSession, request.getMeasurementDurationSec());
+            return MeasurementConverter.toUpdateMeasurementStatusResultDTO(measurementSession);
+        }
+
+        measurementSession.updateStatus(request.getStatus(), request.getMeasurementDurationSec());
+        return MeasurementConverter.toUpdateMeasurementStatusResultDTO(measurementSession);
+    }
+
+    private MeasurementSession getOwnedMeasurementSession(Long userId, Long measurementSessionId) {
         MeasurementSession measurementSession = measurementSessionRepository
                 .findById(measurementSessionId)
                 .orElseThrow(() -> new MeasurementHandler(ErrorStatus.MEASUREMENT_NOT_FOUND));
 
-        // 본인 측정 세션인지 검증
         if (!measurementSession.getUser().getId().equals(userId)) {
             throw new MeasurementHandler(ErrorStatus.MEASUREMENT_FORBIDDEN);
         }
 
-        // COMPLETED 시 무지외반 + 무좀 데이터 존재 여부 검증
-        if (request.getStatus() == MeasurementStatus.COMPLETED) {
-            if (request.getMeasurementDurationSec() == null || request.getMeasurementDurationSec() <= 0) {
-                throw new MeasurementHandler(ErrorStatus._BAD_REQUEST);
-            }
+        return measurementSession;
+    }
 
-            boolean hasHalluxValgus = halluxValgusAnalysisRepository
-                    .existsByMeasurementSessionId(measurementSessionId);
-            boolean hasTinaPedis = tinaPedisAnalysisRepository
-                    .existsByMeasurementSessionId(measurementSessionId);
+    private void completeMeasurement(MeasurementSession measurementSession, Integer measurementDurationSec) {
+        boolean hasHalluxValgus = halluxValgusAnalysisRepository
+                .existsByMeasurementSessionId(measurementSession.getId());
+        boolean hasTinaPedis = tinaPedisAnalysisRepository
+                .existsByMeasurementSessionId(measurementSession.getId());
 
-            if (!hasHalluxValgus || !hasTinaPedis) {
-                throw new MeasurementHandler(ErrorStatus.MEASUREMENT_ANALYSIS_NOT_READY);
-            }
+        if (!hasHalluxValgus || !hasTinaPedis) {
+            throw new MeasurementHandler(ErrorStatus.MEASUREMENT_ANALYSIS_NOT_READY);
         }
 
         boolean wasCompleted = measurementSession.getStatus() == MeasurementStatus.COMPLETED;
-        measurementSession.updateStatus(request.getStatus(), request.getMeasurementDurationSec());
-        if (request.getStatus() == MeasurementStatus.COMPLETED && !wasCompleted) {
+        measurementSession.updateStatus(
+                MeasurementStatus.COMPLETED,
+                resolveMeasurementDurationSec(measurementSession, measurementDurationSec)
+        );
+
+        if (!wasCompleted) {
             measurementSocketService.sendMeasurementCompleted(measurementSession);
         }
+    }
 
-        return MeasurementConverter.toUpdateMeasurementStatusResultDTO(measurementSession);
+    private Integer resolveMeasurementDurationSec(MeasurementSession measurementSession, Integer requestedDurationSec) {
+        if (requestedDurationSec != null) {
+            if (requestedDurationSec <= 0) {
+                throw new MeasurementHandler(ErrorStatus._BAD_REQUEST);
+            }
+            return requestedDurationSec;
+        }
+
+        if (measurementSession.getMeasurementDurationSec() != null && measurementSession.getMeasurementDurationSec() > 0) {
+            return measurementSession.getMeasurementDurationSec();
+        }
+
+        long measuredSeconds = Duration.between(measurementSession.getMeasuredAt(), LocalDateTime.now()).getSeconds();
+        return (int) Math.max(1L, Math.min(measuredSeconds, Integer.MAX_VALUE));
     }
 }

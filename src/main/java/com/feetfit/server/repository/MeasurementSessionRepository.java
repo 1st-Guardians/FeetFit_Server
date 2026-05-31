@@ -2,26 +2,14 @@ package com.feetfit.server.repository;
 
 import com.feetfit.server.domain.MeasurementSession;
 import com.feetfit.server.domain.enums.MeasurementStatus;
-import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 public interface MeasurementSessionRepository extends JpaRepository<MeasurementSession, Long> {
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT m FROM MeasurementSession m " +
-            "JOIN FETCH m.user " +
-            "JOIN FETCH m.device " +
-            "WHERE m.id = :measurementSessionId")
-    Optional<MeasurementSession> findByIdForCompletion(
-            @Param("measurementSessionId") Long measurementSessionId
-    );
-
     boolean existsByUserIdAndMeasuredAtGreaterThanEqualAndMeasuredAtLessThan(
             Long userId,
             LocalDateTime startOfDay,
