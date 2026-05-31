@@ -23,6 +23,7 @@ import com.feetfit.server.repository.HalluxValgusAnalysisRepository;
 import com.feetfit.server.repository.MeasurementSessionRepository;
 import com.feetfit.server.repository.TinaPedisAnalysisRepository;
 import com.feetfit.server.service.ImageService.ImageUploadService;
+import com.feetfit.server.service.MeasurementService.MeasurementSocketService;
 import com.feetfit.server.web.dto.image.ImageResponseDTO;
 import com.feetfit.server.web.dto.report.ReportRequestDTO;
 import com.feetfit.server.web.dto.report.ReportResponseDTO;
@@ -80,12 +81,15 @@ class ReportCommandServiceImplTest {
     @Mock
     private ImageUploadService imageUploadService;
 
+    @Mock
+    private MeasurementSocketService measurementSocketService;
+
     @InjectMocks
     private ReportCommandServiceImpl reportCommandService;
 
     @Test
     void saveTinaPedisAnalysis_completedOwnMeasurement_savesAnalysis() {
-        given(measurementSessionRepository.findById(1L)).willReturn(Optional.of(measurementSession(MeasurementStatus.COMPLETED)));
+        given(measurementSessionRepository.findById(1L)).willReturn(Optional.of(measurementSession(MeasurementStatus.TRANSFERRING)));
         given(tinaPedisAnalysisRepository.findByMeasurementSessionId(1L)).willReturn(Optional.empty());
         givenImageUploads();
         given(tinaPedisAnalysisRepository.save(any(TinaPedisAnalysis.class)))
@@ -114,7 +118,7 @@ class ReportCommandServiceImplTest {
     void saveTinaPedisAnalysis_existingAnalysis_updatesScoreAndFlushes() {
         TinaPedisAnalysis existingAnalysis = TinaPedisAnalysis.builder()
                 .id(1L)
-                .measurementSession(measurementSession(MeasurementStatus.COMPLETED))
+                .measurementSession(measurementSession(MeasurementStatus.TRANSFERRING))
                 .fungalSuspicionSafetyScore(100)
                 .skinReactionSafetyScore(100)
                 .fungalSuspicionSafetyDescription("기존 진균 설명")
@@ -125,7 +129,7 @@ class ReportCommandServiceImplTest {
                 .recordedAt(LocalDateTime.of(2026, 5, 19, 9, 0))
                 .build();
 
-        given(measurementSessionRepository.findById(1L)).willReturn(Optional.of(measurementSession(MeasurementStatus.COMPLETED)));
+        given(measurementSessionRepository.findById(1L)).willReturn(Optional.of(measurementSession(MeasurementStatus.TRANSFERRING)));
         given(tinaPedisAnalysisRepository.findByMeasurementSessionId(1L)).willReturn(Optional.of(existingAnalysis));
         givenImageUploads();
         given(tinaPedisAnalysisRepository
@@ -159,7 +163,7 @@ class ReportCommandServiceImplTest {
     @Test
     @SuppressWarnings("unchecked")
     void saveReport_matchesThreeTodosByWeightedLowScoreDistribution() {
-        MeasurementSession measurementSession = measurementSession(MeasurementStatus.COMPLETED);
+        MeasurementSession measurementSession = measurementSession(MeasurementStatus.TRANSFERRING);
         ReportRequestDTO.SaveReportDTO request = saveReportRequest();
         List<UserStretchingTodo> todos = List.of(
                 stretchingTodo(1L, HealthType.FOOT_ENVIRONMENT, "발 건조 관리"),
@@ -202,6 +206,29 @@ class ReportCommandServiceImplTest {
         assertThat(assignments)
                 .extracting(assignment -> assignment.getStretchingTodo().getHealthType())
                 .containsExactly(HealthType.FOOT_ENVIRONMENT, HealthType.HALLUX_VALGUS, HealthType.FOOT_ENVIRONMENT);
+    }
+
+    @Test
+    void saveTinaPedisAnalysis_whenBothRequiredAnalysesExist_completesMeasurementAndSendsSocket() {
+        MeasurementSession measurementSession = measurementSession(MeasurementStatus.TRANSFERRING);
+        given(measurementSessionRepository.findById(1L)).willReturn(Optional.of(measurementSession));
+        given(tinaPedisAnalysisRepository.findByMeasurementSessionId(1L)).willReturn(Optional.empty());
+        givenImageUploads();
+        given(tinaPedisAnalysisRepository.save(any(TinaPedisAnalysis.class)))
+                .willAnswer(invocation -> invocation.getArgument(0));
+        given(tinaPedisAnalysisRepository
+                .findTopByMeasurementSessionUserIdAndRecordedAtLessThanOrderByRecordedAtDesc(
+                        eq(1L),
+                        any(LocalDateTime.class)
+                ))
+                .willReturn(Optional.empty());
+        given(halluxValgusAnalysisRepository.existsByMeasurementSessionId(1L)).willReturn(true);
+        given(tinaPedisAnalysisRepository.existsByMeasurementSessionId(1L)).willReturn(true);
+
+        reportCommandService.saveTinaPedisAnalysis(1L, tinaPedisRequest(), anyImage(), anyImage());
+
+        assertThat(measurementSession.getStatus()).isEqualTo(MeasurementStatus.COMPLETED);
+        verify(measurementSocketService).sendMeasurementCompleted(measurementSession);
     }
 
     private static ReportRequestDTO.SaveTinaPedisAnalysisDTO tinaPedisRequest() {

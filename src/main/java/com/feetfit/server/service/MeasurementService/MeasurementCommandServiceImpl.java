@@ -87,8 +87,9 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
             }
         }
 
+        boolean wasCompleted = measurementSession.getStatus() == MeasurementStatus.COMPLETED;
         measurementSession.updateStatus(request.getStatus(), request.getMeasurementDurationSec());
-        if (request.getStatus() == MeasurementStatus.COMPLETED) {
+        if (request.getStatus() == MeasurementStatus.COMPLETED && !wasCompleted) {
             measurementSocketService.sendMeasurementCompleted(measurementSession);
         }
 
