@@ -28,6 +28,7 @@ public class ReportQueryServiceImpl implements ReportQueryService {
     private final UserRepository userRepository;
     private final DailyFootAnalysisRepository dailyFootAnalysisRepository;
     private final ReportRepository reportRepository;
+    private final MeasurementSessionRepository measurementSessionRepository;
 
     @Override
     public ReportResponseDTO.HalluxValgusResultDTO getHalluxValgusAnalysis(Long userId, LocalDate date) {
@@ -156,5 +157,20 @@ public class ReportQueryServiceImpl implements ReportQueryService {
                 .collect(Collectors.toList());
 
         return ReportConverter.toReportSummaryResultDTO(report, monthlyScores);
+    }
+
+    @Override
+    public ReportResponseDTO.MeasuredDateListResultDTO getMeasuredDates(Long userId, int year, int month) {
+
+        userRepository.findById(userId)
+                .orElseThrow(() -> new UserHandler(ErrorStatus.USER_NOT_FOUND));
+
+        List<LocalDate> measuredDates = measurementSessionRepository
+                .findMeasuredDatesByYearAndMonth(userId, year, month)
+                .stream()
+                .map(LocalDate::parse)
+                .collect(Collectors.toList());
+
+        return ReportConverter.toMeasuredDateListResultDTO(measuredDates);
     }
 }

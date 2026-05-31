@@ -21,6 +21,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Valid;
 import jakarta.validation.Validator;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.MediaType;
@@ -694,6 +696,62 @@ public class ReportController {
         Long userId = findLoginUser.getCurrentUserId();
         return ApiResponse.onSuccess(reportQueryService.getReportSummary(userId));
     }
+
+    @GetMapping("/measured-dates")
+    @Operation(
+            summary = "측정 날짜 리스트 조회 [민지]",
+            description = """
+                년월 기준으로 해당 월의 측정 날짜 리스트를 조회합니다.
+                Authorization 헤더에 Bearer accessToken이 필요합니다.
+                - year: 조회할 연도
+                - month: 조회할 월 (1~12)
+                - COMPLETED 상태인 측정 세션만 조회합니다.
+                - 측정하지 않은 날은 포함되지 않습니다.
+                """
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "측정 날짜 리스트 조회 성공",
+                    content = @Content(examples = @ExampleObject(value = MEASURED_DATES_SUCCESS_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = "Authorization 헤더 누락 또는 유효하지 않은 토큰",
+                    content = @Content(examples = @ExampleObject(value = UNAUTHORIZED_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "500",
+                    description = "서버 내부 오류",
+                    content = @Content(examples = @ExampleObject(value = INTERNAL_SERVER_ERROR_RESPONSE))
+            )
+    })
+    public ApiResponse<ReportResponseDTO.MeasuredDateListResultDTO> getMeasuredDates(
+            @Parameter(description = "조회 연도", example = "2026")
+            @RequestParam int year,
+            @Parameter(description = "조회 월 (1~12)", example = "5")
+            @RequestParam @Min(value = 1, message = "month는 1 이상이어야 합니다.")
+            @Max(value = 12, message = "month는 12 이하이어야 합니다.") int month
+    ) {
+        Long userId = findLoginUser.getCurrentUserId();
+        return ApiResponse.onSuccess(reportQueryService.getMeasuredDates(userId, year, month));
+    }
+
+    private static final String MEASURED_DATES_SUCCESS_RESPONSE = """
+        {
+          "isSuccess": true,
+          "code": "COMMON200",
+          "message": "성공입니다.",
+          "result": {
+            "measuredDates": [
+              "2026-05-01",
+              "2026-05-15",
+              "2026-05-30",
+              "2026-05-31"
+            ]
+          }
+        }
+        """;
 
     private static final String SAVE_REPORT_SUCCESS_RESPONSE = """
         {

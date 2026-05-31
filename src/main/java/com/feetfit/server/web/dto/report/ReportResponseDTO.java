@@ -9,6 +9,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -366,5 +367,16 @@ public class ReportResponseDTO {
 
         @Schema(description = "수정 시각", example = "2026-05-20T09:00:00")
         private LocalDateTime updatedAt;
+    }
+
+    @Builder
+    @Getter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Schema(description = "측정 날짜 리스트 조회 응답")
+    public static class MeasuredDateListResultDTO {
+
+        @Schema(description = "측정한 날짜 리스트", example = "[\"2026-05-01\", \"2026-05-15\", \"2026-05-31\"]")
+        private List<LocalDate> measuredDates;
     }
 }
