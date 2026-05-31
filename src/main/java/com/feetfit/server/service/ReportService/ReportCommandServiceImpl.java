@@ -15,6 +15,7 @@ import com.feetfit.server.web.dto.image.ImageResponseDTO;
 import com.feetfit.server.web.dto.report.ReportRequestDTO;
 import com.feetfit.server.web.dto.report.ReportResponseDTO;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -35,6 +36,7 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 @RequiredArgsConstructor
+@Slf4j
 public class ReportCommandServiceImpl implements ReportCommandService {
 
     private final HalluxValgusAnalysisRepository halluxValgusAnalysisRepository;
@@ -154,7 +156,14 @@ public class ReportCommandServiceImpl implements ReportCommandService {
         boolean hasHalluxValgus = halluxValgusAnalysisRepository.existsByMeasurementSessionId(measurementSession.getId());
         boolean hasTinaPedis = tinaPedisAnalysisRepository.existsByMeasurementSessionId(measurementSession.getId());
 
-        if (hasHalluxValgus && hasTinaPedis && measurementSession.getStatus() == MeasurementStatus.TRANSFERRING) {
+        log.info("Measurement completion check. measurementSessionId={}, status={}, hasHalluxValgus={}, hasTinaPedis={}",
+                measurementSession.getId(),
+                measurementSession.getStatus(),
+                hasHalluxValgus,
+                hasTinaPedis
+        );
+
+        if (hasHalluxValgus && hasTinaPedis && measurementSession.getStatus() != MeasurementStatus.COMPLETED) {
             measurementSession.updateStatus(MeasurementStatus.COMPLETED, measurementSession.getMeasurementDurationSec());
             measurementSocketService.sendMeasurementCompleted(measurementSession);
         }
@@ -169,7 +178,11 @@ public class ReportCommandServiceImpl implements ReportCommandService {
             throw new MeasurementHandler(ErrorStatus.MEASUREMENT_FORBIDDEN);
         }
 
-        // TRANSFERRING 상태일 때만, 리포트 저장 가능
+        if (measurementSession.getStatus() == MeasurementStatus.MEASURING) {
+            measurementSession.updateStatus(MeasurementStatus.TRANSFERRING, measurementSession.getMeasurementDurationSec());
+        }
+
+        // 측정 중이거나 데이터 전송 중인 세션에만 분석 결과 저장 가능
         if (!measurementSession.getStatus().equals(MeasurementStatus.TRANSFERRING)) {
             throw new MeasurementHandler(ErrorStatus.MEASUREMENT_NOT_TRANSFERRING);
         }
