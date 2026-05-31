@@ -47,6 +47,9 @@ dependencies {
     // WebFlux (WebClient)
     implementation 'org.springframework.boot:spring-boot-starter-webflux'
 
+    // WebSocket
+    implementation 'org.springframework.boot:spring-boot-starter-websocket'
+
     // Apple Login
     implementation 'com.nimbusds:nimbus-jose-jwt:9.30.1'
     implementation 'org.bouncycastle:bcpkix-jdk15on:1.70'

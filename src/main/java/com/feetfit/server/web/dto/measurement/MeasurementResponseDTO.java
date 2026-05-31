@@ -33,6 +33,9 @@ public class MeasurementResponseDTO {
 
         @Schema(description = "생성 시각", example = "2026-05-20T09:00:00")
         private LocalDateTime createdAt;
+
+        @Schema(description = "측정 상태 WebSocket 구독 topic", example = "/topic/measurements/1")
+        private String webSocketTopic;
     }
 
     @Builder
@@ -106,5 +109,33 @@ public class MeasurementResponseDTO {
 
         @Schema(description = "해당 날짜에 완료된 측정 기록 존재 여부", example = "true")
         private Boolean hasMeasurement;
+    }
+
+    @Builder
+    @Getter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Schema(description = "측정 WebSocket 상태 메시지")
+    public static class MeasurementSocketMessageDTO {
+        @Schema(description = "이벤트 타입", example = "MEASUREMENT_STARTED")
+        private String eventType;
+
+        @Schema(description = "측정 세션 ID", example = "1")
+        private Long measurementSessionId;
+
+        @Schema(description = "사용자 ID", example = "1")
+        private Long userId;
+
+        @Schema(description = "디바이스 ID", example = "1")
+        private Long deviceId;
+
+        @Schema(description = "디바이스 고유 코드", example = "FeetFit-001")
+        private String deviceName;
+
+        @Schema(description = "측정 상태", example = "MEASURING")
+        private MeasurementStatus status;
+
+        @Schema(description = "메시지 발행 시각", example = "2026-05-31T22:30:00")
+        private LocalDateTime sentAt;
     }
 }

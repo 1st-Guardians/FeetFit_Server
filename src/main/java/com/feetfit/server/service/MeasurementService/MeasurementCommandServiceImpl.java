@@ -26,12 +26,12 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
 
     private final MeasurementSessionRepository measurementSessionRepository;
     private final UserRepository userRepository;
+    private final MeasurementSocketService measurementSocketService;
     private final TinaPedisAnalysisRepository tinaPedisAnalysisRepository;
     private final HalluxValgusAnalysisRepository halluxValgusAnalysisRepository;
 
     @Override
-    public MeasurementResponseDTO.CreateMeasurementSessionResultDTO createMeasurementSession(
-            Long userId, MeasurementRequestDTO.CreateMeasurementSessionDTO request) {
+    public MeasurementResponseDTO.CreateMeasurementSessionResultDTO createMeasurementSession(Long userId) {
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserHandler(ErrorStatus.USER_NOT_FOUND));
@@ -42,14 +42,12 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
             throw new DeviceHandler(ErrorStatus.DEVICE_NOT_FOUND);
         }
 
-        // 요청한 디바이스 ID와 연결된 디바이스 ID 불일치
-        if (!device.getId().equals(request.getDeviceId())) {
-            throw new DeviceHandler(ErrorStatus.DEVICE_FORBIDDEN);
-        }
-
         MeasurementSession saved = measurementSessionRepository.save(
                 MeasurementConverter.toMeasurementSession(user, device)
         );
+        saved.updateStatus(MeasurementStatus.MEASURING, null);
+
+        measurementSocketService.sendMeasurementStarted(saved);
 
         return MeasurementConverter.toCreateMeasurementSessionResultDTO(saved);
     }
