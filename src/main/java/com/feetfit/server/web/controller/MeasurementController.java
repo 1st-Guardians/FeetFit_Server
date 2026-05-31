@@ -98,8 +98,11 @@ public class MeasurementController {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "400",
-                    description = "무지외반 또는 무좀 분석 결과 미저장",
-                    content = @Content(examples = @ExampleObject(value = MEASUREMENT_ANALYSIS_NOT_READY_RESPONSE))
+                    description = "요청 파라미터 오류 또는 무지외반&무좀 분석 결과 미저장",
+                    content = @Content(examples = {
+                            @ExampleObject(name = "분석 결과 미저장", value = MEASUREMENT_ANALYSIS_NOT_READY_RESPONSE),
+                            @ExampleObject(name = "COMPLETED 요청 파라미터 오류", value = MEASUREMENT_BAD_REQUEST_RESPONSE)
+                    })
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "401",
@@ -136,13 +139,22 @@ public class MeasurementController {
     }
 
     private static final String MEASUREMENT_ANALYSIS_NOT_READY_RESPONSE = """
-        {
-          "isSuccess": false,
-          "code": "MEASUREMENT4005",
-          "message": "무지외반 또는 무좀 분석 결과가 아직 저장되지 않았습니다.",
-          "result": null
-        }
-        """;
+            {
+              "isSuccess": false,
+              "code": "MEASUREMENT4005",
+              "message": "무지외반 또는 무좀 분석 결과가 아직 저장되지 않았습니다.",
+              "result": null
+            }
+            """;
+
+    private static final String MEASUREMENT_BAD_REQUEST_RESPONSE = """
+            {
+              "isSuccess": false,
+              "code": "COMMON400",
+              "message": "잘못된 요청입니다.",
+              "result": null
+            }
+            """;
 
     @GetMapping("/today-status")
     @Operation(
