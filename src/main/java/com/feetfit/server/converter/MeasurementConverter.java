@@ -25,6 +25,7 @@ public class MeasurementConverter {
                 .status(measurementSession.getStatus())
                 .measuredAt(measurementSession.getMeasuredAt())
                 .createdAt(measurementSession.getCreatedAt())
+                .webSocketTopic("/topic/measurements/" + measurementSession.getId())
                 .build();
     }
 

@@ -7,6 +7,7 @@ import com.feetfit.server.jwt.FindLoginUser;
 import com.feetfit.server.jwt.TokenProvider;
 import com.feetfit.server.service.MeasurementService.MeasurementCommandService;
 import com.feetfit.server.service.MeasurementService.MeasurementQueryService;
+import com.feetfit.server.service.MeasurementService.MeasurementSocketService;
 import com.feetfit.server.web.dto.measurement.MeasurementResponseDTO;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +39,9 @@ class MeasurementControllerTest {
 
     @MockBean
     private MeasurementQueryService measurementQueryService;
+
+    @MockBean
+    private MeasurementSocketService measurementSocketService;
 
     @MockBean
     private FindLoginUser findLoginUser;

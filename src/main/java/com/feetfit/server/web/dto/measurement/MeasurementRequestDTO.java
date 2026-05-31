@@ -10,16 +10,6 @@ public class MeasurementRequestDTO {
 
     @Getter
     @NoArgsConstructor
-    @Schema(description = "측정 세션 생성 요청")
-    public static class CreateMeasurementSessionDTO {
-
-        @Schema(description = "측정에 사용할 디바이스 ID", example = "1")
-        @NotNull(message = "디바이스 ID는 필수입니다.")
-        private Long deviceId;
-    }
-
-    @Getter
-    @NoArgsConstructor
     @Schema(description = "측정 세션 상태 수정 요청")
     public static class UpdateMeasurementStatusDTO {
 

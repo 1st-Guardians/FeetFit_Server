@@ -4,6 +4,7 @@ import com.feetfit.server.apiPayload.ApiResponse;
 import com.feetfit.server.jwt.FindLoginUser;
 import com.feetfit.server.service.MeasurementService.MeasurementCommandService;
 import com.feetfit.server.service.MeasurementService.MeasurementQueryService;
+import com.feetfit.server.service.MeasurementService.MeasurementSocketService;
 import com.feetfit.server.web.dto.measurement.MeasurementRequestDTO;
 import com.feetfit.server.web.dto.measurement.MeasurementResponseDTO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -23,6 +24,7 @@ public class MeasurementController {
 
     private final MeasurementCommandService measurementCommandService;
     private final MeasurementQueryService measurementQueryService;
+    private final MeasurementSocketService measurementSocketService;
     private final FindLoginUser findLoginUser;
 
     @PostMapping
@@ -31,8 +33,14 @@ public class MeasurementController {
             description = """
                     새로운 측정 세션을 생성합니다.
                     Authorization 헤더에 Bearer accessToken이 필요합니다.
-                    - 생성 시 status는 자동으로 PENDING으로 설정됩니다.
-                    - 본인의 디바이스 ID만 사용 가능합니다.
+                    - 요청 바디는 없습니다.
+                    - 생성 시 status는 자동으로 MEASURING으로 설정됩니다.
+                    - 로그인 사용자에게 연결된 디바이스로 측정을 시작합니다.
+                    - WebSocket 연결 주소: /ws/measurements
+                    - 측정 상태 구독 topic: /topic/measurements/{measurementSessionId}
+                    - 사용자 단위 측정 상태 구독 topic: /topic/users/{userId}/measurements
+                    - 응답의 webSocketTopic은 측정 세션별 구독 방 이름입니다.
+                    - 세션 생성 후 프론트가 구독 중인 WebSocket topic으로 측정 시작 메시지를 발행합니다.
                     """
     )
     @ApiResponses({
@@ -43,18 +51,13 @@ public class MeasurementController {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "400",
-                    description = "필수값 누락",
+                    description = "잘못된 요청",
                     content = @Content(examples = @ExampleObject(value = VALIDATION_ERROR_RESPONSE))
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "401",
                     description = "Authorization 헤더 누락 또는 유효하지 않은 토큰",
                     content = @Content(examples = @ExampleObject(value = UNAUTHORIZED_RESPONSE))
-            ),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "403",
-                    description = "본인의 디바이스가 아님",
-                    content = @Content(examples = @ExampleObject(value = DEVICE_FORBIDDEN_RESPONSE))
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "404",
@@ -67,11 +70,26 @@ public class MeasurementController {
                     content = @Content(examples = @ExampleObject(value = INTERNAL_SERVER_ERROR_RESPONSE))
             )
     })
-    public ApiResponse<MeasurementResponseDTO.CreateMeasurementSessionResultDTO> createMeasurementSession(
-            @RequestBody @Valid MeasurementRequestDTO.CreateMeasurementSessionDTO request
-    ) {
+    public ApiResponse<MeasurementResponseDTO.CreateMeasurementSessionResultDTO> createMeasurementSession() {
         Long userId = findLoginUser.getCurrentUserId();
-        return ApiResponse.onSuccess(measurementCommandService.createMeasurementSession(userId, request));
+        return ApiResponse.onSuccess(measurementCommandService.createMeasurementSession(userId));
+    }
+
+    @PostMapping("/socket-test")
+    @Operation(
+            summary = "측정 WebSocket 테스트 메시지 발행 [은서]",
+            description = """
+                    프론트 WebSocket 연결 및 구독 여부를 확인하기 위한 테스트 API입니다.
+                    Authorization 헤더에 Bearer accessToken이 필요합니다.
+                    - 프론트는 먼저 /ws/measurements에 연결합니다.
+                    - /topic/users/{userId}/measurements를 구독합니다.
+                    - 이 API를 호출하면 해당 사용자 topic으로 SOCKET_TEST 메시지를 발행합니다.
+                    """
+    )
+    public ApiResponse<String> sendMeasurementSocketTestMessage() {
+        Long userId = findLoginUser.getCurrentUserId();
+        measurementSocketService.sendTestMessage(userId);
+        return ApiResponse.onSuccess("/topic/users/" + userId + "/measurements");
     }
 
     @PatchMapping("/{measurementSessionId}/status")
@@ -211,9 +229,10 @@ public class MeasurementController {
               "result": {
                 "id": 1,
                 "deviceId": 1,
-                "status": "PENDING",
+                "status": "MEASURING",
                 "measuredAt": "2026-05-20T01:55:09",
-                "createdAt": "2026-05-20T01:55:09"
+                "createdAt": "2026-05-20T01:55:09",
+                "webSocketTopic": "/topic/measurements/1"
               }
             }
             """;
@@ -377,9 +396,7 @@ public class MeasurementController {
               "isSuccess": false,
               "code": "COMMON400",
               "message": "잘못된 요청입니다.",
-              "result": {
-                "deviceId": "디바이스 ID는 필수입니다."
-              }
+              "result": null
             }
             """;
 
@@ -397,15 +414,6 @@ public class MeasurementController {
               "isSuccess": false,
               "code": "USER4001",
               "message": "사용자를 찾을 수 없습니다.",
-              "result": null
-            }
-            """;
-
-    private static final String DEVICE_FORBIDDEN_RESPONSE = """
-            {
-              "isSuccess": false,
-              "code": "DEVICE4003",
-              "message": "본인의 디바이스가 아닙니다.",
               "result": null
             }
             """;
