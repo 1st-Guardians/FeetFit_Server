@@ -20,4 +20,6 @@ public interface TinaPedisAnalysisRepository extends JpaRepository<TinaPedisAnal
             Long userId,
             LocalDateTime recordedAt
     );
+
+    boolean existsByMeasurementSessionId(Long measurementSessionId);
 }

@@ -30,4 +30,6 @@ public interface HalluxValgusAnalysisRepository extends JpaRepository<HalluxValg
 
     Optional<HalluxValgusAnalysis> findByMeasurementSessionId(Long measurementSessionId);
 
+    boolean existsByMeasurementSessionId(Long measurementSessionId);
+
 }
