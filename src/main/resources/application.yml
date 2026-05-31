@@ -48,4 +48,4 @@ file:
 
 hardware:
   measurement:
-    start-url: ${HARDWARE_MEASUREMENT_START_URL:https://1038-2001-e60-3162-4147-da3a-ddff-fe82-9fa6.ngrok-free.app/api/reports/all}
+    start-url: ${HARDWARE_MEASUREMENT_START_URL:https://b218-2001-e60-3162-4147-da3a-ddff-fe82-9fa6.ngrok-free.app/api/reports/all}
