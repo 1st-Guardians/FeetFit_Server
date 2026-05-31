@@ -44,3 +44,7 @@ file:
     bucket-name: ${S3_BUCKET_NAME:project5-42-oregon-feetfit-s3}
     region: ${AWS_REGION:us-west-2}
     public-url-prefix: ${S3_PUBLIC_URL_PREFIX:https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com}
+
+hardware:
+  measurement:
+    start-url: ${HARDWARE_MEASUREMENT_START_URL:https://1038-2001-e60-3162-4147-da3a-ddff-fe82-9fa6.ngrok-free.app/api/reports/all}

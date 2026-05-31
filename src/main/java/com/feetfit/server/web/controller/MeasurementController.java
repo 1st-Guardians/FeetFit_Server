@@ -16,6 +16,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Measurement", description = "측정 세션 API")
@@ -43,6 +44,8 @@ public class MeasurementController {
                     - 사용자 단위 측정 상태 구독 topic: /topic/users/{userId}/measurements
                     - 응답의 webSocketTopic은 측정 세션별 구독 방 이름입니다.
                     - 세션 생성 후 프론트가 구독 중인 WebSocket topic으로 측정 시작 메시지를 발행합니다.
+                    - 생성된 measurementSessionId를 하드웨어 서버로 전달합니다.
+                    - 하드웨어 서버 요청에는 프론트가 보낸 Authorization 헤더 값을 그대로 전달합니다.
                     """
     )
     @ApiResponses({
@@ -53,8 +56,11 @@ public class MeasurementController {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "400",
-                    description = "잘못된 요청",
-                    content = @Content(examples = @ExampleObject(value = VALIDATION_ERROR_RESPONSE))
+                    description = "잘못된 요청 또는 기기 미연결",
+                    content = @Content(examples = {
+                            @ExampleObject(name = "잘못된 요청", value = VALIDATION_ERROR_RESPONSE),
+                            @ExampleObject(name = "기기 미연결", value = DEVICE_NOT_CONNECTED_RESPONSE)
+                    })
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "401",
@@ -72,9 +78,11 @@ public class MeasurementController {
                     content = @Content(examples = @ExampleObject(value = INTERNAL_SERVER_ERROR_RESPONSE))
             )
     })
-    public ApiResponse<MeasurementResponseDTO.CreateMeasurementSessionResultDTO> createMeasurementSession() {
+    public ApiResponse<MeasurementResponseDTO.CreateMeasurementSessionResultDTO> createMeasurementSession(
+            @RequestHeader(HttpHeaders.AUTHORIZATION) String authorizationHeader
+    ) {
         Long userId = findLoginUser.getCurrentUserId();
-        return ApiResponse.onSuccess(measurementCommandService.createMeasurementSession(userId));
+        return ApiResponse.onSuccess(measurementCommandService.createMeasurementSession(userId, authorizationHeader));
     }
 
     @PostMapping("/socket-test")
@@ -104,6 +112,8 @@ public class MeasurementController {
                 - MEASURING: 측정 진행 중. 기기에서 센서 데이터를 수집하고 있는 상태입니다.
                 - TRANSFERRING: 데이터 전송 중. 수집된 데이터를 서버로 전송하고 있는 상태입니다. 이 상태에서 리포트 저장이 가능합니다.
                 - COMPLETED: 측정 완료. 무지외반, 무좀 분석 결과가 모두 저장된 경우에만 완료 처리가 가능합니다. measurementDurationSec을 함께 전달해주세요.
+                - COMPLETED 처리 성공 시 WebSocket으로 MEASUREMENT_COMPLETED 메시지를 발행합니다.
+                - 완료 메시지의 shouldDisconnect=true를 받은 프론트는 측정 세션 topic 구독을 해제하거나 WebSocket 연결을 종료하면 됩니다.
                 - FAILED: 측정 실패. 측정 중 오류가 발생한 상태입니다.
                 - 본인의 측정 세션 ID만 사용 가능합니다.
                 """
@@ -468,6 +478,15 @@ public class MeasurementController {
               "isSuccess": false,
               "code": "DEVICE4001",
               "message": "디바이스를 찾을 수 없습니다.",
+              "result": null
+            }
+            """;
+
+    private static final String DEVICE_NOT_CONNECTED_RESPONSE = """
+            {
+              "isSuccess": false,
+              "code": "DEVICE4004",
+              "message": "기기가 연결되어 있지 않습니다.",
               "result": null
             }
             """;

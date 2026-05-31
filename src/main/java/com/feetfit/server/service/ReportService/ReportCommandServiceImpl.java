@@ -10,6 +10,7 @@ import com.feetfit.server.domain.enums.MeasurementStatus;
 import com.feetfit.server.domain.enums.MetricType;
 import com.feetfit.server.repository.*;
 import com.feetfit.server.service.ImageService.ImageUploadService;
+import com.feetfit.server.service.MeasurementService.MeasurementSocketService;
 import com.feetfit.server.web.dto.image.ImageResponseDTO;
 import com.feetfit.server.web.dto.report.ReportRequestDTO;
 import com.feetfit.server.web.dto.report.ReportResponseDTO;
@@ -46,6 +47,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     private final UserStretchingTodoRepository userStretchingTodoRepository;
     private final UserStretchingTodoAssignmentRepository userStretchingTodoAssignmentRepository;
     private final ImageUploadService imageUploadService;
+    private final MeasurementSocketService measurementSocketService;
 
     @Override
     public ReportResponseDTO.SaveHalluxValgusResultDTO saveHalluxValgusAnalysis(
@@ -83,6 +85,8 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                                 measurementSession, request,
                                 leftImageUpload.getImageUrl(), rightImageUpload.getImageUrl())
                 ));
+
+        completeMeasurementIfRequiredAnalysesSaved(measurementSession);
 
         return ReportConverter.toSaveHalluxValgusResultDTO(saved);
     }
@@ -138,7 +142,22 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                 )
                 .orElse(null);
 
+        completeMeasurementIfRequiredAnalysesSaved(measurementSession);
+
         return ReportConverter.toTinaPedisAnalysisResultDTO(saved, previousAnalysis);
+    }
+
+    private void completeMeasurementIfRequiredAnalysesSaved(MeasurementSession measurementSession) {
+        halluxValgusAnalysisRepository.flush();
+        tinaPedisAnalysisRepository.flush();
+
+        boolean hasHalluxValgus = halluxValgusAnalysisRepository.existsByMeasurementSessionId(measurementSession.getId());
+        boolean hasTinaPedis = tinaPedisAnalysisRepository.existsByMeasurementSessionId(measurementSession.getId());
+
+        if (hasHalluxValgus && hasTinaPedis && measurementSession.getStatus() == MeasurementStatus.TRANSFERRING) {
+            measurementSession.updateStatus(MeasurementStatus.COMPLETED, measurementSession.getMeasurementDurationSec());
+            measurementSocketService.sendMeasurementCompleted(measurementSession);
+        }
     }
 
     private MeasurementSession getValidatedCompletedMeasurementSession(Long userId, Long measurementSessionId) {

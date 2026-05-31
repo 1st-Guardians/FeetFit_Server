@@ -8,6 +8,7 @@ import com.feetfit.server.converter.MeasurementConverter;
 import com.feetfit.server.domain.Device;
 import com.feetfit.server.domain.MeasurementSession;
 import com.feetfit.server.domain.User;
+import com.feetfit.server.domain.enums.ConnectionStatus;
 import com.feetfit.server.domain.enums.MeasurementStatus;
 import com.feetfit.server.repository.HalluxValgusAnalysisRepository;
 import com.feetfit.server.repository.MeasurementSessionRepository;
@@ -27,11 +28,12 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
     private final MeasurementSessionRepository measurementSessionRepository;
     private final UserRepository userRepository;
     private final MeasurementSocketService measurementSocketService;
+    private final MeasurementHardwareClient measurementHardwareClient;
     private final TinaPedisAnalysisRepository tinaPedisAnalysisRepository;
     private final HalluxValgusAnalysisRepository halluxValgusAnalysisRepository;
 
     @Override
-    public MeasurementResponseDTO.CreateMeasurementSessionResultDTO createMeasurementSession(Long userId) {
+    public MeasurementResponseDTO.CreateMeasurementSessionResultDTO createMeasurementSession(Long userId, String authorizationHeader) {
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserHandler(ErrorStatus.USER_NOT_FOUND));
@@ -41,6 +43,9 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
         if (device == null) {
             throw new DeviceHandler(ErrorStatus.DEVICE_NOT_FOUND);
         }
+        if (device.getConnectionStatus() != ConnectionStatus.CONNECTED) {
+            throw new DeviceHandler(ErrorStatus.DEVICE_NOT_CONNECTED);
+        }
 
         MeasurementSession saved = measurementSessionRepository.save(
                 MeasurementConverter.toMeasurementSession(user, device)
@@ -48,6 +53,7 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
         saved.updateStatus(MeasurementStatus.MEASURING, null);
 
         measurementSocketService.sendMeasurementStarted(saved);
+        measurementHardwareClient.requestMeasurementStart(saved.getId(), authorizationHeader);
 
         return MeasurementConverter.toCreateMeasurementSessionResultDTO(saved);
     }
@@ -81,7 +87,11 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
             }
         }
 
+        boolean wasCompleted = measurementSession.getStatus() == MeasurementStatus.COMPLETED;
         measurementSession.updateStatus(request.getStatus(), request.getMeasurementDurationSec());
+        if (request.getStatus() == MeasurementStatus.COMPLETED && !wasCompleted) {
+            measurementSocketService.sendMeasurementCompleted(measurementSession);
+        }
 
         return MeasurementConverter.toUpdateMeasurementStatusResultDTO(measurementSession);
     }

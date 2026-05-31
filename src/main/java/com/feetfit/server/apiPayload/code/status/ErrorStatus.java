@@ -32,6 +32,7 @@ public enum ErrorStatus implements BaseErrorCode {
     DEVICE_NOT_FOUND(HttpStatus.NOT_FOUND, "DEVICE4001", "기기를 찾을 수 없습니다."),
     DEVICE_ALREADY_REGISTERED(HttpStatus.CONFLICT, "DEVICE4002", "이미 등록된 기기가 있습니다."),
     DEVICE_FORBIDDEN(HttpStatus.FORBIDDEN, "DEVICE4003", "본인의 기기가 아닙니다."),
+    DEVICE_NOT_CONNECTED(HttpStatus.BAD_REQUEST, "DEVICE4004", "기기가 연결되어 있지 않습니다."),
 
     // Measurement
     MEASUREMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "MEASUREMENT4001", "측정 세션을 찾을 수 없습니다."),
@@ -40,6 +41,7 @@ public enum ErrorStatus implements BaseErrorCode {
     MEASUREMENT_NOT_COMPLETED(HttpStatus.BAD_REQUEST, "MEASUREMENT4004", "완료된 측정 세션이 아닙니다."),
     MEASUREMENT_ANALYSIS_NOT_READY(HttpStatus.BAD_REQUEST, "MEASUREMENT4005", "무지외반 또는 무좀 분석 결과가 아직 저장되지 않았습니다."),
     MEASUREMENT_NOT_TRANSFERRING(HttpStatus.BAD_REQUEST, "MEASUREMENT4006", "데이터 전송 중인 측정 세션이 아닙니다."),
+    MEASUREMENT_HARDWARE_REQUEST_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "MEASUREMENT5001", "하드웨어 서버 측정 요청에 실패했습니다."),
 
     // Report
     REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "REPORT4001", "리포트를 찾을 수 없습니다."),
