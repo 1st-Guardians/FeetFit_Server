@@ -44,6 +44,7 @@ file:
     bucket-name: ${S3_BUCKET_NAME:project5-42-oregon-feetfit-s3}
     region: ${AWS_REGION:us-west-2}
     public-url-prefix: ${S3_PUBLIC_URL_PREFIX:https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com}
+    aws-cli-path: /usr/bin/aws
 
 hardware:
   measurement:

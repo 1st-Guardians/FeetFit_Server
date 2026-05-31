@@ -21,6 +21,18 @@ import java.util.UUID;
 public class ImageUploadService {
 
     private static final Set<String> ALLOWED_EXTENSIONS = Set.of("jpg", "jpeg", "png", "webp", "gif");
+    private static final String DEFAULT_CLI_PATH = String.join(":",
+            "/usr/local/sbin",
+            "/usr/local/bin",
+            "/usr/sbin",
+            "/usr/bin",
+            "/sbin",
+            "/bin",
+            "/usr/local/aws-cli/v2/current/bin",
+            "/root/.local/bin",
+            "/home/ubuntu/.local/bin",
+            "/opt/homebrew/bin"
+    );
 
     @Value("${file.upload.bucket-name:project5-42-oregon-feetfit-s3}")
     private String bucketName;
@@ -30,6 +42,9 @@ public class ImageUploadService {
 
     @Value("${file.upload.public-url-prefix:https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com}")
     private String publicUrlPrefix;
+
+    @Value("${file.upload.aws-cli-path:}")
+    private String awsCliPath;
 
     public ImageResponseDTO.UploadImageResultDTO upload(String folderName, MultipartFile image) {
         validateUploadConfig();
@@ -115,17 +130,25 @@ public class ImageUploadService {
     }
 
     private void uploadToS3(Path tempFile, String s3Uri, String contentType) {
-        ProcessBuilder processBuilder = new ProcessBuilder(
-                "aws",
+        String awsCommand = resolveAwsCliCommand();
+        String uploadCommand = String.join(" ",
+                shellQuote(awsCommand),
                 "s3",
                 "cp",
-                tempFile.toString(),
-                s3Uri,
+                shellQuote(tempFile.toString()),
+                shellQuote(s3Uri),
                 "--region",
-                region,
+                shellQuote(region),
                 "--content-type",
-                contentType == null ? "application/octet-stream" : contentType
+                shellQuote(contentType == null ? "application/octet-stream" : contentType)
         );
+
+        ProcessBuilder processBuilder = new ProcessBuilder(
+                "/bin/sh",
+                "-c",
+                uploadCommand
+        );
+        processBuilder.environment().put("PATH", DEFAULT_CLI_PATH);
         processBuilder.redirectErrorStream(true);
 
         try {
@@ -137,11 +160,35 @@ public class ImageUploadService {
                 throw new GeneralException(ErrorStatus._INTERNAL_SERVER_ERROR, "S3 이미지 업로드에 실패했습니다. " + output);
             }
         } catch (IOException e) {
-            throw new GeneralException(ErrorStatus._INTERNAL_SERVER_ERROR, "EC2 서버에 AWS CLI가 설치되어 있지 않거나 실행할 수 없습니다.");
+            throw new GeneralException(
+                    ErrorStatus._INTERNAL_SERVER_ERROR,
+                    "AWS CLI를 실행할 수 없습니다. awsCliPath=" + awsCommand
+                            + ", processPath=" + DEFAULT_CLI_PATH
+                            + ", javaPath=" + System.getenv("PATH")
+            );
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new GeneralException(ErrorStatus._INTERNAL_SERVER_ERROR, "S3 이미지 업로드가 중단되었습니다.");
         }
+    }
+
+    private String resolveAwsCliCommand() {
+        if (awsCliPath != null && !awsCliPath.isBlank()) {
+            return awsCliPath;
+        }
+
+        for (String candidate : new String[]{"/usr/bin/aws", "/usr/local/bin/aws", "/opt/homebrew/bin/aws"}) {
+            Path path = Path.of(candidate);
+            if (Files.isExecutable(path)) {
+                return candidate;
+            }
+        }
+
+        return "aws";
+    }
+
+    private String shellQuote(String value) {
+        return "'" + value.replace("'", "'\"'\"'") + "'";
     }
 
     private String readProcessOutput(Process process) throws IOException {
