@@ -1,12 +1,14 @@
 package com.feetfit.server.web.controller;
 
 import com.feetfit.server.apiPayload.ApiResponse;
+import com.feetfit.server.domain.enums.MeasurementStatus;
 import com.feetfit.server.jwt.FindLoginUser;
 import com.feetfit.server.service.MeasurementService.MeasurementCommandService;
 import com.feetfit.server.service.MeasurementService.MeasurementQueryService;
 import com.feetfit.server.web.dto.measurement.MeasurementRequestDTO;
 import com.feetfit.server.web.dto.measurement.MeasurementResponseDTO;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -78,18 +80,26 @@ public class MeasurementController {
     @Operation(
             summary = "측정 세션 상태 업데이트 [민지]",
             description = """
-                    측정 세션의 상태를 업데이트합니다.
-                    Authorization 헤더에 Bearer accessToken이 필요합니다.
-                    - status: PENDING, MEASURING, TRANSFERRING, COMPLETED, FAILED
-                    - COMPLETED 시 measurementDurationSec 함께 전달해주세요.
-                    - 본인의 측정 세션 ID만 사용 가능합니다.
-                    """
+                측정 세션의 상태를 업데이트합니다.
+                Authorization 헤더에 Bearer accessToken이 필요합니다.
+                - PENDING: 측정 대기 중. 측정 세션이 생성된 초기 상태입니다.
+                - MEASURING: 측정 진행 중. 기기에서 센서 데이터를 수집하고 있는 상태입니다.
+                - TRANSFERRING: 데이터 전송 중. 수집된 데이터를 서버로 전송하고 있는 상태입니다.
+                - COMPLETED: 측정 완료. 무지외반, 무좀 분석 결과가 모두 저장된 경우에만 완료 처리가 가능합니다. measurementDurationSec을 함께 전달해주세요.
+                - FAILED: 측정 실패. 측정 중 오류가 발생한 상태입니다.
+                - 본인의 측정 세션 ID만 사용 가능합니다.
+                """
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
                     description = "측정 세션 상태 업데이트 성공",
                     content = @Content(examples = @ExampleObject(value = UPDATE_MEASUREMENT_STATUS_SUCCESS_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "무지외반 또는 무좀 분석 결과 미저장",
+                    content = @Content(examples = @ExampleObject(value = MEASUREMENT_ANALYSIS_NOT_READY_RESPONSE))
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "401",
@@ -114,11 +124,25 @@ public class MeasurementController {
     })
     public ApiResponse<MeasurementResponseDTO.UpdateMeasurementStatusResultDTO> updateMeasurementStatus(
             @PathVariable Long measurementSessionId,
-            @RequestBody @Valid MeasurementRequestDTO.UpdateMeasurementStatusDTO request
+            @Parameter(description = "측정 세션 상태", example = "COMPLETED")
+            @RequestParam MeasurementStatus status,
+            @Parameter(description = "측정 소요 시간 (초). COMPLETED 시 필수", example = "180")
+            @RequestParam(required = false) Integer measurementDurationSec
     ) {
         Long userId = findLoginUser.getCurrentUserId();
+        MeasurementRequestDTO.UpdateMeasurementStatusDTO request =
+                new MeasurementRequestDTO.UpdateMeasurementStatusDTO(status, measurementDurationSec);
         return ApiResponse.onSuccess(measurementCommandService.updateMeasurementStatus(userId, measurementSessionId, request));
     }
+
+    private static final String MEASUREMENT_ANALYSIS_NOT_READY_RESPONSE = """
+        {
+          "isSuccess": false,
+          "code": "MEASUREMENT4005",
+          "message": "무지외반 또는 무좀 분석 결과가 아직 저장되지 않았습니다.",
+          "result": null
+        }
+        """;
 
     @GetMapping("/today-status")
     @Operation(
