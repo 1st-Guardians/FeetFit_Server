@@ -15,19 +15,11 @@ public class MeasurementSocketService {
     private final SimpMessagingTemplate messagingTemplate;
 
     public void sendMeasurementStarted(MeasurementSession measurementSession) {
-        MeasurementResponseDTO.MeasurementSocketMessageDTO message =
-                MeasurementResponseDTO.MeasurementSocketMessageDTO.builder()
-                        .eventType("MEASUREMENT_STARTED")
-                        .measurementSessionId(measurementSession.getId())
-                        .userId(measurementSession.getUser().getId())
-                        .deviceId(measurementSession.getDevice().getId())
-                        .deviceName(measurementSession.getDevice().getDeviceName())
-                        .status(measurementSession.getStatus())
-                        .sentAt(LocalDateTime.now())
-                        .build();
+        sendMeasurementMessage(measurementSession, "MEASUREMENT_STARTED", false);
+    }
 
-        messagingTemplate.convertAndSend("/topic/measurements/" + measurementSession.getId(), message);
-        messagingTemplate.convertAndSend("/topic/users/" + measurementSession.getUser().getId() + "/measurements", message);
+    public void sendMeasurementCompleted(MeasurementSession measurementSession) {
+        sendMeasurementMessage(measurementSession, "MEASUREMENT_COMPLETED", true);
     }
 
     public void sendTestMessage(Long userId) {
@@ -35,9 +27,27 @@ public class MeasurementSocketService {
                 MeasurementResponseDTO.MeasurementSocketMessageDTO.builder()
                         .eventType("SOCKET_TEST")
                         .userId(userId)
+                        .shouldDisconnect(false)
                         .sentAt(LocalDateTime.now())
                         .build();
 
         messagingTemplate.convertAndSend("/topic/users/" + userId + "/measurements", message);
+    }
+
+    private void sendMeasurementMessage(MeasurementSession measurementSession, String eventType, boolean shouldDisconnect) {
+        MeasurementResponseDTO.MeasurementSocketMessageDTO message =
+                MeasurementResponseDTO.MeasurementSocketMessageDTO.builder()
+                        .eventType(eventType)
+                        .measurementSessionId(measurementSession.getId())
+                        .userId(measurementSession.getUser().getId())
+                        .deviceId(measurementSession.getDevice().getId())
+                        .deviceName(measurementSession.getDevice().getDeviceName())
+                        .status(measurementSession.getStatus())
+                        .shouldDisconnect(shouldDisconnect)
+                        .sentAt(LocalDateTime.now())
+                        .build();
+
+        messagingTemplate.convertAndSend("/topic/measurements/" + measurementSession.getId(), message);
+        messagingTemplate.convertAndSend("/topic/users/" + measurementSession.getUser().getId() + "/measurements", message);
     }
 }

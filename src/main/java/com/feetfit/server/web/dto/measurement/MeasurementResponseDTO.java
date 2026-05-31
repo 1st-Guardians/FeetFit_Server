@@ -135,6 +135,9 @@ public class MeasurementResponseDTO {
         @Schema(description = "측정 상태", example = "MEASURING")
         private MeasurementStatus status;
 
+        @Schema(description = "메시지 수신 후 WebSocket 연결 종료 권장 여부", example = "false")
+        private Boolean shouldDisconnect;
+
         @Schema(description = "메시지 발행 시각", example = "2026-05-31T22:30:00")
         private LocalDateTime sentAt;
     }
