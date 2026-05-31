@@ -3,6 +3,7 @@ package com.feetfit.server.service.MeasurementService;
 import com.feetfit.server.domain.MeasurementSession;
 import com.feetfit.server.web.dto.measurement.MeasurementResponseDTO;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
@@ -10,6 +11,7 @@ import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class MeasurementSocketService {
 
     private final SimpMessagingTemplate messagingTemplate;
@@ -31,7 +33,13 @@ public class MeasurementSocketService {
                         .sentAt(LocalDateTime.now())
                         .build();
 
-        messagingTemplate.convertAndSend("/topic/users/" + userId + "/measurements", message);
+        String destination = "/topic/users/" + userId + "/measurements";
+        messagingTemplate.convertAndSend(destination, message);
+        log.info("Measurement socket message sent. destination={}, eventType={}, userId={}",
+                destination,
+                message.getEventType(),
+                userId
+        );
     }
 
     private void sendMeasurementMessage(MeasurementSession measurementSession, String eventType, boolean shouldDisconnect) {
@@ -47,7 +55,18 @@ public class MeasurementSocketService {
                         .sentAt(LocalDateTime.now())
                         .build();
 
-        messagingTemplate.convertAndSend("/topic/measurements/" + measurementSession.getId(), message);
-        messagingTemplate.convertAndSend("/topic/users/" + measurementSession.getUser().getId() + "/measurements", message);
+        String measurementDestination = "/topic/measurements/" + measurementSession.getId();
+        String userDestination = "/topic/users/" + measurementSession.getUser().getId() + "/measurements";
+
+        messagingTemplate.convertAndSend(measurementDestination, message);
+        messagingTemplate.convertAndSend(userDestination, message);
+        log.info("Measurement socket message sent. eventType={}, measurementDestination={}, userDestination={}, measurementSessionId={}, status={}, shouldDisconnect={}",
+                eventType,
+                measurementDestination,
+                userDestination,
+                measurementSession.getId(),
+                measurementSession.getStatus(),
+                shouldDisconnect
+        );
     }
 }

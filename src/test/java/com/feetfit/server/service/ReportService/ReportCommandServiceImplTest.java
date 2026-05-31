@@ -46,6 +46,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -211,6 +212,52 @@ class ReportCommandServiceImplTest {
     @Test
     void saveTinaPedisAnalysis_whenBothRequiredAnalysesExist_completesMeasurementAndSendsSocket() {
         MeasurementSession measurementSession = measurementSession(MeasurementStatus.TRANSFERRING);
+        given(measurementSessionRepository.findById(1L)).willReturn(Optional.of(measurementSession));
+        given(tinaPedisAnalysisRepository.findByMeasurementSessionId(1L)).willReturn(Optional.empty());
+        givenImageUploads();
+        given(tinaPedisAnalysisRepository.save(any(TinaPedisAnalysis.class)))
+                .willAnswer(invocation -> invocation.getArgument(0));
+        given(tinaPedisAnalysisRepository
+                .findTopByMeasurementSessionUserIdAndRecordedAtLessThanOrderByRecordedAtDesc(
+                        eq(1L),
+                        any(LocalDateTime.class)
+                ))
+                .willReturn(Optional.empty());
+        given(halluxValgusAnalysisRepository.existsByMeasurementSessionId(1L)).willReturn(true);
+        given(tinaPedisAnalysisRepository.existsByMeasurementSessionId(1L)).willReturn(true);
+
+        reportCommandService.saveTinaPedisAnalysis(1L, tinaPedisRequest(), anyImage(), anyImage());
+
+        assertThat(measurementSession.getStatus()).isEqualTo(MeasurementStatus.COMPLETED);
+        verify(measurementSocketService).sendMeasurementCompleted(measurementSession);
+    }
+
+    @Test
+    void saveTinaPedisAnalysis_whenMeasuringAndOnlyOneAnalysisExists_marksMeasurementTransferring() {
+        MeasurementSession measurementSession = measurementSession(MeasurementStatus.MEASURING);
+        given(measurementSessionRepository.findById(1L)).willReturn(Optional.of(measurementSession));
+        given(tinaPedisAnalysisRepository.findByMeasurementSessionId(1L)).willReturn(Optional.empty());
+        givenImageUploads();
+        given(tinaPedisAnalysisRepository.save(any(TinaPedisAnalysis.class)))
+                .willAnswer(invocation -> invocation.getArgument(0));
+        given(tinaPedisAnalysisRepository
+                .findTopByMeasurementSessionUserIdAndRecordedAtLessThanOrderByRecordedAtDesc(
+                        eq(1L),
+                        any(LocalDateTime.class)
+                ))
+                .willReturn(Optional.empty());
+        given(halluxValgusAnalysisRepository.existsByMeasurementSessionId(1L)).willReturn(false);
+        given(tinaPedisAnalysisRepository.existsByMeasurementSessionId(1L)).willReturn(true);
+
+        reportCommandService.saveTinaPedisAnalysis(1L, tinaPedisRequest(), anyImage(), anyImage());
+
+        assertThat(measurementSession.getStatus()).isEqualTo(MeasurementStatus.TRANSFERRING);
+        verify(measurementSocketService, never()).sendMeasurementCompleted(measurementSession);
+    }
+
+    @Test
+    void saveTinaPedisAnalysis_whenMeasuringAndBothRequiredAnalysesExist_completesMeasurementAndSendsSocket() {
+        MeasurementSession measurementSession = measurementSession(MeasurementStatus.MEASURING);
         given(measurementSessionRepository.findById(1L)).willReturn(Optional.of(measurementSession));
         given(tinaPedisAnalysisRepository.findByMeasurementSessionId(1L)).willReturn(Optional.empty());
         givenImageUploads();
