@@ -38,6 +38,7 @@ public enum ErrorStatus implements BaseErrorCode {
     MEASUREMENT_ALREADY_IN_PROGRESS(HttpStatus.CONFLICT, "MEASUREMENT4002", "이미 측정이 진행 중입니다."),
     MEASUREMENT_FORBIDDEN(HttpStatus.FORBIDDEN, "MEASUREMENT4003", "본인의 측정 세션이 아닙니다."),
     MEASUREMENT_NOT_COMPLETED(HttpStatus.BAD_REQUEST, "MEASUREMENT4004", "완료된 측정 세션이 아닙니다."),
+    MEASUREMENT_ANALYSIS_NOT_READY(HttpStatus.BAD_REQUEST, "MEASUREMENT4005", "무지외반 또는 무좀 분석 결과가 아직 저장되지 않았습니다."),
 
     // Report
     REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "REPORT4001", "리포트를 찾을 수 없습니다."),
