@@ -16,7 +16,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.servers.Server;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Valid;
@@ -68,10 +67,7 @@ public class ReportController {
                             mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
                             schema = @Schema(implementation = ReportRequestDTO.SaveHalluxValgusMultipartDTO.class)
                     )
-            ),
-            servers = {
-                    @Server(url = "http://54.184.58.176", description = "Deploy server - S3 image upload")
-            }
+            )
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -181,10 +177,7 @@ public class ReportController {
                             mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
                             schema = @Schema(implementation = ReportRequestDTO.SaveTinaPedisAnalysisMultipartDTO.class)
                     )
-            ),
-            servers = {
-                    @Server(url = "http://54.184.58.176", description = "Deploy server - S3 image upload")
-            }
+            )
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
