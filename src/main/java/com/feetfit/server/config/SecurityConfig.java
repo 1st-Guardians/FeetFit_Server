@@ -44,7 +44,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(
                                 "/api/auth/**",
+                                "/swagger-ui.html",
                                 "/swagger-ui/**",
+                                "/v3/api-docs",
                                 "/v3/api-docs/**",
                                 "/ws/measurements/**",
                                 "/error"
@@ -60,6 +62,7 @@ public class SecurityConfig {
         configuration.setAllowedOriginPatterns(List.of(
                 "http://localhost:*",
                 "http://127.0.0.1:*",
+                "http://35.94.253.151",
                 "http://54.184.58.176",
                 "https://*.vercel.app",
                 "https://*.netlify.app"
