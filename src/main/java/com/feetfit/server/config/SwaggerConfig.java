@@ -5,7 +5,8 @@ import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
-import org.springdoc.core.customizers.ServerBaseUrlCustomizer;
+import io.swagger.v3.oas.models.servers.Server;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -13,6 +14,12 @@ import java.net.URI;
 
 @Configuration
 public class SwaggerConfig {
+
+    @Value("${swagger.local-server-url:http://localhost:8080}")
+    private String localServerUrl;
+
+    @Value("${swagger.deploy-server-url:http://54.184.58.176}")
+    private String deployServerUrl;
 
     @Bean
     public OpenAPI feetFitSwaggerAPI() {
@@ -25,6 +32,12 @@ public class SwaggerConfig {
                         .scheme("bearer")
                         .bearerFormat("JWT"));
         return new OpenAPI()
+                .addServersItem(new Server()
+                        .url(localServerUrl)
+                        .description("Local server"))
+                .addServersItem(new Server()
+                        .url(stripPort(deployServerUrl))
+                        .description("Deploy server"))
                 .addSecurityItem(securityRequirement)
                 .components(components)
                 .info(new Info()
@@ -33,24 +46,15 @@ public class SwaggerConfig {
                         .version("1.0.0"));
     }
 
-    @Bean
-    public ServerBaseUrlCustomizer serverBaseUrlCustomizer() {
-        return serverBaseUrl -> {
-            URI uri = URI.create(serverBaseUrl);
-            String host = uri.getHost();
+    private String stripPort(String serverUrl) {
+        URI uri = URI.create(serverUrl);
+        String host = uri.getHost();
 
-            if (host == null || isLocalHost(host)) {
-                return serverBaseUrl;
-            }
+        if (host == null) {
+            return serverUrl;
+        }
 
-            String path = uri.getRawPath() == null ? "" : uri.getRawPath();
-            return uri.getScheme() + "://" + host + path;
-        };
-    }
-
-    private boolean isLocalHost(String host) {
-        return "localhost".equalsIgnoreCase(host)
-                || "127.0.0.1".equals(host)
-                || "::1".equals(host);
+        String path = uri.getRawPath() == null ? "" : uri.getRawPath();
+        return uri.getScheme() + "://" + host + path;
     }
 }
