@@ -35,10 +35,6 @@ springdoc:
   api-docs:
     path: /v3/api-docs
 
-swagger:
-  local-server-url: ${SWAGGER_LOCAL_SERVER_URL:http://localhost:8080}
-  deploy-server-url: ${SWAGGER_DEPLOY_SERVER_URL:http://35.94.253.151}
-
 file:
   upload:
     bucket-name: ${S3_BUCKET_NAME:project5-42-oregon-feetfit-s3}
