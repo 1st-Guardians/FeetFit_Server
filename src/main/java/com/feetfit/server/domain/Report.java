@@ -31,7 +31,7 @@ public class Report extends BaseEntity {
     @Column(nullable = false)
     private LocalDateTime reportDate;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private Integer totalScore;
 
     @OneToMany(mappedBy = "report", cascade = CascadeType.ALL)

@@ -288,15 +288,16 @@ public class ReportConverter {
     }
 
     public static ReportResponseDTO.ReportSummaryResultDTO toReportSummaryResultDTO(
-            Report report,
+            int totalScore,
+            List<MetricAnalysisResult> results,
             List<ReportResponseDTO.MonthlyScoreDTO> monthlyScores) {
 
-        List<ReportResponseDTO.MetricScoreDTO> metricScoreDTOs = report.getMetricAnalysisResults().stream()
+        List<ReportResponseDTO.MetricScoreDTO> metricScoreDTOs = results.stream()
                 .map(ReportConverter::toMetricScoreDTO)
                 .collect(Collectors.toList());
 
         return ReportResponseDTO.ReportSummaryResultDTO.builder()
-                .totalScore(report.getTotalScore())
+                .totalScore(totalScore)
                 .metricScores(metricScoreDTOs)
                 .monthlyScores(monthlyScores)
                 .build();
@@ -314,25 +315,29 @@ public class ReportConverter {
                 .build();
     }
 
-    public static ReportResponseDTO.SaveReportResultDTO toSaveReportResultDTO(
+    public static ReportResponseDTO.SaveMetricResultResultDTO toSaveMetricResultResultDTO(
             Report report,
+            MetricAnalysisResult saved,
+            boolean allComplete,
+            Integer totalScore,
+            List<com.feetfit.server.domain.enums.MetricType> missingMetrics,
             List<HealthType> matchedHealthTypes,
             Integer matchedTodoCount
     ) {
-
-        List<ReportResponseDTO.MetricScoreDTO> metricScoreDTOs = report.getMetricAnalysisResults().stream()
-                .map(ReportConverter::toMetricScoreDTO)
-                .collect(Collectors.toList());
-
-        return ReportResponseDTO.SaveReportResultDTO.builder()
-                .id(report.getId())
+        return ReportResponseDTO.SaveMetricResultResultDTO.builder()
+                .reportId(report.getId())
                 .measurementSessionId(report.getMeasurementSession().getId())
-                .totalScore(report.getTotalScore())
-                .metricAnalysisResults(metricScoreDTOs)
+                .savedMetricType(saved.getMetricType())
+                .score(saved.getScore())
+                .status(saved.getStatus())
+                .advice(saved.getAdvice())
+                .allMetricsComplete(allComplete)
+                .totalScore(totalScore)
+                .missingMetrics(missingMetrics)
                 .matchedHealthTypes(matchedHealthTypes)
                 .matchedTodoCount(matchedTodoCount)
-                .createdAt(report.getCreatedAt())
-                .updatedAt(report.getUpdatedAt())
+                .createdAt(saved.getCreatedAt())
+                .updatedAt(saved.getUpdatedAt())
                 .build();
     }
 
