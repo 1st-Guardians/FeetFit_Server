@@ -341,25 +341,40 @@ public class ReportResponseDTO {
     @Getter
     @NoArgsConstructor
     @AllArgsConstructor
-    @Schema(description = "요약 저장 응답")
-    public static class SaveReportResultDTO {
+    @Schema(description = "지표별 리포트 저장 응답")
+    public static class SaveMetricResultResultDTO {
 
         @Schema(description = "리포트 ID", example = "1")
-        private Long id;
+        private Long reportId;
 
         @Schema(description = "측정 세션 ID", example = "1")
         private Long measurementSessionId;
 
-        @Schema(description = "발 종합 점수", example = "83")
+        @Schema(description = "저장된 지표 타입", example = "HALLUX_VALGUS")
+        private MetricType savedMetricType;
+
+        @Schema(description = "점수", example = "72.0")
+        private Float score;
+
+        @Schema(description = "지표 상태", example = "ATTENTION_NEEDED")
+        private GaugeStatus status;
+
+        @Schema(description = "어드바이스 목록 (2개)")
+        private List<String> advice;
+
+        @Schema(description = "5개 지표 모두 저장 완료 여부", example = "false")
+        private boolean allMetricsComplete;
+
+        @Schema(description = "종합 점수. 5개 지표 미완성 시 null", example = "80", nullable = true)
         private Integer totalScore;
 
-        @Schema(description = "지표별 분석 결과 목록")
-        private List<MetricScoreDTO> metricAnalysisResults;
+        @Schema(description = "아직 저장되지 않은 지표 목록. 완료되면 빈 리스트", example = "[\"PRESSURE_BALANCE\", \"FOOT_ODOR\"]")
+        private List<MetricType> missingMetrics;
 
-        @Schema(description = "점수 분포와 가중치 기반으로 투두가 매칭된 건강 타입", example = "[FOOT_ENVIRONMENT, HALLUX_VALGUS]")
+        @Schema(description = "투두가 매칭된 건강 타입. 미완성 시 null", nullable = true)
         private List<HealthType> matchedHealthTypes;
 
-        @Schema(description = "사용자에게 새로 매칭된 스트레칭 투두 개수", example = "3")
+        @Schema(description = "새로 매칭된 스트레칭 투두 개수. 미완성 시 null", example = "3", nullable = true)
         private Integer matchedTodoCount;
 
         @Schema(description = "생성 시각", example = "2026-05-20T09:00:00")

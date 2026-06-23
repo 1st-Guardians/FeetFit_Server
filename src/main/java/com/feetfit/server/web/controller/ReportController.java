@@ -594,32 +594,32 @@ public class ReportController {
 
     @PostMapping("/summary")
     @Operation(
-            summary = "요약 저장 [민지]",
+            summary = "지표별 리포트 저장 [민지]",
             description = """
-                AI 분석 결과로 받은 지표별 데이터를 저장합니다.
+                분석 완료된 단일 지표의 결과를 저장합니다.
                 Authorization 헤더에 Bearer accessToken이 필요합니다.
-                - 오늘 날짜에 이미 저장된 데이터가 있으면 덮어씁니다 (UPDATE).
-                - 오늘 날짜에 저장된 데이터가 없으면 새로 저장합니다 (INSERT).
-                - totalScore는 5개 지표별 가중치 평균으로 서버에서 계산합니다.
-                - 측정 세션의 status가 COMPLETED인 경우에만 저장됩니다.
+                - 지표 타입: PRESSURE_BALANCE, HALLUX_VALGUS, ATHLETES_FOOT, FOOT_ODOR, FOOT_ENVIRONMENT
+                - 같은 측정 세션 + 같은 지표 타입이 이미 저장되어 있으면 덮어씁니다 (upsert).
+                - 측정 세션의 status가 TRANSFERRING 상태여야 합니다.
                 - 본인의 측정 세션 ID만 사용 가능합니다.
-                - metricAnalysisResults는 정확히 5개여야 합니다.
-                - advice는 각 지표별 정확히 2개여야 합니다.
-                - 점수와 가중치 기반으로 부족도가 큰 카테고리의 오늘 스트레칭 투두 3개를 사용자에게 새로 매칭합니다.
-                - 기존 오늘 스트레칭 투두 매칭은 삭제하고 새 결과 기준으로 다시 연결합니다.
+                - advice는 정확히 2개여야 합니다.
+                - 5개 지표가 모두 저장 완료되면 totalScore(단순 평균)를 계산하고 스트레칭 투두를 매칭합니다.
+                - allMetricsComplete: 5개 지표 모두 저장 완료 여부
+                - missingMetrics: 아직 저장되지 않은 지표 목록 (완료 시 빈 리스트)
+                - totalScore, matchedHealthTypes, matchedTodoCount: 완료 시에만 반환 (미완료 시 null)
                 """
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
-                    description = "요약 저장 성공",
-                    content = @Content(examples = @ExampleObject(value = SAVE_REPORT_SUCCESS_RESPONSE))
+                    description = "지표 저장 성공",
+                    content = @Content(examples = @ExampleObject(value = SAVE_METRIC_RESULT_SUCCESS_RESPONSE))
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "400",
-                    description = "필수값 누락, 완료되지 않은 측정 세션, 지표 개수 오류",
+                    description = "필수값 누락, 전송 중이 아닌 측정 세션",
                     content = @Content(examples = {
-                            @ExampleObject(name = "유효성 검사 실패", value = REPORT_VALIDATION_ERROR_RESPONSE),
+                            @ExampleObject(name = "유효성 검사 실패", value = METRIC_RESULT_VALIDATION_ERROR_RESPONSE),
                             @ExampleObject(name = "완료되지 않은 측정 세션", value = MEASUREMENT_NOT_COMPLETED_RESPONSE)
                     })
             ),
@@ -644,11 +644,11 @@ public class ReportController {
                     content = @Content(examples = @ExampleObject(value = INTERNAL_SERVER_ERROR_RESPONSE))
             )
     })
-    public ApiResponse<ReportResponseDTO.SaveReportResultDTO> saveReport(
-            @RequestBody @Valid ReportRequestDTO.SaveReportDTO request
+    public ApiResponse<ReportResponseDTO.SaveMetricResultResultDTO> saveMetricResult(
+            @RequestBody @Valid ReportRequestDTO.SaveMetricResultDTO request
     ) {
         Long userId = findLoginUser.getCurrentUserId();
-        return ApiResponse.onSuccess(reportCommandService.saveReport(userId, request));
+        return ApiResponse.onSuccess(reportCommandService.saveMetricResult(userId, request));
     }
 
     @GetMapping("/summary")
@@ -658,9 +658,11 @@ public class ReportController {
                 오늘 날짜 기준으로 발 종합 점수, 지표별 점수, 1년간 변화 추이를 조회합니다.
                 Authorization 헤더에 Bearer accessToken이 필요합니다.
                 - 지표 타입: PRESSURE_BALANCE(압력 균형), HALLUX_VALGUS(무지외반), ATHLETES_FOOT(무좀), FOOT_ODOR(발냄새), FOOT_ENVIRONMENT(환경 상태)
-                - monthlyScores: 최근 12개월 월별 종합 점수 평균
+                - monthlyScores: 최근 12개월 월별 종합 점수 평균 (5개 지표 모두 있는 날만 포함)
+                - totalScore: 5개 지표 단순 평균으로 백엔드에서 계산
                 - advice: 각 지표별 설명 2개
                 - 오늘 저장된 데이터가 없으면 404를 반환합니다.
+                - 5개 지표가 모두 저장되지 않은 경우 400(REPORT4002)을 반환하며, 누락된 지표 목록이 메시지에 포함됩니다.
                 """
     )
     @ApiResponses({
@@ -746,81 +748,43 @@ public class ReportController {
         }
         """;
 
-    private static final String SAVE_REPORT_SUCCESS_RESPONSE = """
+    private static final String SAVE_METRIC_RESULT_SUCCESS_RESPONSE = """
         {
           "isSuccess": true,
           "code": "COMMON200",
           "message": "성공입니다.",
           "result": {
-            "id": 1,
+            "reportId": 1,
             "measurementSessionId": 1,
-            "totalScore": 83,
-            "metricAnalysisResults": [
-              {
-                "metricType": "PRESSURE_BALANCE",
-                "score": 85.0,
-                "status": "VERY_GOOD",
-                "advice": [
-                  "좌우 발의 압력 분포에 다소 차이가 나타나고 있습니다.",
-                  "보행 시 체중을 양쪽 발에 고르게 분산하는 습관을 의식하는 것이 필요합니다."
-                ]
-              },
-              {
-                "metricType": "HALLUX_VALGUS",
-                "score": 72.0,
-                "status": "ATTENTION_NEEDED",
-                "advice": [
-                  "엄지발가락이 안쪽으로 약간 기울어지는 변화가 관찰되며, 발 앞쪽 부담에 주의가 필요합니다.",
-                  "앞쪽 발에 부담이 커지지 않도록 편한 신발을 착용하고, 발가락 스트레칭과 상태 관리를 꾸준히 해주세요."
-                ]
-              },
-              {
-                "metricType": "ATHLETES_FOOT",
-                "score": 90.0,
-                "status": "VERY_GOOD",
-                "advice": [
-                  "무좀 의심 징후가 거의 나타나지 않으며, 발 피부 상태가 전반적으로 매우 안정적인 상태입니다.",
-                  "현재처럼 발을 청결하고 건조하게 관리하면 무좀 발생 가능성을 낮추는 데 도움이 됩니다."
-                ]
-              },
-              {
-                "metricType": "FOOT_ODOR",
-                "score": 88.0,
-                "status": "VERY_GOOD",
-                "advice": [
-                  "발냄새를 유발할 수 있는 습도와 냄새 관련 수치가 전반적으로 매우 안정적인 상태입니다.",
-                  "현재처럼 발을 청결하고 건조하게 관리하면 쾌적한 발 환경을 유지하는 데 도움이 됩니다."
-                ]
-              },
-              {
-                "metricType": "FOOT_ENVIRONMENT",
-                "score": 65.0,
-                "status": "NEED_IMPROVEMENT",
-                "advice": [
-                  "발 주변의 온도와 습도가 전반적으로 높게 나타나며, 발 환경 관리 개선이 필요한 상태입니다.",
-                  "피부 트러블이나 무좀 위험을 줄이기 위해 발을 청결하고 건조하게 유지하고, 통풍이 잘 되는 신발을 착용해주세요."
-                ]
-              }
+            "savedMetricType": "HALLUX_VALGUS",
+            "score": 72.0,
+            "status": "ATTENTION_NEEDED",
+            "advice": [
+              "엄지발가락이 안쪽으로 약간 기울어지는 변화가 관찰되며, 발 앞쪽 부담에 주의가 필요합니다.",
+              "앞쪽 발에 부담이 커지지 않도록 편한 신발을 착용하고, 발가락 스트레칭과 상태 관리를 꾸준히 해주세요."
             ],
-            "matchedHealthTypes": [
-              "FOOT_ENVIRONMENT",
-              "HALLUX_VALGUS"
-            ],
-            "matchedTodoCount": 3,
+            "allMetricsComplete": false,
+            "totalScore": null,
+            "missingMetrics": ["ATHLETES_FOOT", "FOOT_ENVIRONMENT", "FOOT_ODOR", "PRESSURE_BALANCE"],
+            "matchedHealthTypes": null,
+            "matchedTodoCount": null,
             "createdAt": "2026-05-20T09:00:00",
             "updatedAt": "2026-05-20T09:00:00"
           }
         }
         """;
 
-    private static final String REPORT_VALIDATION_ERROR_RESPONSE = """
+    private static final String METRIC_RESULT_VALIDATION_ERROR_RESPONSE = """
         {
           "isSuccess": false,
           "code": "COMMON400",
           "message": "잘못된 요청입니다.",
           "result": {
             "measurementSessionId": "측정 세션 ID는 필수입니다.",
-            "metricAnalysisResults": "지표별 분석 결과는 5개여야 합니다."
+            "metricType": "지표 타입은 필수입니다.",
+            "score": "점수는 필수입니다.",
+            "status": "상태는 필수입니다.",
+            "advice": "어드바이스는 2개여야 합니다."
           }
         }
         """;

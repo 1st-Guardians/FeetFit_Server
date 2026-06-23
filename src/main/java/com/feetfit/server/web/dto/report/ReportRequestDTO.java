@@ -172,15 +172,23 @@ public class ReportRequestDTO {
 
     @Getter
     @NoArgsConstructor
-    public static class SaveReportDTO {
+    public static class SaveMetricResultDTO {
 
         @NotNull(message = "측정 세션 ID는 필수입니다.")
         private Long measurementSessionId;
 
-        @NotNull(message = "지표별 분석 결과는 필수입니다.")
-        @Size(min = 5, max = 5, message = "지표별 분석 결과는 5개여야 합니다.")
-        @Valid
-        private List<SaveMetricAnalysisResultDTO> metricAnalysisResults;
+        @NotNull(message = "지표 타입은 필수입니다.")
+        private MetricType metricType;
+
+        @NotNull(message = "점수는 필수입니다.")
+        private Float score;
+
+        @NotNull(message = "상태는 필수입니다.")
+        private GaugeStatus status;
+
+        @NotNull(message = "어드바이스는 필수입니다.")
+        @Size(min = 2, max = 2, message = "어드바이스는 2개여야 합니다.")
+        private List<String> advice;
     }
 
     @Getter

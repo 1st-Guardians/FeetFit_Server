@@ -11,7 +11,13 @@ import org.hibernate.type.SqlTypes;
 import java.util.List;
 
 @Entity
-@Table(name = "metric_analysis_result")
+@Table(
+    name = "metric_analysis_result",
+    uniqueConstraints = @jakarta.persistence.UniqueConstraint(
+        name = "uq_metric_analysis_result_report_metric",
+        columnNames = {"report_id", "metric_type"}
+    )
+)
 @Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -40,4 +46,10 @@ public class MetricAnalysisResult extends BaseEntity {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(nullable = false, columnDefinition = "JSON")
     private List<String> advice;
+
+    public void updateMetricResult(Float score, GaugeStatus status, List<String> advice) {
+        this.score = score;
+        this.status = status;
+        this.advice = advice;
+    }
 }

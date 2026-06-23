@@ -45,6 +45,7 @@ public enum ErrorStatus implements BaseErrorCode {
 
     // Report
     REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "REPORT4001", "리포트를 찾을 수 없습니다."),
+    REPORT_METRIC_INCOMPLETE(HttpStatus.BAD_REQUEST, "REPORT4002", "모든 지표가 저장되지 않아 종합 리포트를 조회할 수 없습니다."),
     TINA_PEDIS_ANALYSIS_NOT_FOUND(HttpStatus.NOT_FOUND, "TINA_PEDIS4001", "무좀 분석 결과를 찾을 수 없습니다."),
 
     // Stretching Todo
