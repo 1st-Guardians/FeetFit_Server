@@ -2,6 +2,7 @@ package com.feetfit.server.repository;
 
 import com.feetfit.server.domain.UserHealthArticle;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -17,4 +18,11 @@ public interface UserHealthArticleRepository extends JpaRepository<UserHealthArt
             ORDER BY healthArticle.publishedAt DESC
             """)
     List<UserHealthArticle> findAllByUserIdWithArticle(@Param("userId") Long userId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            DELETE FROM UserHealthArticle userHealthArticle
+            WHERE userHealthArticle.user.id = :userId
+            """)
+    void deleteByUserId(@Param("userId") Long userId);
 }

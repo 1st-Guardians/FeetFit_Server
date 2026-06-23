@@ -322,7 +322,9 @@ public class ReportConverter {
             Integer totalScore,
             List<com.feetfit.server.domain.enums.MetricType> missingMetrics,
             List<HealthType> matchedHealthTypes,
-            Integer matchedTodoCount
+            Integer matchedTodoCount,
+            List<HealthType> matchedArticleHealthTypes,
+            Integer matchedArticleCount
     ) {
         return ReportResponseDTO.SaveMetricResultResultDTO.builder()
                 .reportId(report.getId())
@@ -336,6 +338,8 @@ public class ReportConverter {
                 .missingMetrics(missingMetrics)
                 .matchedHealthTypes(matchedHealthTypes)
                 .matchedTodoCount(matchedTodoCount)
+                .matchedArticleHealthTypes(matchedArticleHealthTypes)
+                .matchedArticleCount(matchedArticleCount)
                 .createdAt(saved.getCreatedAt())
                 .updatedAt(saved.getUpdatedAt())
                 .build();

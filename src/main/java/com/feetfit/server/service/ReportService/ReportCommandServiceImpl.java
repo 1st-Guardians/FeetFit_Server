@@ -46,6 +46,8 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     private final MetricAnalysisResultRepository metricAnalysisResultRepository;
     private final UserStretchingTodoRepository userStretchingTodoRepository;
     private final UserStretchingTodoAssignmentRepository userStretchingTodoAssignmentRepository;
+    private final HealthArticleRepository healthArticleRepository;
+    private final UserHealthArticleRepository userHealthArticleRepository;
     private final ImageUploadService imageUploadService;
 
     @Override
@@ -240,14 +242,17 @@ public class ReportCommandServiceImpl implements ReportCommandService {
         Integer totalScore = null;
         List<HealthType> matchedHealthTypes = null;
         Integer matchedTodoCount = null;
+        List<HealthType> matchedArticleHealthTypes = null;
+        Integer matchedArticleCount = null;
 
         if (allComplete) {
             totalScore = calculateSimpleTotalScore(allResults);
             report.updateTotalScore(totalScore);
             report.updateReportDate(LocalDateTime.now());
+            String recommendationContext = buildRecommendationContext(measurementSession, allResults);
 
             List<UserStretchingTodo> matchedTodos = replaceTodayTodoAssignments(
-                    measurementSession.getUser(), allResults, LocalDate.now());
+                    measurementSession.getUser(), allResults, LocalDate.now(), recommendationContext);
             matchedHealthTypes = matchedTodos.stream()
                     .map(UserStretchingTodo::getHealthType)
                     .collect(Collectors.collectingAndThen(
@@ -255,10 +260,21 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                             ArrayList::new
                     ));
             matchedTodoCount = matchedTodos.size();
+
+            List<HealthArticle> matchedArticles = replaceUserHealthArticles(
+                    measurementSession.getUser(), allResults, recommendationContext);
+            matchedArticleHealthTypes = matchedArticles.stream()
+                    .map(HealthArticle::getHealthType)
+                    .collect(Collectors.collectingAndThen(
+                            Collectors.toCollection(LinkedHashSet::new),
+                            ArrayList::new
+                    ));
+            matchedArticleCount = matchedArticles.size();
         }
 
         return ReportConverter.toSaveMetricResultResultDTO(
-                report, metricResult, allComplete, totalScore, missingMetrics, matchedHealthTypes, matchedTodoCount);
+                report, metricResult, allComplete, totalScore, missingMetrics,
+                matchedHealthTypes, matchedTodoCount, matchedArticleHealthTypes, matchedArticleCount);
     }
 
     // 단순 평균 totalScore 계산 (5개 지표 단순 평균)
@@ -294,12 +310,13 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     private List<UserStretchingTodo> replaceTodayTodoAssignments(
             User user,
             List<MetricAnalysisResult> metricResults,
-            LocalDate reportDate
+            LocalDate reportDate,
+            String recommendationContext
     ) {
         LocalDateTime startOfDay = reportDate.atStartOfDay();
         LocalDateTime startOfNextDay = reportDate.plusDays(1).atStartOfDay();
 
-        userStretchingTodoAssignmentRepository.deleteByUserIdAndTodoDateBetween(
+        userStretchingTodoAssignmentRepository.deleteByUserIdAndCreatedAtBetween(
                 user.getId(), startOfDay, startOfNextDay);
 
         List<WeightedMetric> weightedMetrics = metricResults.stream()
@@ -318,13 +335,25 @@ public class ReportCommandServiceImpl implements ReportCommandService {
 
         Map<HealthType, Queue<UserStretchingTodo>> todosByHealthType = new EnumMap<>(HealthType.class);
         userStretchingTodoRepository
-                .findByHealthTypeInAndTodoDateGreaterThanEqualAndTodoDateLessThanOrderByIdAsc(
-                        healthTypes, startOfDay, startOfNextDay)
+                .findByHealthTypeInOrderByIdAsc(healthTypes)
+                .stream()
+                .sorted(Comparator.<UserStretchingTodo>comparingDouble(
+                        todo -> keywordSimilarityScore(
+                                recommendationContext,
+                                todo.getTitle(),
+                                todo.getHealthType()
+                        )
+                ).reversed())
                 .forEach(todo -> todosByHealthType
                         .computeIfAbsent(todo.getHealthType(), ignored -> new ArrayDeque<>())
                         .add(todo));
 
-        List<UserStretchingTodo> selectedTodos = selectWeightedTodos(weightedMetrics, todosByHealthType, 3);
+        List<UserStretchingTodo> selectedTodos = selectWeightedTodos(
+                weightedMetrics,
+                todosByHealthType,
+                recommendationContext,
+                3
+        );
         if (selectedTodos.isEmpty()) {
             return selectedTodos;
         }
@@ -341,9 +370,66 @@ public class ReportCommandServiceImpl implements ReportCommandService {
         return selectedTodos;
     }
 
+    private List<HealthArticle> replaceUserHealthArticles(
+            User user,
+            List<MetricAnalysisResult> metricResults,
+            String recommendationContext
+    ) {
+        userHealthArticleRepository.deleteByUserId(user.getId());
+
+        List<WeightedMetric> weightedMetrics = metricResults.stream()
+                .map(result -> new WeightedMetric(
+                        metricToHealthType(result.getMetricType()),
+                        safeScore(result.getScore()),
+                        metricWeight(result.getMetricType()),
+                        weightedDeficit(result.getScore(), result.getMetricType())
+                ))
+                .sorted((l, r) -> Double.compare(r.weightedDeficit(), l.weightedDeficit()))
+                .toList();
+
+        Set<HealthType> healthTypes = weightedMetrics.stream()
+                .map(WeightedMetric::healthType)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        Map<HealthType, Queue<HealthArticle>> articlesByHealthType = new EnumMap<>(HealthType.class);
+        healthArticleRepository.findByHealthTypeInOrderByPublishedAtDesc(healthTypes)
+                .stream()
+                .sorted(Comparator.<HealthArticle>comparingDouble(
+                        article -> keywordSimilarityScore(
+                                recommendationContext,
+                                articleContent(article),
+                                article.getHealthType()
+                        )
+                ).reversed())
+                .forEach(article -> articlesByHealthType
+                        .computeIfAbsent(article.getHealthType(), ignored -> new ArrayDeque<>())
+                        .add(article));
+
+        List<HealthArticle> selectedArticles = selectWeightedArticles(
+                weightedMetrics,
+                articlesByHealthType,
+                recommendationContext,
+                4
+        );
+        if (selectedArticles.isEmpty()) {
+            return selectedArticles;
+        }
+
+        List<UserHealthArticle> userHealthArticles = selectedArticles.stream()
+                .map(article -> UserHealthArticle.builder()
+                        .user(user)
+                        .healthArticle(article)
+                        .build())
+                .toList();
+
+        userHealthArticleRepository.saveAll(userHealthArticles);
+        return selectedArticles;
+    }
+
     private List<UserStretchingTodo> selectWeightedTodos(
             List<WeightedMetric> weightedMetrics,
             Map<HealthType, Queue<UserStretchingTodo>> todosByHealthType,
+            String recommendationContext,
             int limit
     ) {
         Map<HealthType, Integer> selectedCountByHealthType = new EnumMap<>(HealthType.class);
@@ -358,8 +444,14 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                 if (todos == null || todos.isEmpty()) {
                     continue;
                 }
+                UserStretchingTodo candidate = todos.peek();
                 int alreadySelectedCount = selectedCountByHealthType.getOrDefault(metric.healthType(), 0);
-                double priority = metric.weightedDeficit() / (alreadySelectedCount + 1.0);
+                double keywordScore = keywordSimilarityScore(
+                        recommendationContext,
+                        candidate.getTitle(),
+                        candidate.getHealthType()
+                );
+                double priority = recommendationPriority(metric.weightedDeficit(), keywordScore, alreadySelectedCount);
                 if (selectedMetric == null || priority > selectedPriority) {
                     selectedMetric = metric;
                     selectedPriority = priority;
@@ -375,6 +467,218 @@ public class ReportCommandServiceImpl implements ReportCommandService {
         }
 
         return selectedTodos;
+    }
+
+    private List<HealthArticle> selectWeightedArticles(
+            List<WeightedMetric> weightedMetrics,
+            Map<HealthType, Queue<HealthArticle>> articlesByHealthType,
+            String recommendationContext,
+            int limit
+    ) {
+        Map<HealthType, Integer> selectedCountByHealthType = new EnumMap<>(HealthType.class);
+        List<HealthArticle> selectedArticles = new ArrayList<>();
+
+        while (selectedArticles.size() < limit) {
+            WeightedMetric selectedMetric = null;
+            double selectedPriority = -1.0;
+
+            for (WeightedMetric metric : weightedMetrics) {
+                Queue<HealthArticle> articles = articlesByHealthType.get(metric.healthType());
+                if (articles == null || articles.isEmpty()) {
+                    continue;
+                }
+                HealthArticle candidate = articles.peek();
+                int alreadySelectedCount = selectedCountByHealthType.getOrDefault(metric.healthType(), 0);
+                double keywordScore = keywordSimilarityScore(
+                        recommendationContext,
+                        articleContent(candidate),
+                        candidate.getHealthType()
+                );
+                double priority = recommendationPriority(metric.weightedDeficit(), keywordScore, alreadySelectedCount);
+                if (selectedMetric == null || priority > selectedPriority) {
+                    selectedMetric = metric;
+                    selectedPriority = priority;
+                }
+            }
+
+            if (selectedMetric == null) {
+                break;
+            }
+
+            selectedArticles.add(articlesByHealthType.get(selectedMetric.healthType()).poll());
+            selectedCountByHealthType.merge(selectedMetric.healthType(), 1, Integer::sum);
+        }
+
+        return selectedArticles;
+    }
+
+    private double recommendationPriority(double weightedDeficit, double keywordScore, int alreadySelectedCount) {
+        double blendedScore = weightedDeficit * 0.65 + keywordScore * 0.35;
+        return blendedScore / (alreadySelectedCount + 1.0);
+    }
+
+    private String buildRecommendationContext(
+            MeasurementSession measurementSession,
+            List<MetricAnalysisResult> metricResults
+    ) {
+        StringBuilder context = new StringBuilder();
+
+        metricResults.forEach(result -> {
+            appendText(context, result.getMetricType().name());
+            appendText(context, result.getStatus().name());
+            appendTexts(context, result.getAdvice());
+        });
+
+        halluxValgusAnalysisRepository.findByMeasurementSessionId(measurementSession.getId())
+                .ifPresent(analysis -> {
+                    appendText(context, analysis.getLeftAnalysisText());
+                    appendText(context, analysis.getRightAnalysisText());
+                    appendText(context, analysis.getScoreAnalysisText());
+                });
+
+        tinaPedisAnalysisRepository.findByMeasurementSessionId(measurementSession.getId())
+                .ifPresent(analysis -> {
+                    appendText(context, analysis.getFungalSuspicionSafetyDescription());
+                    appendText(context, analysis.getSkinReactionSafetyDescription());
+                    appendText(context, analysis.getTotalScoreDescription());
+                });
+
+        dailyFootAnalysisRepository.findByMeasurementSessionId(measurementSession.getId())
+                .ifPresent(analysis -> {
+                    appendTexts(context, analysis.getConditionComments());
+                    appendText(context, analysis.getBalanceComment());
+                    appendText(context, analysis.getFootOdourComment());
+                    appendTexts(context, analysis.getCareTips());
+                    appendText(context, analysis.getTypeText());
+                });
+
+        return normalizeText(context.toString());
+    }
+
+    private double keywordSimilarityScore(String contextText, String contentText, HealthType healthType) {
+        String normalizedContext = normalizeText(contextText);
+        String normalizedContent = normalizeText(contentText);
+
+        if (normalizedContext.isBlank() || normalizedContent.isBlank()) {
+            return 0.0;
+        }
+
+        double score = 0.0;
+        boolean hasActiveKeywordGroup = false;
+
+        for (List<String> keywordGroup : keywordGroups(healthType)) {
+            boolean contextMatched = containsAny(normalizedContext, keywordGroup);
+            boolean contentMatched = containsAny(normalizedContent, keywordGroup);
+
+            if (contextMatched) {
+                hasActiveKeywordGroup = true;
+            }
+            if (contextMatched && contentMatched) {
+                score += 22.0;
+            } else if (contentMatched) {
+                score += 5.0;
+            }
+
+            for (String keyword : keywordGroup) {
+                if (normalizedContext.contains(keyword) && normalizedContent.contains(keyword)) {
+                    score += 6.0;
+                }
+            }
+        }
+
+        if (!hasActiveKeywordGroup && containsAnyHealthKeyword(normalizedContent, healthType)) {
+            score += 10.0;
+        }
+
+        score += tokenOverlapScore(normalizedContext, normalizedContent);
+        return Math.min(score, 100.0);
+    }
+
+    private double tokenOverlapScore(String contextText, String contentText) {
+        Set<String> contextTokens = tokens(contextText);
+        if (contextTokens.isEmpty()) {
+            return 0.0;
+        }
+
+        long overlapCount = tokens(contentText).stream()
+                .filter(contextTokens::contains)
+                .limit(8)
+                .count();
+        return overlapCount * 2.0;
+    }
+
+    private Set<String> tokens(String text) {
+        return Arrays.stream(text.split("[^0-9a-zA-Z가-힣]+"))
+                .filter(token -> token.length() >= 2)
+                .collect(Collectors.toSet());
+    }
+
+    private boolean containsAnyHealthKeyword(String text, HealthType healthType) {
+        return keywordGroups(healthType).stream()
+                .anyMatch(group -> containsAny(text, group));
+    }
+
+    private boolean containsAny(String text, List<String> keywords) {
+        return keywords.stream().anyMatch(text::contains);
+    }
+
+    private List<List<String>> keywordGroups(HealthType healthType) {
+        return switch (healthType) {
+            case ATHLETES_FOOT -> List.of(
+                    List.of("진균", "곰팡이", "무좀균", "감염", "백선", "발가락사이"),
+                    List.of("발적", "염증", "자극", "따가", "가려", "붉"),
+                    List.of("습기", "습도", "땀", "통풍", "건조", "말리", "양말", "신발"),
+                    List.of("각질", "갈라", "벗겨", "피부", "발바닥")
+            );
+            case HALLUX_VALGUS -> List.of(
+                    List.of("무지외반", "엄지", "발가락", "각도", "변형", "돌출"),
+                    List.of("통증", "염증", "붓", "압박", "마찰"),
+                    List.of("교정", "스트레칭", "운동", "테이핑", "보조기")
+            );
+            case FOOT_ODOR -> List.of(
+                    List.of("냄새", "악취", "발냄새", "암모니아", "ppm"),
+                    List.of("땀", "습기", "습도", "통풍", "건조", "양말", "신발"),
+                    List.of("세균", "균", "위생", "세척", "소독")
+            );
+            case POSTURE -> List.of(
+                    List.of("자세", "균형", "압력", "체중", "보행", "걸음", "좌우"),
+                    List.of("아치", "평발", "발바닥", "지지", "충격"),
+                    List.of("종아리", "발목", "스트레칭", "운동", "근력")
+            );
+            case FOOT_ENVIRONMENT -> List.of(
+                    List.of("온도", "습도", "습기", "땀", "통풍", "건조"),
+                    List.of("신발", "깔창", "양말", "환기", "세탁"),
+                    List.of("피부", "관리", "위생", "청결")
+            );
+        };
+    }
+
+    private String articleContent(HealthArticle article) {
+        return normalizeText(article.getTitle() + " " + nullToBlank(article.getDescription()));
+    }
+
+    private String normalizeText(String text) {
+        return nullToBlank(text)
+                .toLowerCase(Locale.ROOT)
+                .replaceAll("\\s+", "")
+                .trim();
+    }
+
+    private void appendText(StringBuilder builder, String text) {
+        if (text != null && !text.isBlank()) {
+            builder.append(' ').append(text);
+        }
+    }
+
+    private void appendTexts(StringBuilder builder, List<String> texts) {
+        if (texts == null) {
+            return;
+        }
+        texts.forEach(text -> appendText(builder, text));
+    }
+
+    private String nullToBlank(String text) {
+        return text == null ? "" : text;
     }
 
     private double weightedDeficit(Float score, MetricType metricType) {

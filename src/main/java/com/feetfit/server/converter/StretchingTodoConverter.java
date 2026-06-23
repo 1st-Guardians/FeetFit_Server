@@ -20,7 +20,7 @@ public class StretchingTodoConverter {
                 .youtubeUrl(todo.getYoutubeUrl())
                 .isCompleted(assignment.getIsCompleted())
                 .completedAt(assignment.getCompletedAt())
-                .todoDate(todo.getTodoDate())
+                .todoDate(assignment.getCreatedAt())
                 .build();
     }
 
