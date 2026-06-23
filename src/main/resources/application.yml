@@ -37,7 +37,7 @@ springdoc:
 
 swagger:
   local-server-url: ${SWAGGER_LOCAL_SERVER_URL:http://localhost:8080}
-  deploy-server-url: ${SWAGGER_DEPLOY_SERVER_URL:http://16.148.74.199}
+  deploy-server-url: ${SWAGGER_DEPLOY_SERVER_URL:http://34.209.169.111}
 
 file:
   upload:

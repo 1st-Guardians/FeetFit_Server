@@ -62,7 +62,7 @@ public class SecurityConfig {
         configuration.setAllowedOriginPatterns(List.of(
                 "http://localhost:*",
                 "http://127.0.0.1:*",
-                "http://16.148.74.199",
+                "http://34.209.169.111",
                 "https://*.vercel.app",
                 "https://*.netlify.app"
         ));

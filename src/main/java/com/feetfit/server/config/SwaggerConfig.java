@@ -18,7 +18,7 @@ public class SwaggerConfig {
     @Value("${swagger.local-server-url:http://localhost:8080}")
     private String localServerUrl;
 
-    @Value("${swagger.deploy-server-url:http://16.148.74.199}")
+    @Value("${swagger.deploy-server-url:http://34.209.169.111}")
     private String deployServerUrl;
 
     @Bean
