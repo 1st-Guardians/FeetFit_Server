@@ -377,6 +377,12 @@ public class ReportResponseDTO {
         @Schema(description = "새로 매칭된 스트레칭 투두 개수. 미완성 시 null", example = "3", nullable = true)
         private Integer matchedTodoCount;
 
+        @Schema(description = "건강 뉴스가 매칭된 건강 타입. 미완성 시 null", nullable = true)
+        private List<HealthType> matchedArticleHealthTypes;
+
+        @Schema(description = "새로 매칭된 건강 뉴스 개수. 미완성 시 null", example = "4", nullable = true)
+        private Integer matchedArticleCount;
+
         @Schema(description = "생성 시각", example = "2026-05-20T09:00:00")
         private LocalDateTime createdAt;
 

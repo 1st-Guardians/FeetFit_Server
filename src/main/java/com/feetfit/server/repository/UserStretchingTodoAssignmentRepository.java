@@ -17,9 +17,9 @@ public interface UserStretchingTodoAssignmentRepository extends JpaRepository<Us
             FROM UserStretchingTodoAssignment assignment
             JOIN FETCH assignment.stretchingTodo todo
             WHERE assignment.user.id = :userId
-              AND todo.todoDate >= :startOfDay
-              AND todo.todoDate < :startOfNextDay
-            ORDER BY todo.todoDate ASC
+              AND assignment.createdAt >= :startOfDay
+              AND assignment.createdAt < :startOfNextDay
+            ORDER BY assignment.createdAt ASC
             """)
     List<UserStretchingTodoAssignment> findTodayAssignmentsByUserId(
             @Param("userId") Long userId,
@@ -43,14 +43,10 @@ public interface UserStretchingTodoAssignmentRepository extends JpaRepository<Us
     @Query("""
             DELETE FROM UserStretchingTodoAssignment assignment
             WHERE assignment.user.id = :userId
-              AND assignment.stretchingTodo.id IN (
-                  SELECT todo.id
-                  FROM UserStretchingTodo todo
-                  WHERE todo.todoDate >= :startOfDay
-                    AND todo.todoDate < :startOfNextDay
-              )
+              AND assignment.createdAt >= :startOfDay
+              AND assignment.createdAt < :startOfNextDay
             """)
-    void deleteByUserIdAndTodoDateBetween(
+    void deleteByUserIdAndCreatedAtBetween(
             @Param("userId") Long userId,
             @Param("startOfDay") LocalDateTime startOfDay,
             @Param("startOfNextDay") LocalDateTime startOfNextDay

@@ -14,4 +14,6 @@ public interface UserStretchingTodoRepository extends JpaRepository<UserStretchi
             LocalDateTime startOfDay,
             LocalDateTime startOfNextDay
     );
+
+    List<UserStretchingTodo> findByHealthTypeInOrderByIdAsc(Collection<HealthType> healthTypes);
 }
