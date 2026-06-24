@@ -19,8 +19,8 @@ public class ShoeReview extends BaseEntity {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "shoe_recommendation_id", nullable = false)
-    private ShoeRecommendation shoeRecommendation;
+    @JoinColumn(name = "shoe_id", nullable = false)
+    private Shoe shoe;
 
     @Column(nullable = false)
     private Float rating;

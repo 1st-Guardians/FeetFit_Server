@@ -45,8 +45,4 @@ public class ShoeRecommendation extends BaseEntity {
     @OneToMany(mappedBy = "shoeRecommendation", cascade = CascadeType.ALL)
     @Builder.Default
     private List<ShoeRecommendationReason> reasons = new ArrayList<>();
-
-    @OneToMany(mappedBy = "shoeRecommendation", cascade = CascadeType.ALL)
-    @Builder.Default
-    private List<ShoeReview> reviews = new ArrayList<>();
 }
