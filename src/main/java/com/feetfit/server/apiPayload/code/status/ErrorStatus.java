@@ -54,6 +54,7 @@ public enum ErrorStatus implements BaseErrorCode {
     // Shoe
     SHOE_NOT_FOUND(HttpStatus.NOT_FOUND, "SHOE4001", "신발 정보를 찾을 수 없습니다."),
     SHOE_FIT_SCORE_UNAVAILABLE(HttpStatus.BAD_REQUEST, "SHOE4002", "측정 이력이 없어 발 적합도순 정렬을 사용할 수 없습니다."),
+    SHOE_SEARCH_HISTORY_NOT_FOUND(HttpStatus.NOT_FOUND, "SHOE4003", "검색 기록을 찾을 수 없습니다."),
 
     // Health Article
     ARTICLE_NOT_FOUND(HttpStatus.NOT_FOUND, "ARTICLE4001", "아티클을 찾을 수 없습니다.");

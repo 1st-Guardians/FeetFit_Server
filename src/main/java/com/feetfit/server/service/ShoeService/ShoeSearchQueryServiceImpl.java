@@ -81,6 +81,13 @@ public class ShoeSearchQueryServiceImpl implements ShoeSearchQueryService {
     }
 
     @Override
+    public void deleteSearchHistory(Long userId, Long historyId) {
+        ShoeSearchHistory history = shoeSearchHistoryRepository.findByIdAndUserId(historyId, userId)
+                .orElseThrow(() -> new ShoeHandler(ErrorStatus.SHOE_SEARCH_HISTORY_NOT_FOUND));
+        shoeSearchHistoryRepository.delete(history);
+    }
+
+    @Override
     public ShoeResponseDTO.ShoeDetailResultDTO getShoeDetail(Long userId, Long shoeId) {
 
         Shoe shoe = shoeRepository.findById(shoeId)

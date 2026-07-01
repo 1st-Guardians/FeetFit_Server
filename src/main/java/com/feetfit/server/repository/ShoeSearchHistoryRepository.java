@@ -8,6 +8,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface ShoeSearchHistoryRepository extends JpaRepository<ShoeSearchHistory, Long> {
 
@@ -37,4 +38,7 @@ public interface ShoeSearchHistoryRepository extends JpaRepository<ShoeSearchHis
     @Modifying
     @Query("DELETE FROM ShoeSearchHistory h WHERE h.user.id = :userId AND h.keyword = :keyword")
     void deleteByUserIdAndKeyword(@Param("userId") Long userId, @Param("keyword") String keyword);
+
+    // 단건 조회 (본인 기록인지 확인)
+    Optional<ShoeSearchHistory> findByIdAndUserId(Long id, Long userId);
 }
