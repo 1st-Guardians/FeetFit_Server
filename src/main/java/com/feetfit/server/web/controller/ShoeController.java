@@ -228,6 +228,42 @@ public class ShoeController {
         return ApiResponse.onSuccess(shoeSearchQueryService.getSearchHistory(userId));
     }
 
+    @DeleteMapping("/search/history/{historyId}")
+    @Operation(
+            summary = "검색 기록 삭제 [민지]",
+            description = """
+                검색 기록을 삭제합니다.
+                Authorization 헤더에 Bearer accessToken이 필요합니다.
+                - 본인의 검색 기록만 삭제할 수 있습니다.
+                """
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "검색 기록 삭제 성공"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = "Authorization 헤더 누락 또는 유효하지 않은 토큰",
+                    content = @Content(examples = @ExampleObject(value = UNAUTHORIZED_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "검색 기록을 찾을 수 없음",
+                    content = @Content(examples = @ExampleObject(value = SHOE_SEARCH_HISTORY_NOT_FOUND_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "500",
+                    description = "서버 내부 오류",
+                    content = @Content(examples = @ExampleObject(value = INTERNAL_SERVER_ERROR_RESPONSE))
+            )
+    })
+    public ApiResponse<Void> deleteSearchHistory(@PathVariable Long historyId) {
+        Long userId = findLoginUser.getCurrentUserId();
+        shoeSearchQueryService.deleteSearchHistory(userId, historyId);
+        return ApiResponse.onSuccess(null);
+    }
+
     @GetMapping("/recommendations/top3")
     @Operation(
             summary = "추천 신발 Top3 조회 [민지]",
@@ -431,6 +467,15 @@ public class ShoeController {
               "isSuccess": false,
               "code": "SHOE4001",
               "message": "신발 정보를 찾을 수 없습니다.",
+              "result": null
+            }
+            """;
+
+    private static final String SHOE_SEARCH_HISTORY_NOT_FOUND_RESPONSE = """
+            {
+              "isSuccess": false,
+              "code": "SHOE4003",
+              "message": "검색 기록을 찾을 수 없습니다.",
               "result": null
             }
             """;
