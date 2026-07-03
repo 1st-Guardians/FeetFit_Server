@@ -113,6 +113,7 @@ public class ShoeResponseDTO {
     public static class SaveShoeRecommendationResultDTO {
         private Integer requestedCount;
         private Integer processedCount;
-        private List<Long> skippedShoeIds;
+        private List<Long> skippedShoeIds;          // DB에 없는 shoeId라서 건너뜀
+        private List<Long> invalidReviewShoeIds;     // reviewId가 해당 shoeId 소유가 아니라서 건너뜀
     }
 }

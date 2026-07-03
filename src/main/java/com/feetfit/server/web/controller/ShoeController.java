@@ -174,7 +174,7 @@ public class ShoeController {
                   3개를 모두 유지하고 싶다면 매번 3개를 모두 함께 보내야 합니다.
                 - DB에 없는 shoeId는 건너뛰고 skippedShoeIds로 반환합니다.
                 - reviewIds는 반드시 해당 shoeId의 리뷰여야 합니다. 존재하지 않거나 다른 신발의 리뷰 id가
-                  섞여 있으면 400 에러(SHOE4004)를 반환하고 전체 요청이 롤백됩니다.
+                  섞여 있으면 그 신발만 건너뛰고 invalidReviewShoeIds로 반환합니다 (배치 전체는 계속 처리됩니다).
                 """
     )
     @ApiResponses({
@@ -194,7 +194,7 @@ public class ShoeController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "404",
                     description = "사용자를 찾을 수 없음",
-                    content = @Content(examples = @ExampleObject(value = SHOE_NOT_FOUND_RESPONSE))
+                    content = @Content(examples = @ExampleObject(value = USER_NOT_FOUND_RESPONSE))
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "500",
@@ -518,6 +518,15 @@ public class ShoeController {
               "isSuccess": false,
               "code": "SHOE4001",
               "message": "신발 정보를 찾을 수 없습니다.",
+              "result": null
+            }
+            """;
+
+    private static final String USER_NOT_FOUND_RESPONSE = """
+            {
+              "isSuccess": false,
+              "code": "USER4001",
+              "message": "사용자를 찾을 수 없습니다.",
               "result": null
             }
             """;

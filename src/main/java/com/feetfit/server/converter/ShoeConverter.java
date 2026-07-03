@@ -152,11 +152,13 @@ public class ShoeConverter {
     public static ShoeResponseDTO.SaveShoeRecommendationResultDTO toSaveShoeRecommendationResultDTO(
             int requestedCount,
             int processedCount,
-            List<Long> skippedShoeIds) {
+            List<Long> skippedShoeIds,
+            List<Long> invalidReviewShoeIds) {
         return ShoeResponseDTO.SaveShoeRecommendationResultDTO.builder()
                 .requestedCount(requestedCount)
                 .processedCount(processedCount)
                 .skippedShoeIds(skippedShoeIds)
+                .invalidReviewShoeIds(invalidReviewShoeIds)
                 .build();
     }
 }

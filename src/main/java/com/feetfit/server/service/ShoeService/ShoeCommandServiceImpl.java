@@ -81,12 +81,28 @@ public class ShoeCommandServiceImpl implements ShoeCommandService {
 
         LocalDateTime analyzedAt = LocalDateTime.now();
         List<Long> skippedShoeIds = new ArrayList<>();
+        List<Long> invalidReviewShoeIds = new ArrayList<>();
         int processedCount = 0;
 
         for (ShoeRequestDTO.ShoeRecommendationItemDTO item : request.getRecommendations()) {
             Shoe shoe = shoeRepository.findById(item.getShoeId()).orElse(null);
             if (shoe == null) {
                 skippedShoeIds.add(item.getShoeId());
+                continue;
+            }
+
+            // 쓰기 작업을 시작하기 전에 먼저 검증한다 (shoeId 없음과 동일하게, 이 신발만 건너뛰고
+            // 나머지 배치는 계속 처리하기 위함 — 검증 실패 시 아무 것도 쓰지 않은 상태라 안전하게 skip 가능)
+            List<Long> allReviewIds = item.getReasons().stream()
+                    .flatMap(reasonDto -> reasonDto.getReviewIds().stream())
+                    .distinct()
+                    .collect(Collectors.toList());
+            Map<Long, ShoeReview> reviewsById;
+            try {
+                reviewsById = findReviewsBelongingToShoe(shoe, allReviewIds);
+            } catch (ShoeHandler ex) {
+                log.warn("Skipping shoeId={} due to invalid reviewIds: {}", shoe.getId(), ex.getMessage());
+                invalidReviewShoeIds.add(shoe.getId());
                 continue;
             }
 
@@ -99,6 +115,11 @@ public class ShoeCommandServiceImpl implements ShoeCommandService {
                     .orElseGet(() -> shoeRecommendationRepository.save(
                             ShoeConverter.toNewShoeRecommendation(user, shoe, item, analyzedAt)));
 
+            // 아래에서 reasonReview/reason을 @Modifying 벌크 쿼리로 바로 지우기 때문에,
+            // 위 upsert(특히 기존 엔티티의 updateShoeRecommendation)가 아직 flush 안 된 상태로 남아있으면
+            // 곧이어 나오는 clearAutomatically=true에 의해 그 변경분이 유실될 수 있다. 먼저 flush로 반영해둔다.
+            shoeRecommendationRepository.flush();
+
             // 기존 부위별 근거를 통째로 교체. cascade/orphanRemoval에 기대면 reason마다
             // reasonReviews 컬렉션을 건별로 SELECT+DELETE하게 되어 느려서, 일괄 DELETE로 처리한다.
             List<Long> existingReasonIds = shoeRecommendationReasonRepository
@@ -110,13 +131,6 @@ public class ShoeCommandServiceImpl implements ShoeCommandService {
                 shoeRecommendationReasonReviewRepository.deleteByReasonIdIn(existingReasonIds);
                 shoeRecommendationReasonRepository.deleteAllByIdInBatch(existingReasonIds);
             }
-
-            // reason마다 따로 조회하지 않고, 이 신발의 reasons에 쓰인 reviewId 전체를 한 번에 조회/검증
-            List<Long> allReviewIds = item.getReasons().stream()
-                    .flatMap(reasonDto -> reasonDto.getReviewIds().stream())
-                    .distinct()
-                    .collect(Collectors.toList());
-            Map<Long, ShoeReview> reviewsById = findReviewsBelongingToShoe(shoe, allReviewIds);
 
             for (ShoeRequestDTO.ShoeRecommendationReasonDTO reasonDto : item.getReasons()) {
                 ShoeRecommendationReason savedReason = shoeRecommendationReasonRepository.save(
@@ -134,17 +148,18 @@ public class ShoeCommandServiceImpl implements ShoeCommandService {
         }
 
         log.info(
-                "Shoe recommendations updated. measurementSessionId={}, userId={}, requested={}, processed={}, skipped={}",
+                "Shoe recommendations updated. measurementSessionId={}, userId={}, requested={}, processed={}, "
+                        + "skipped={}, invalidReviewShoeIds={}",
                 request.getMeasurementSessionId(), user.getId(),
-                request.getRecommendations().size(), processedCount, skippedShoeIds
+                request.getRecommendations().size(), processedCount, skippedShoeIds, invalidReviewShoeIds
         );
 
         return ShoeConverter.toSaveShoeRecommendationResultDTO(
-                request.getRecommendations().size(), processedCount, skippedShoeIds);
+                request.getRecommendations().size(), processedCount, skippedShoeIds, invalidReviewShoeIds);
     }
 
     // reviewIds가 모두 해당 shoe에 속한 리뷰인지 검증하고, id -> ShoeReview 맵으로 반환.
-    // 존재하지 않거나 다른 신발의 리뷰가 섞여 있으면 예외 발생
+    // 존재하지 않거나 다른 신발의 리뷰가 섞여 있으면 예외 발생 (호출부에서 캐치해 해당 신발만 skip 처리)
     private Map<Long, ShoeReview> findReviewsBelongingToShoe(Shoe shoe, List<Long> reviewIds) {
         Map<Long, ShoeReview> reviewsById = shoeReviewRepository.findAllById(reviewIds).stream()
                 .collect(Collectors.toMap(ShoeReview::getId, review -> review));
