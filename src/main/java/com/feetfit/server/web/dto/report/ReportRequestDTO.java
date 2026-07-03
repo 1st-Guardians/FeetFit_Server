@@ -3,7 +3,6 @@ package com.feetfit.server.web.dto.report;
 import com.feetfit.server.domain.enums.GaugeStatus;
 import com.feetfit.server.domain.enums.MetricType;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
