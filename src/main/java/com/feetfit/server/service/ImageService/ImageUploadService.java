@@ -1,12 +1,23 @@
 package com.feetfit.server.service.ImageService;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.feetfit.server.apiPayload.code.status.ErrorStatus;
 import com.feetfit.server.apiPayload.exception.GeneralException;
 import com.feetfit.server.web.dto.image.ImageResponseDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.client.MultipartBodyBuilder;
 import org.springframework.stereotype.Service;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.reactive.function.BodyInserters;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientException;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -46,11 +57,27 @@ public class ImageUploadService {
     @Value("${file.upload.aws-cli-path:}")
     private String awsCliPath;
 
+    @Value("${file.upload.storage-mode:AUTO}")
+    private String storageMode;
+
+    @Value("${file.upload.proxy-upload-url:}")
+    private String proxyUploadUrl;
+
+    @Value("${swagger.deploy-server-url:}")
+    private String deployServerUrl;
+
+    private final ObjectMapper objectMapper;
+
     public ImageResponseDTO.UploadImageResultDTO upload(String folderName, MultipartFile image) {
-        validateUploadConfig();
         validateImage(image);
 
         String sanitizedFolderName = sanitizeFolderName(folderName);
+        if (shouldProxyUpload()) {
+            return uploadViaDeployServer(sanitizedFolderName, image);
+        }
+
+        validateUploadConfig();
+
         String originalFileName = image.getOriginalFilename();
         String extension = extractExtension(originalFileName);
         String storedFileName = UUID.randomUUID() + "." + extension;
@@ -81,6 +108,113 @@ public class ImageUploadService {
                 .s3Uri(s3Uri)
                 .imageUrl(imageUrl)
                 .build();
+    }
+
+    private boolean shouldProxyUpload() {
+        String mode = storageMode == null ? "AUTO" : storageMode.trim().toUpperCase();
+        if ("PROXY".equals(mode)) {
+            return true;
+        }
+        if ("S3".equals(mode)) {
+            return false;
+        }
+        return !isAwsCliAvailable();
+    }
+
+    private ImageResponseDTO.UploadImageResultDTO uploadViaDeployServer(String folderName, MultipartFile image) {
+        String uploadUrl = resolveProxyUploadUrl();
+        String authorization = resolveAuthorizationHeader();
+
+        try {
+            ByteArrayResource imageResource = new ByteArrayResource(image.getBytes()) {
+                @Override
+                public String getFilename() {
+                    return image.getOriginalFilename();
+                }
+            };
+
+            MultipartBodyBuilder multipartBodyBuilder = new MultipartBodyBuilder();
+            multipartBodyBuilder.part("folderName", folderName);
+            multipartBodyBuilder.part("image", imageResource)
+                    .filename(image.getOriginalFilename())
+                    .contentType(MediaType.parseMediaType(image.getContentType()));
+
+            String responseBody = WebClient.builder()
+                    .build()
+                    .post()
+                    .uri(uploadUrl)
+                    .contentType(MediaType.MULTIPART_FORM_DATA)
+                    .headers(headers -> {
+                        if (authorization != null && !authorization.isBlank()) {
+                            headers.set(HttpHeaders.AUTHORIZATION, authorization);
+                        }
+                    })
+                    .body(BodyInserters.fromMultipartData(multipartBodyBuilder.build()))
+                    .retrieve()
+                    .bodyToMono(String.class)
+                    .block();
+
+            return parseUploadResponse(responseBody);
+        } catch (IOException e) {
+            throw new GeneralException(ErrorStatus._INTERNAL_SERVER_ERROR, "배포 서버로 전달할 이미지 파일 처리에 실패했습니다.");
+        } catch (WebClientException e) {
+            throw new GeneralException(ErrorStatus._INTERNAL_SERVER_ERROR, "배포 서버 이미지 업로드 요청에 실패했습니다. " + e.getMessage());
+        }
+    }
+
+    private String resolveProxyUploadUrl() {
+        if (proxyUploadUrl != null && !proxyUploadUrl.isBlank()) {
+            return proxyUploadUrl;
+        }
+        if (deployServerUrl == null || deployServerUrl.isBlank()) {
+            throw new GeneralException(ErrorStatus._INTERNAL_SERVER_ERROR, "배포 서버 이미지 업로드 URL 설정이 필요합니다.");
+        }
+        return normalizePublicUrlPrefix(deployServerUrl) + "/api/images/upload";
+    }
+
+    private String resolveAuthorizationHeader() {
+        if (!(RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes)) {
+            return null;
+        }
+        return attributes.getRequest().getHeader(HttpHeaders.AUTHORIZATION);
+    }
+
+    private ImageResponseDTO.UploadImageResultDTO parseUploadResponse(String responseBody) {
+        try {
+            JsonNode root = objectMapper.readTree(responseBody);
+            if (!root.path("isSuccess").asBoolean(false)) {
+                throw new GeneralException(
+                        ErrorStatus._INTERNAL_SERVER_ERROR,
+                        "배포 서버 이미지 업로드에 실패했습니다. " + root.path("message").asText()
+                );
+            }
+
+            JsonNode result = root.path("result");
+            if (result.isMissingNode() || result.isNull()) {
+                throw new GeneralException(ErrorStatus._INTERNAL_SERVER_ERROR, "배포 서버 이미지 업로드 응답이 비어 있습니다.");
+            }
+
+            return ImageResponseDTO.UploadImageResultDTO.builder()
+                    .folderName(textOrNull(result, "folderName"))
+                    .originalFileName(textOrNull(result, "originalFileName"))
+                    .storedFileName(textOrNull(result, "storedFileName"))
+                    .contentType(textOrNull(result, "contentType"))
+                    .size(result.path("size").isNumber() ? result.path("size").asLong() : null)
+                    .bucketName(textOrNull(result, "bucketName"))
+                    .s3Key(textOrNull(result, "s3Key"))
+                    .s3Uri(textOrNull(result, "s3Uri"))
+                    .imageUrl(textOrNull(result, "imageUrl"))
+                    .build();
+        } catch (GeneralException e) {
+            throw e;
+        } catch (IOException e) {
+            throw new GeneralException(ErrorStatus._INTERNAL_SERVER_ERROR, "배포 서버 이미지 업로드 응답을 읽을 수 없습니다.");
+        }
+    }
+
+    private String textOrNull(JsonNode node, String fieldName) {
+        JsonNode value = node.path(fieldName);
+        return value.isMissingNode() || value.isNull() ? null : value.asText();
     }
 
     private void validateUploadConfig() {
@@ -185,6 +319,21 @@ public class ImageUploadService {
         }
 
         return "aws";
+    }
+
+    private boolean isAwsCliAvailable() {
+        String awsCommand = resolveAwsCliCommand();
+        if (!"aws".equals(awsCommand)) {
+            return Files.isExecutable(Path.of(awsCommand));
+        }
+
+        for (String candidate : new String[]{"/usr/bin/aws", "/usr/local/bin/aws", "/opt/homebrew/bin/aws"}) {
+            if (Files.isExecutable(Path.of(candidate))) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private String shellQuote(String value) {
