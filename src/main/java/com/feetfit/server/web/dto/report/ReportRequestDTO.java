@@ -182,9 +182,18 @@ public class ReportRequestDTO {
     @Schema(description = "압력 분포 저장 multipart 요청 (POST /daily-foot-analysis/pressure)")
     public static class PressurePartMultipartDTO {
 
-        @Schema(description = "압력 분포 JSON 파트",
-                implementation = PressurePartDTO.class)
-        private PressurePartDTO request;
+        @Schema(
+                description = "압력 분포 JSON 문자열 파트",
+                type = "string",
+                example = """
+                    {
+                      "measurementSessionId": 1,
+                      "leftPressurePercent": 46.0,
+                      "rightPressurePercent": 54.0
+                    }
+                    """
+        )
+        private String request;
 
         @Schema(description = "왼발 압력 분포 이미지 파일", type = "string", format = "binary")
         private String leftPressureImage;

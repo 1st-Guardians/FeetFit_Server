@@ -194,7 +194,9 @@ public class ReportConverter {
             DailyFootAnalysis previousAnalysis) {
 
         // 이전 측정 대비 균형 점수 변화
-        Float balanceScoreDiff = previousAnalysis != null
+        Float balanceScoreDiff = (previousAnalysis != null
+                && analysis.getBalanceScore() != null
+                && previousAnalysis.getBalanceScore() != null)
                 ? analysis.getBalanceScore() - previousAnalysis.getBalanceScore()
                 : null;
 
