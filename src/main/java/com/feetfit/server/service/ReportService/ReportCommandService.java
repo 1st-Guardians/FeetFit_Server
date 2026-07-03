@@ -24,7 +24,10 @@ public interface ReportCommandService {
 
     // 종합 측정 분석 결과 저장
     ReportResponseDTO.DailyFootAnalysisResultDTO saveDailyFootAnalysis(
-            Long userId, ReportRequestDTO.SaveDailyFootAnalysisDTO request);
+            Long userId,
+            ReportRequestDTO.SaveDailyFootAnalysisDTO request,
+            MultipartFile leftPressureImage,
+            MultipartFile rightPressureImage);
 
     // 지표별 리포트 개별 저장 (단일 지표 upsert)
     ReportResponseDTO.SaveMetricResultResultDTO saveMetricResult(

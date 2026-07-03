@@ -147,8 +147,6 @@ public class ReportRequestDTO {
 
         private Float leftPressurePercent;
         private Float rightPressurePercent;
-        private String leftPressureImageUrl;
-        private String rightPressureImageUrl;
         private Float measuredLeftFootSizeMm;
         private Float measuredRightFootSizeMm;
         private Float leftFootWidthMm;
@@ -168,6 +166,45 @@ public class ReportRequestDTO {
 
         @NotBlank(message = "발 타입 텍스트는 필수입니다.")
         private String typeText;
+    }
+
+    @Getter
+    @NoArgsConstructor
+    @Schema(description = "종합 발 분석 결과 저장 multipart 요청")
+    public static class SaveDailyFootAnalysisMultipartDTO {
+
+        @Schema(
+                description = "종합 발 분석 JSON 문자열 파트",
+                type = "string",
+                example = """
+                        {
+                          "measurementSessionId": 1,
+                          "conditionLevel": "ATTENTION_NEEDED",
+                          "conditionComments": ["오른발에 압력이 조금 더 실려 있어요.", "발 냄새 위험도는 낮은 편이에요."],
+                          "balanceScore": 72.0,
+                          "balanceComment": "자세 균형에 대한 내용입니다.",
+                          "leftPressurePercent": 46.0,
+                          "rightPressurePercent": 54.0,
+                          "measuredLeftFootSizeMm": 253.0,
+                          "measuredRightFootSizeMm": 248.0,
+                          "leftFootWidthMm": 85.0,
+                          "rightFootWidthMm": 70.0,
+                          "footOdourPpm": 76.0,
+                          "footOdourComment": "발 냄새 위험도는 76ppm으로 낮은 편이에요.",
+                          "avgTemperatureCelsius": 34.0,
+                          "avgHumidityPercent": 50.0,
+                          "careTips": ["오른발 앞꿈치 스트레칭을 해주세요.", "신발은 착용 후 충분히 말려주세요.", "발볼이 좁은 신발은 피하는 것이 좋아요."],
+                          "typeText": "발의 아치가 낮아 발바닥이 넓게 닿는 편이에요."
+                        }
+                        """
+        )
+        private String request;
+
+        @Schema(description = "왼발 압력 분포 이미지 파일", type = "string", format = "binary")
+        private String leftPressureImage;
+
+        @Schema(description = "오른발 압력 분포 이미지 파일", type = "string", format = "binary")
+        private String rightPressureImage;
     }
 
     @Getter

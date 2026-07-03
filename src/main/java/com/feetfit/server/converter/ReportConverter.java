@@ -190,7 +190,9 @@ public class ReportConverter {
 
     public static DailyFootAnalysis toDailyFootAnalysis(
             MeasurementSession measurementSession,
-            ReportRequestDTO.SaveDailyFootAnalysisDTO request) {
+            ReportRequestDTO.SaveDailyFootAnalysisDTO request,
+            String leftPressureImageUrl,
+            String rightPressureImageUrl) {
         return DailyFootAnalysis.builder()
                 .measurementSession(measurementSession)
                 .conditionLevel(request.getConditionLevel())
@@ -199,8 +201,8 @@ public class ReportConverter {
                 .balanceComment(request.getBalanceComment())
                 .leftPressurePercent(request.getLeftPressurePercent())
                 .rightPressurePercent(request.getRightPressurePercent())
-                .leftPressureImageUrl(request.getLeftPressureImageUrl())
-                .rightPressureImageUrl(request.getRightPressureImageUrl())
+                .leftPressureImageUrl(leftPressureImageUrl)
+                .rightPressureImageUrl(rightPressureImageUrl)
                 .measuredLeftFootSizeMm(request.getMeasuredLeftFootSizeMm())
                 .measuredRightFootSizeMm(request.getMeasuredRightFootSizeMm())
                 .leftFootWidthMm(request.getLeftFootWidthMm())

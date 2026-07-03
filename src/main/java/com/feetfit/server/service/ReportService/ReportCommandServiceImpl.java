@@ -143,11 +143,19 @@ public class ReportCommandServiceImpl implements ReportCommandService {
 
     @Override
     public ReportResponseDTO.DailyFootAnalysisResultDTO saveDailyFootAnalysis(
-            Long userId, ReportRequestDTO.SaveDailyFootAnalysisDTO request) {
+            Long userId,
+            ReportRequestDTO.SaveDailyFootAnalysisDTO request,
+            MultipartFile leftPressureImage,
+            MultipartFile rightPressureImage) {
 
         MeasurementSession measurementSession = getValidatedTransferringMeasurementSession(
                 userId, request.getMeasurementSessionId()
         );
+
+        ImageResponseDTO.UploadImageResultDTO leftImageUpload =
+                imageUploadService.upload("pressure-left", leftPressureImage);
+        ImageResponseDTO.UploadImageResultDTO rightImageUpload =
+                imageUploadService.upload("pressure-right", rightPressureImage);
 
         DailyFootAnalysis saved = dailyFootAnalysisRepository
                 .findByMeasurementSessionId(measurementSession.getId())
@@ -159,8 +167,8 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                             request.getBalanceComment(),
                             request.getLeftPressurePercent(),
                             request.getRightPressurePercent(),
-                            request.getLeftPressureImageUrl(),
-                            request.getRightPressureImageUrl(),
+                            leftImageUpload.getImageUrl(),
+                            rightImageUpload.getImageUrl(),
                             request.getMeasuredLeftFootSizeMm(),
                             request.getMeasuredRightFootSizeMm(),
                             request.getLeftFootWidthMm(),
@@ -175,7 +183,10 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                     return existing;
                 })
                 .orElseGet(() -> dailyFootAnalysisRepository.save(
-                        ReportConverter.toDailyFootAnalysis(measurementSession, request)
+                        ReportConverter.toDailyFootAnalysis(
+                                measurementSession, request,
+                                leftImageUpload.getImageUrl(),
+                                rightImageUpload.getImageUrl())
                 ));
 
         User user = userRepository.findById(userId)

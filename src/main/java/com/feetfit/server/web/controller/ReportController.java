@@ -464,12 +464,23 @@ public class ReportController {
             description = """
                 AI 분석 결과로 받은 종합 발 분석 데이터를 저장합니다.
                 Authorization 헤더에 Bearer accessToken이 필요합니다.
+                - request 파트에는 종합 발 분석 JSON 데이터를 문자열로 넣습니다.
+                - leftPressureImage 파트에는 왼발 압력 분포 이미지를 넣습니다.
+                - rightPressureImage 파트에는 오른발 압력 분포 이미지를 넣습니다.
+                - 이미지는 S3에 업로드되며, 업로드된 URL이 DB에 저장됩니다.
                 - 같은 측정 세션 ID에 이미 저장된 데이터가 있으면 덮어씁니다 (UPDATE).
                 - 같은 측정 세션 ID에 저장된 데이터가 없으면 새로 저장합니다 (INSERT).
-                - 측정 세션의 status가 COMPLETED인 경우에만 저장됩니다.
+                - 측정 세션의 status가 TRANSFERRING 상태여야 합니다.
                 - 본인의 측정 세션 ID만 사용 가능합니다.
                 - careTips는 정확히 3개여야 합니다.
-                """
+                """,
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = true,
+                    content = @Content(
+                            mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+                            schema = @Schema(implementation = ReportRequestDTO.SaveDailyFootAnalysisMultipartDTO.class)
+                    )
+            )
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -479,9 +490,11 @@ public class ReportController {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "400",
-                    description = "필수값 누락, 완료되지 않은 측정 세션, careTips 3개 아님",
+                    description = "필수값 누락, 이미지 파일 누락, 잘못된 JSON, 완료되지 않은 측정 세션, careTips 3개 아님",
                     content = @Content(examples = {
                             @ExampleObject(name = "유효성 검사 실패", value = DAILY_FOOT_ANALYSIS_VALIDATION_ERROR_RESPONSE),
+                            @ExampleObject(name = "이미지 파일 누락", value = IMAGE_REQUIRED_RESPONSE),
+                            @ExampleObject(name = "잘못된 JSON", value = INVALID_JSON_RESPONSE),
                             @ExampleObject(name = "완료되지 않은 측정 세션", value = MEASUREMENT_NOT_COMPLETED_RESPONSE)
                     })
             ),
@@ -502,15 +515,50 @@ public class ReportController {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "500",
-                    description = "서버 내부 오류",
-                    content = @Content(examples = @ExampleObject(value = INTERNAL_SERVER_ERROR_RESPONSE))
+                    description = "AWS CLI 미설치, S3 권한 없음, S3 업로드 실패 또는 서버 내부 오류",
+                    content = @Content(examples = {
+                            @ExampleObject(name = "S3 업로드 실패", value = S3_UPLOAD_ERROR_RESPONSE),
+                            @ExampleObject(name = "서버 내부 오류", value = INTERNAL_SERVER_ERROR_RESPONSE)
+                    })
             )
     })
     public ApiResponse<ReportResponseDTO.DailyFootAnalysisResultDTO> saveDailyFootAnalysis(
-            @RequestBody @Valid ReportRequestDTO.SaveDailyFootAnalysisDTO request
+            @Parameter(description = "종합 발 분석 JSON 문자열 파트", required = true)
+            @RequestPart("request") String requestJson,
+            @Parameter(description = "왼발 압력 분포 이미지 파일", required = true)
+            @RequestPart("leftPressureImage") MultipartFile leftPressureImage,
+            @Parameter(description = "오른발 압력 분포 이미지 파일", required = true)
+            @RequestPart("rightPressureImage") MultipartFile rightPressureImage
     ) {
         Long userId = findLoginUser.getCurrentUserId();
-        return ApiResponse.onSuccess(reportCommandService.saveDailyFootAnalysis(userId, request));
+        ReportRequestDTO.SaveDailyFootAnalysisDTO request = parseDailyFootAnalysisRequest(requestJson);
+        return ApiResponse.onSuccess(reportCommandService.saveDailyFootAnalysis(
+                userId, request, leftPressureImage, rightPressureImage));
+    }
+
+    private ReportRequestDTO.SaveDailyFootAnalysisDTO parseDailyFootAnalysisRequest(String requestJson) {
+        if (requestJson == null || requestJson.isBlank()) {
+            throw new GeneralException(ErrorStatus._BAD_REQUEST, "request 파트는 필수입니다.");
+        }
+
+        ReportRequestDTO.SaveDailyFootAnalysisDTO request;
+        try {
+            request = objectMapper.readValue(requestJson, ReportRequestDTO.SaveDailyFootAnalysisDTO.class);
+        } catch (JsonProcessingException e) {
+            throw new GeneralException(ErrorStatus._BAD_REQUEST, "요청 본문 형식이 잘못되었습니다.");
+        }
+
+        Set<ConstraintViolation<ReportRequestDTO.SaveDailyFootAnalysisDTO>> violations = validator.validate(request);
+        if (!violations.isEmpty()) {
+            Map<String, String> errors = new LinkedHashMap<>();
+            violations.forEach(violation -> errors.put(
+                    violation.getPropertyPath().toString(),
+                    violation.getMessage()
+            ));
+            throw new GeneralException(ErrorStatus._BAD_REQUEST, "잘못된 요청입니다.", errors);
+        }
+
+        return request;
     }
 
     @GetMapping("/daily-foot-analysis")
