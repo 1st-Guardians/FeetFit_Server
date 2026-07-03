@@ -9,6 +9,7 @@ import com.feetfit.server.domain.enums.HealthType;
 import com.feetfit.server.domain.enums.MeasurementStatus;
 import com.feetfit.server.domain.enums.MetricType;
 import com.feetfit.server.repository.*;
+import com.feetfit.server.service.FootOdourService.FootOdourCalculator;
 import com.feetfit.server.service.ImageService.ImageUploadService;
 import com.feetfit.server.web.dto.image.ImageResponseDTO;
 import com.feetfit.server.web.dto.report.ReportRequestDTO;
@@ -157,6 +158,9 @@ public class ReportCommandServiceImpl implements ReportCommandService {
         ImageResponseDTO.UploadImageResultDTO rightImageUpload =
                 imageUploadService.upload("pressure-right", rightPressureImage);
 
+        FootOdourCalculator.FootOdourResult odour =
+                FootOdourCalculator.calculate(request.getTvocPpb(), request.getBaselineTvocPpb());
+
         DailyFootAnalysis saved = dailyFootAnalysisRepository
                 .findByMeasurementSessionId(measurementSession.getId())
                 .map(existing -> {
@@ -173,8 +177,11 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                             request.getMeasuredRightFootSizeMm(),
                             request.getLeftFootWidthMm(),
                             request.getRightFootWidthMm(),
-                            request.getFootOdourPpm(),
-                            request.getFootOdourComment(),
+                            request.getTvocPpb(),
+                            request.getBaselineTvocPpb(),
+                            odour.rawPpm(),
+                            odour.displayPpm(),
+                            odour.comment(),
                             request.getAvgTemperatureCelsius(),
                             request.getAvgHumidityPercent(),
                             request.getCareTips(),
@@ -186,7 +193,8 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                         ReportConverter.toDailyFootAnalysis(
                                 measurementSession, request,
                                 leftImageUpload.getImageUrl(),
-                                rightImageUpload.getImageUrl())
+                                rightImageUpload.getImageUrl(),
+                                odour)
                 ));
 
         User user = userRepository.findById(userId)

@@ -67,7 +67,18 @@ public class DailyFootAnalysis extends BaseEntity {
     @Column
     private Float rightFootWidthMm;
 
-    // 발 냄새
+    // 발 냄새 - VOC 센서 원시값
+    @Column
+    private Integer tvocPpb;
+
+    @Column
+    private Integer baselineTvocPpb;
+
+    // 보정 후 rawPpm (clamp 이전 값 — DB 보존용)
+    @Column
+    private Float rawFootOdourPpm;
+
+    // 프론트 표시용 (0~5ppm clamp 적용)
     @Column
     private Float footOdourPpm;
 
@@ -103,6 +114,9 @@ public class DailyFootAnalysis extends BaseEntity {
             Float measuredRightFootSizeMm,
             Float leftFootWidthMm,
             Float rightFootWidthMm,
+            Integer tvocPpb,
+            Integer baselineTvocPpb,
+            Float rawFootOdourPpm,
             Float footOdourPpm,
             String footOdourComment,
             Float avgTemperatureCelsius,
@@ -122,6 +136,9 @@ public class DailyFootAnalysis extends BaseEntity {
         this.measuredRightFootSizeMm = measuredRightFootSizeMm;
         this.leftFootWidthMm = leftFootWidthMm;
         this.rightFootWidthMm = rightFootWidthMm;
+        this.tvocPpb = tvocPpb;
+        this.baselineTvocPpb = baselineTvocPpb;
+        this.rawFootOdourPpm = rawFootOdourPpm;
         this.footOdourPpm = footOdourPpm;
         this.footOdourComment = footOdourComment;
         this.avgTemperatureCelsius = avgTemperatureCelsius;

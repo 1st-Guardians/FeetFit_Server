@@ -468,6 +468,8 @@ public class ReportController {
                 - leftPressureImage 파트에는 왼발 압력 분포 이미지를 넣습니다.
                 - rightPressureImage 파트에는 오른발 압력 분포 이미지를 넣습니다.
                 - 이미지는 S3에 업로드되며, 업로드된 URL이 DB에 저장됩니다.
+                - tvocPpb, baselineTvocPpb를 보내면 백엔드에서 footOdourPpm과 footOdourComment를 계산합니다.
+                - footOdourPpm은 0~5ppm 범위로 clamp됩니다.
                 - 같은 측정 세션 ID에 이미 저장된 데이터가 있으면 덮어씁니다 (UPDATE).
                 - 같은 측정 세션 ID에 저장된 데이터가 없으면 새로 저장합니다 (INSERT).
                 - 측정 세션의 status가 TRANSFERRING 상태여야 합니다.
@@ -939,9 +941,9 @@ public class ReportController {
               "message": "잘못된 요청입니다.",
               "result": {
                 "measurementSessionId": "측정 세션 ID는 필수입니다.",
-                "conditionLevel": "종합 상태는 필수입니다.",
-                "balanceScore": "균형 점수는 필수입니다.",
-                "balanceComment": "균형 코멘트는 필수입니다.",
+                "conditionLevel": "오늘의 발 컨디션 레벨은 필수입니다.",
+                "balanceScore": "자세 균형 점수는 필수입니다.",
+                "balanceComment": "자세 균형 코멘트는 필수입니다.",
                 "avgTemperatureCelsius": "평균 온도는 필수입니다.",
                 "avgHumidityPercent": "평균 습도는 필수입니다.",
                 "careTips": "관리 팁은 3개여야 합니다.",

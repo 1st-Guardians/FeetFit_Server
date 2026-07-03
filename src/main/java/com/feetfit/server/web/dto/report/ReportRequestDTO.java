@@ -132,26 +132,30 @@ public class ReportRequestDTO {
         @NotNull(message = "측정 세션 ID는 필수입니다.")
         private Long measurementSessionId;
 
-        @NotNull(message = "종합 상태는 필수입니다.")
+        @NotNull(message = "오늘의 발 컨디션 레벨은 필수입니다.")
         private GaugeStatus conditionLevel;
 
-        @NotNull(message = "상태 코멘트는 필수입니다.")
+        @NotNull(message = "오늘의 발 컨디션 코멘트는 필수입니다.")
         private List<String> conditionComments;
 
-        @NotNull(message = "균형 점수는 필수입니다.")
+        @NotNull(message = "자세 균형 점수는 필수입니다.")
         private Float balanceScore;
 
-        @NotBlank(message = "균형 코멘트는 필수입니다.")
+        @NotBlank(message = "자세 균형 코멘트는 필수입니다.")
         private String balanceComment;
 
         private Float leftPressurePercent;
         private Float rightPressurePercent;
-        private Float measuredLeftFootSizeMm;
-        private Float measuredRightFootSizeMm;
-        private Float leftFootWidthMm;
-        private Float rightFootWidthMm;
-        private Float footOdourPpm;
-        private String footOdourComment;
+
+        // 발 수치
+        private Float measuredLeftFootSizeMm;   // 측정 사이즈(왼)
+        private Float measuredRightFootSizeMm;  // 측정 사이즈(우)
+        private Float leftFootWidthMm;  // 발볼 너비(왼)
+        private Float rightFootWidthMm; // 발볼 너비(우)
+
+        // VOC 센서 원시값 (백엔드에서 ppm과 코멘트 계산)
+        private Integer tvocPpb;
+        private Integer baselineTvocPpb;
 
         @NotNull(message = "평균 온도는 필수입니다.")
         private Float avgTemperatureCelsius;
@@ -188,8 +192,8 @@ public class ReportRequestDTO {
                           "measuredRightFootSizeMm": 248.0,
                           "leftFootWidthMm": 85.0,
                           "rightFootWidthMm": 70.0,
-                          "footOdourPpm": 76.0,
-                          "footOdourComment": "발 냄새 위험도는 76ppm으로 낮은 편이에요.",
+                          "tvocPpb": 76000,
+                          "baselineTvocPpb": 1000,
                           "avgTemperatureCelsius": 34.0,
                           "avgHumidityPercent": 50.0,
                           "careTips": ["오른발 앞꿈치 스트레칭을 해주세요.", "신발은 착용 후 충분히 말려주세요.", "발볼이 좁은 신발은 피하는 것이 좋아요."],

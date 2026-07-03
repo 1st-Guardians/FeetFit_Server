@@ -192,7 +192,8 @@ public class ReportConverter {
             MeasurementSession measurementSession,
             ReportRequestDTO.SaveDailyFootAnalysisDTO request,
             String leftPressureImageUrl,
-            String rightPressureImageUrl) {
+            String rightPressureImageUrl,
+            com.feetfit.server.service.FootOdourService.FootOdourCalculator.FootOdourResult odour) {
         return DailyFootAnalysis.builder()
                 .measurementSession(measurementSession)
                 .conditionLevel(request.getConditionLevel())
@@ -207,8 +208,11 @@ public class ReportConverter {
                 .measuredRightFootSizeMm(request.getMeasuredRightFootSizeMm())
                 .leftFootWidthMm(request.getLeftFootWidthMm())
                 .rightFootWidthMm(request.getRightFootWidthMm())
-                .footOdourPpm(request.getFootOdourPpm())
-                .footOdourComment(request.getFootOdourComment())
+                .tvocPpb(request.getTvocPpb())
+                .baselineTvocPpb(request.getBaselineTvocPpb())
+                .rawFootOdourPpm(odour != null ? odour.rawPpm() : null)
+                .footOdourPpm(odour != null ? odour.displayPpm() : null)
+                .footOdourComment(odour != null ? odour.comment() : null)
                 .avgTemperatureCelsius(request.getAvgTemperatureCelsius())
                 .avgHumidityPercent(request.getAvgHumidityPercent())
                 .careTips(request.getCareTips())
