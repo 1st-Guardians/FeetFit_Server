@@ -104,4 +104,16 @@ public class ShoeResponseDTO {
         private String reviewSummary;     // 긴 멘트
         private List<String> reviewTexts; // AI가 선택한 리뷰 3개
     }
+
+    // 발 적합도 배치 저장 결과
+    @Builder
+    @Getter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class SaveShoeRecommendationResultDTO {
+        private Integer requestedCount;
+        private Integer processedCount;
+        private List<Long> skippedShoeIds;          // DB에 없는 shoeId라서 건너뜀
+        private List<Long> invalidReviewShoeIds;     // reviewId가 해당 shoeId 소유가 아니라서 건너뜀
+    }
 }

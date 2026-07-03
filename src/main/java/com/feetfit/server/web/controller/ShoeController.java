@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -156,6 +157,56 @@ public class ShoeController {
     ) {
         Long userId = findLoginUser.getCurrentUserId();
         return ApiResponse.onSuccess(shoeCommandService.clickShoe(userId, shoeId));
+    }
+
+    @PostMapping("/recommendations")
+    @Operation(
+            summary = "사용자-신발 발 적합도 배치 생성/갱신",
+            description = """
+                Feetfit_AI(AI 서버)가 측정 결과와 신발 리뷰 데이터를 분석한 뒤,
+                신발 전체에 대한 발 적합도를 배치로 저장/갱신할 때 호출합니다.
+                Authorization 헤더에 Bearer accessToken이 필요합니다 (무좀/무지외반 분석 저장과 동일하게,
+                Feetfit_AI가 사용자의 accessToken을 그대로 포워딩합니다).
+                - 토큰에서 추출한 userId 기준으로 (userId, shoeId) 조합의 ShoeRecommendation을 upsert합니다.
+                - reasons 배열에 FOREFOOT/HEEL/INSOLE을 한 번에 담아 보낼 수 있습니다.
+                - reasons는 최소 1개 이상이어야 하며, 비어 있으면 400 에러가 발생합니다.
+                - 기존에 저장된 부위별(FOREFOOT/HEEL/INSOLE) 근거는 이번 요청의 reasons로 통째로 교체되므로,
+                  3개를 모두 유지하고 싶다면 매번 3개를 모두 함께 보내야 합니다.
+                - DB에 없는 shoeId는 건너뛰고 skippedShoeIds로 반환합니다.
+                - reviewIds는 반드시 해당 shoeId의 리뷰여야 합니다. 존재하지 않거나 다른 신발의 리뷰 id가
+                  섞여 있으면 그 신발만 건너뛰고 invalidReviewShoeIds로 반환합니다 (배치 전체는 계속 처리됩니다).
+                """
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "발 적합도 배치 저장 성공"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "요청 형식 오류"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = "Authorization 헤더 누락 또는 유효하지 않은 토큰",
+                    content = @Content(examples = @ExampleObject(value = UNAUTHORIZED_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "사용자를 찾을 수 없음",
+                    content = @Content(examples = @ExampleObject(value = USER_NOT_FOUND_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "500",
+                    description = "서버 내부 오류",
+                    content = @Content(examples = @ExampleObject(value = INTERNAL_SERVER_ERROR_RESPONSE))
+            )
+    })
+    public ApiResponse<ShoeResponseDTO.SaveShoeRecommendationResultDTO> saveShoeRecommendations(
+            @RequestBody @Valid ShoeRequestDTO.SaveShoeRecommendationDTO request
+    ) {
+        Long userId = findLoginUser.getCurrentUserId();
+        return ApiResponse.onSuccess(shoeCommandService.saveShoeRecommendations(userId, request));
     }
 
     @GetMapping("/search")
@@ -467,6 +518,15 @@ public class ShoeController {
               "isSuccess": false,
               "code": "SHOE4001",
               "message": "신발 정보를 찾을 수 없습니다.",
+              "result": null
+            }
+            """;
+
+    private static final String USER_NOT_FOUND_RESPONSE = """
+            {
+              "isSuccess": false,
+              "code": "USER4001",
+              "message": "사용자를 찾을 수 없습니다.",
               "result": null
             }
             """;

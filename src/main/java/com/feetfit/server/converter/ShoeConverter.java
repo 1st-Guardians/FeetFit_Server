@@ -3,9 +3,14 @@ package com.feetfit.server.converter;
 import com.feetfit.server.domain.Shoe;
 import com.feetfit.server.domain.ShoeRecommendation;
 import com.feetfit.server.domain.ShoeRecommendationReason;
+import com.feetfit.server.domain.ShoeRecommendationReasonReview;
+import com.feetfit.server.domain.ShoeReview;
+import com.feetfit.server.domain.User;
+import com.feetfit.server.web.dto.shoe.ShoeRequestDTO;
 import com.feetfit.server.web.dto.shoe.ShoeResponseDTO;
 import org.springframework.data.domain.Page;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -106,6 +111,54 @@ public class ShoeConverter {
                 .fitScore(recommendation != null ? recommendation.getFitScore() : null)
                 .pointSummary(recommendation != null ? recommendation.getPointSummary() : null)
                 .reasons(reasons)
+                .build();
+    }
+
+    public static ShoeRecommendation toNewShoeRecommendation(
+            User user,
+            Shoe shoe,
+            ShoeRequestDTO.ShoeRecommendationItemDTO item,
+            LocalDateTime analyzedAt) {
+        return ShoeRecommendation.builder()
+                .user(user)
+                .shoe(shoe)
+                .fitScore(item.getFitScore())
+                .pointSummary(item.getPointSummary())
+                .analyzedAt(analyzedAt)
+                .build();
+    }
+
+    public static ShoeRecommendationReason toShoeRecommendationReason(
+            ShoeRecommendation recommendation,
+            ShoeRequestDTO.ShoeRecommendationReasonDTO reasonDto) {
+        return ShoeRecommendationReason.builder()
+                .shoeRecommendation(recommendation)
+                .reasonType(reasonDto.getReasonType())
+                .title(reasonDto.getTitle())
+                .riskLevel(reasonDto.getRiskLevel())
+                .reviewSummary(reasonDto.getReviewSummary())
+                .build();
+    }
+
+    public static ShoeRecommendationReasonReview toShoeRecommendationReasonReview(
+            ShoeRecommendationReason reason,
+            ShoeReview review) {
+        return ShoeRecommendationReasonReview.builder()
+                .reason(reason)
+                .review(review)
+                .build();
+    }
+
+    public static ShoeResponseDTO.SaveShoeRecommendationResultDTO toSaveShoeRecommendationResultDTO(
+            int requestedCount,
+            int processedCount,
+            List<Long> skippedShoeIds,
+            List<Long> invalidReviewShoeIds) {
+        return ShoeResponseDTO.SaveShoeRecommendationResultDTO.builder()
+                .requestedCount(requestedCount)
+                .processedCount(processedCount)
+                .skippedShoeIds(skippedShoeIds)
+                .invalidReviewShoeIds(invalidReviewShoeIds)
                 .build();
     }
 }
