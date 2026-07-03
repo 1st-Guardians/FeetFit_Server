@@ -188,39 +188,15 @@ public class ReportConverter {
         return Math.round(value * 10f) / 10f;
     }
 
-    public static DailyFootAnalysis toDailyFootAnalysis(
-            MeasurementSession measurementSession,
-            ReportRequestDTO.SaveDailyFootAnalysisDTO request) {
-        return DailyFootAnalysis.builder()
-                .measurementSession(measurementSession)
-                .conditionLevel(request.getConditionLevel())
-                .conditionComments(request.getConditionComments())
-                .balanceScore(request.getBalanceScore())
-                .balanceComment(request.getBalanceComment())
-                .leftPressurePercent(request.getLeftPressurePercent())
-                .rightPressurePercent(request.getRightPressurePercent())
-                .leftPressureImageUrl(request.getLeftPressureImageUrl())
-                .rightPressureImageUrl(request.getRightPressureImageUrl())
-                .measuredLeftFootSizeMm(request.getMeasuredLeftFootSizeMm())
-                .measuredRightFootSizeMm(request.getMeasuredRightFootSizeMm())
-                .leftFootWidthMm(request.getLeftFootWidthMm())
-                .rightFootWidthMm(request.getRightFootWidthMm())
-                .footOdourPpm(request.getFootOdourPpm())
-                .footOdourComment(request.getFootOdourComment())
-                .avgTemperatureCelsius(request.getAvgTemperatureCelsius())
-                .avgHumidityPercent(request.getAvgHumidityPercent())
-                .careTips(request.getCareTips())
-                .typeText(request.getTypeText())
-                .build();
-    }
-
     public static ReportResponseDTO.DailyFootAnalysisResultDTO toDailyFootAnalysisResultDTO(
             DailyFootAnalysis analysis,
             Integer userFootSize,
             DailyFootAnalysis previousAnalysis) {
 
         // 이전 측정 대비 균형 점수 변화
-        Float balanceScoreDiff = previousAnalysis != null
+        Float balanceScoreDiff = (previousAnalysis != null
+                && analysis.getBalanceScore() != null
+                && previousAnalysis.getBalanceScore() != null)
                 ? analysis.getBalanceScore() - previousAnalysis.getBalanceScore()
                 : null;
 

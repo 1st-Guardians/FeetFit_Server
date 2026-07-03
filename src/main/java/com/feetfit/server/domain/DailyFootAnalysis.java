@@ -27,21 +27,21 @@ public class DailyFootAnalysis extends BaseEntity {
 
     // 종합 상태
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private GaugeStatus conditionLevel;  // VERY_GOOD, ATTENTION_NEEDED, NEED_IMPROVEMENT
+    @Column
+    private GaugeStatus conditionLevel;
 
-    // 상태 코멘트 목록
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(nullable = false, columnDefinition = "JSON")
+    @Column(columnDefinition = "JSON")
     private List<String> conditionComments;
 
-    // 압력 균형
-    @Column(nullable = false)
+    // 자세 균형
+    @Column
     private Float balanceScore;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT")
     private String balanceComment;
 
+    // 압력 분포
     @Column
     private Float leftPressurePercent;
 
@@ -54,7 +54,7 @@ public class DailyFootAnalysis extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String rightPressureImageUrl;
 
-    // 발 사이즈
+    // 발 수치
     @Column
     private Float measuredLeftFootSizeMm;
 
@@ -67,7 +67,18 @@ public class DailyFootAnalysis extends BaseEntity {
     @Column
     private Float rightFootWidthMm;
 
-    // 발 냄새
+    // 발 냄새 - VOC 센서 원시값
+    @Column
+    private Integer tvocPpb;
+
+    @Column
+    private Integer baselineTvocPpb;
+
+    // 보정 후 rawPpm (clamp 이전 값 — DB 보존용)
+    @Column
+    private Float rawFootOdourPpm;
+
+    // 프론트 표시용 (0~5ppm clamp 적용)
     @Column
     private Float footOdourPpm;
 
@@ -75,57 +86,62 @@ public class DailyFootAnalysis extends BaseEntity {
     private String footOdourComment;
 
     // 환경
-    @Column(nullable = false)
+    @Column
     private Float avgTemperatureCelsius;
 
-    @Column(nullable = false)
+    @Column
     private Float avgHumidityPercent;
 
     // 관리 팁
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(nullable = false, columnDefinition = "JSON")
+    @Column(columnDefinition = "JSON")
     private List<String> careTips;
 
     // 신발 리스트 페이지용 발 타입 텍스트
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT")
     private String typeText;
 
-    public void update(
-            GaugeStatus conditionLevel,
-            List<String> conditionComments,
-            Float balanceScore,
-            String balanceComment,
-            Float leftPressurePercent,
-            Float rightPressurePercent,
-            String leftPressureImageUrl,
-            String rightPressureImageUrl,
-            Float measuredLeftFootSizeMm,
-            Float measuredRightFootSizeMm,
-            Float leftFootWidthMm,
-            Float rightFootWidthMm,
-            Float footOdourPpm,
-            String footOdourComment,
-            Float avgTemperatureCelsius,
-            Float avgHumidityPercent,
-            List<String> careTips,
-            String typeText) {
-
+    public void updateCondition(GaugeStatus conditionLevel, List<String> conditionComments) {
         this.conditionLevel = conditionLevel;
         this.conditionComments = conditionComments;
+    }
+
+    public void updateBalance(Float balanceScore, String balanceComment) {
         this.balanceScore = balanceScore;
         this.balanceComment = balanceComment;
+    }
+
+    public void updatePressure(Float leftPressurePercent, Float rightPressurePercent,
+                               String leftPressureImageUrl, String rightPressureImageUrl) {
         this.leftPressurePercent = leftPressurePercent;
         this.rightPressurePercent = rightPressurePercent;
         this.leftPressureImageUrl = leftPressureImageUrl;
         this.rightPressureImageUrl = rightPressureImageUrl;
+    }
+
+    public void updateMetrics(Float measuredLeftFootSizeMm, Float measuredRightFootSizeMm,
+                              Float leftFootWidthMm, Float rightFootWidthMm) {
         this.measuredLeftFootSizeMm = measuredLeftFootSizeMm;
         this.measuredRightFootSizeMm = measuredRightFootSizeMm;
         this.leftFootWidthMm = leftFootWidthMm;
         this.rightFootWidthMm = rightFootWidthMm;
+    }
+
+    public void updateOdour(Integer tvocPpb, Integer baselineTvocPpb,
+                            Float rawFootOdourPpm, Float footOdourPpm, String footOdourComment) {
+        this.tvocPpb = tvocPpb;
+        this.baselineTvocPpb = baselineTvocPpb;
+        this.rawFootOdourPpm = rawFootOdourPpm;
         this.footOdourPpm = footOdourPpm;
         this.footOdourComment = footOdourComment;
+    }
+
+    public void updateEnvironment(Float avgTemperatureCelsius, Float avgHumidityPercent) {
         this.avgTemperatureCelsius = avgTemperatureCelsius;
         this.avgHumidityPercent = avgHumidityPercent;
+    }
+
+    public void updateCareTips(List<String> careTips, String typeText) {
         this.careTips = careTips;
         this.typeText = typeText;
     }

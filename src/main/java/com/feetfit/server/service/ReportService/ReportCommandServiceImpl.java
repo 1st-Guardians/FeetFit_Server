@@ -9,6 +9,7 @@ import com.feetfit.server.domain.enums.HealthType;
 import com.feetfit.server.domain.enums.MeasurementStatus;
 import com.feetfit.server.domain.enums.MetricType;
 import com.feetfit.server.repository.*;
+import com.feetfit.server.service.FootOdourService.FootOdourCalculator;
 import com.feetfit.server.service.ImageService.ImageUploadService;
 import com.feetfit.server.web.dto.image.ImageResponseDTO;
 import com.feetfit.server.web.dto.report.ReportRequestDTO;
@@ -141,53 +142,104 @@ public class ReportCommandServiceImpl implements ReportCommandService {
         return ReportConverter.toTinaPedisAnalysisResultDTO(saved, previousAnalysis);
     }
 
+    // ─── 종합 발 분석 파트별 저장 ────────────────────────────────────────────────
+
     @Override
-    public ReportResponseDTO.DailyFootAnalysisResultDTO saveDailyFootAnalysis(
-            Long userId, ReportRequestDTO.SaveDailyFootAnalysisDTO request) {
+    public ReportResponseDTO.DailyFootAnalysisResultDTO saveConditionPart(
+            Long userId, ReportRequestDTO.ConditionPartDTO request) {
+        MeasurementSession session = getValidatedTransferringMeasurementSession(userId, request.getMeasurementSessionId());
+        DailyFootAnalysis analysis = findOrCreate(session);
+        analysis.updateCondition(request.getConditionLevel(), request.getConditionComments());
+        return buildDailyFootAnalysisResult(userId, analysis);
+    }
 
-        MeasurementSession measurementSession = getValidatedTransferringMeasurementSession(
-                userId, request.getMeasurementSessionId()
-        );
+    @Override
+    public ReportResponseDTO.DailyFootAnalysisResultDTO saveBalancePart(
+            Long userId, ReportRequestDTO.BalancePartDTO request) {
+        MeasurementSession session = getValidatedTransferringMeasurementSession(userId, request.getMeasurementSessionId());
+        DailyFootAnalysis analysis = findOrCreate(session);
+        analysis.updateBalance(request.getBalanceScore(), request.getBalanceComment());
+        return buildDailyFootAnalysisResult(userId, analysis);
+    }
 
-        DailyFootAnalysis saved = dailyFootAnalysisRepository
-                .findByMeasurementSessionId(measurementSession.getId())
-                .map(existing -> {
-                    existing.update(
-                            request.getConditionLevel(),
-                            request.getConditionComments(),
-                            request.getBalanceScore(),
-                            request.getBalanceComment(),
-                            request.getLeftPressurePercent(),
-                            request.getRightPressurePercent(),
-                            request.getLeftPressureImageUrl(),
-                            request.getRightPressureImageUrl(),
-                            request.getMeasuredLeftFootSizeMm(),
-                            request.getMeasuredRightFootSizeMm(),
-                            request.getLeftFootWidthMm(),
-                            request.getRightFootWidthMm(),
-                            request.getFootOdourPpm(),
-                            request.getFootOdourComment(),
-                            request.getAvgTemperatureCelsius(),
-                            request.getAvgHumidityPercent(),
-                            request.getCareTips(),
-                            request.getTypeText()
-                    );
-                    return existing;
-                })
+    @Override
+    public ReportResponseDTO.DailyFootAnalysisResultDTO savePressurePart(
+            Long userId,
+            ReportRequestDTO.PressurePartDTO request,
+            MultipartFile leftPressureImage,
+            MultipartFile rightPressureImage) {
+        MeasurementSession session = getValidatedTransferringMeasurementSession(userId, request.getMeasurementSessionId());
+
+        ImageResponseDTO.UploadImageResultDTO leftUpload =
+                imageUploadService.upload("pressure-left", leftPressureImage);
+        ImageResponseDTO.UploadImageResultDTO rightUpload =
+                imageUploadService.upload("pressure-right", rightPressureImage);
+
+        DailyFootAnalysis analysis = findOrCreate(session);
+        analysis.updatePressure(request.getLeftPressurePercent(), request.getRightPressurePercent(),
+                leftUpload.getImageUrl(), rightUpload.getImageUrl());
+        return buildDailyFootAnalysisResult(userId, analysis);
+    }
+
+    @Override
+    public ReportResponseDTO.DailyFootAnalysisResultDTO saveMetricsPart(
+            Long userId, ReportRequestDTO.MetricsPartDTO request) {
+        MeasurementSession session = getValidatedTransferringMeasurementSession(userId, request.getMeasurementSessionId());
+        DailyFootAnalysis analysis = findOrCreate(session);
+        analysis.updateMetrics(request.getMeasuredLeftFootSizeMm(), request.getMeasuredRightFootSizeMm(),
+                request.getLeftFootWidthMm(), request.getRightFootWidthMm());
+        return buildDailyFootAnalysisResult(userId, analysis);
+    }
+
+    @Override
+    public ReportResponseDTO.DailyFootAnalysisResultDTO saveOdorPart(
+            Long userId, ReportRequestDTO.OdorPartDTO request) {
+        MeasurementSession session = getValidatedTransferringMeasurementSession(userId, request.getMeasurementSessionId());
+
+        FootOdourCalculator.FootOdourResult odour =
+                FootOdourCalculator.calculate(request.getTvocPpb(), request.getBaselineTvocPpb());
+
+        DailyFootAnalysis analysis = findOrCreate(session);
+        analysis.updateOdour(request.getTvocPpb(), request.getBaselineTvocPpb(),
+                odour.rawPpm(), odour.displayPpm(), odour.comment());
+        return buildDailyFootAnalysisResult(userId, analysis);
+    }
+
+    @Override
+    public ReportResponseDTO.DailyFootAnalysisResultDTO saveEnvironmentPart(
+            Long userId, ReportRequestDTO.EnvironmentPartDTO request) {
+        MeasurementSession session = getValidatedTransferringMeasurementSession(userId, request.getMeasurementSessionId());
+        DailyFootAnalysis analysis = findOrCreate(session);
+        analysis.updateEnvironment(request.getAvgTemperatureCelsius(), request.getAvgHumidityPercent());
+        return buildDailyFootAnalysisResult(userId, analysis);
+    }
+
+    @Override
+    public ReportResponseDTO.DailyFootAnalysisResultDTO saveCareTipsPart(
+            Long userId, ReportRequestDTO.CareTipsPartDTO request) {
+        MeasurementSession session = getValidatedTransferringMeasurementSession(userId, request.getMeasurementSessionId());
+        DailyFootAnalysis analysis = findOrCreate(session);
+        analysis.updateCareTips(request.getCareTips(), request.getTypeText());
+        return buildDailyFootAnalysisResult(userId, analysis);
+    }
+
+    private DailyFootAnalysis findOrCreate(MeasurementSession session) {
+        return dailyFootAnalysisRepository.findByMeasurementSessionId(session.getId())
                 .orElseGet(() -> dailyFootAnalysisRepository.save(
-                        ReportConverter.toDailyFootAnalysis(measurementSession, request)
+                        DailyFootAnalysis.builder().measurementSession(session).build()
                 ));
+    }
 
+    private ReportResponseDTO.DailyFootAnalysisResultDTO buildDailyFootAnalysisResult(
+            Long userId, DailyFootAnalysis analysis) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserHandler(ErrorStatus.USER_NOT_FOUND));
-
+        dailyFootAnalysisRepository.flush();
         DailyFootAnalysis previousAnalysis = dailyFootAnalysisRepository
                 .findTopByMeasurementSessionUserIdAndCreatedAtLessThanOrderByCreatedAtDesc(
-                        userId, saved.getCreatedAt().toLocalDate().atStartOfDay()
-                )
+                        userId, analysis.getCreatedAt().toLocalDate().atStartOfDay())
                 .orElse(null);
-
-        return ReportConverter.toDailyFootAnalysisResultDTO(saved, user.getFootSize(), previousAnalysis);
+        return ReportConverter.toDailyFootAnalysisResultDTO(analysis, user.getFootSize(), previousAnalysis);
     }
 
     @Override

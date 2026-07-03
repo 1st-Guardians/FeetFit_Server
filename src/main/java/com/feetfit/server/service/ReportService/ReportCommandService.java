@@ -22,9 +22,30 @@ public interface ReportCommandService {
             MultipartFile originalFootImage
     );
 
-    // 종합 측정 분석 결과 저장
-    ReportResponseDTO.DailyFootAnalysisResultDTO saveDailyFootAnalysis(
-            Long userId, ReportRequestDTO.SaveDailyFootAnalysisDTO request);
+    // 종합 발 분석 — 파트별 저장
+    ReportResponseDTO.DailyFootAnalysisResultDTO saveConditionPart(
+            Long userId, ReportRequestDTO.ConditionPartDTO request);
+
+    ReportResponseDTO.DailyFootAnalysisResultDTO saveBalancePart(
+            Long userId, ReportRequestDTO.BalancePartDTO request);
+
+    ReportResponseDTO.DailyFootAnalysisResultDTO savePressurePart(
+            Long userId,
+            ReportRequestDTO.PressurePartDTO request,
+            MultipartFile leftPressureImage,
+            MultipartFile rightPressureImage);
+
+    ReportResponseDTO.DailyFootAnalysisResultDTO saveMetricsPart(
+            Long userId, ReportRequestDTO.MetricsPartDTO request);
+
+    ReportResponseDTO.DailyFootAnalysisResultDTO saveOdorPart(
+            Long userId, ReportRequestDTO.OdorPartDTO request);
+
+    ReportResponseDTO.DailyFootAnalysisResultDTO saveEnvironmentPart(
+            Long userId, ReportRequestDTO.EnvironmentPartDTO request);
+
+    ReportResponseDTO.DailyFootAnalysisResultDTO saveCareTipsPart(
+            Long userId, ReportRequestDTO.CareTipsPartDTO request);
 
     // 지표별 리포트 개별 저장 (단일 지표 upsert)
     ReportResponseDTO.SaveMetricResultResultDTO saveMetricResult(
