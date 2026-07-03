@@ -458,109 +458,213 @@ public class ReportController {
         return ApiResponse.onSuccess(reportQueryService.getTinaPedisAnalysis(userId, date));
     }
 
-    @PostMapping("/daily-foot-analysis")
+    @PostMapping("/daily-foot-analysis/condition")
     @Operation(
-            summary = "종합 발 분석 결과 저장 [민지]",
+            summary = "종합 발 분석 - 오늘의 발 컨디션 저장 [민지]",
             description = """
-                AI 분석 결과로 받은 종합 발 분석 데이터를 저장합니다.
+                오늘의 발 상태 레벨과 코멘트를 저장합니다.
                 Authorization 헤더에 Bearer accessToken이 필요합니다.
-                - request 파트에는 종합 발 분석 JSON 데이터를 문자열로 넣습니다.
-                - leftPressureImage 파트에는 왼발 압력 분포 이미지를 넣습니다.
-                - rightPressureImage 파트에는 오른발 압력 분포 이미지를 넣습니다.
-                - 이미지는 S3에 업로드되며, 업로드된 URL이 DB에 저장됩니다.
-                - tvocPpb, baselineTvocPpb를 보내면 백엔드에서 footOdourPpm과 footOdourComment를 계산합니다.
-                - footOdourPpm은 0~5ppm 범위로 clamp됩니다.
-                - 같은 측정 세션 ID에 이미 저장된 데이터가 있으면 덮어씁니다 (UPDATE).
-                - 같은 측정 세션 ID에 저장된 데이터가 없으면 새로 저장합니다 (INSERT).
+                - 같은 측정 세션 ID에 이미 저장된 데이터가 있으면 해당 파트만 덮어씁니다 (upsert).
                 - 측정 세션의 status가 TRANSFERRING 상태여야 합니다.
-                - 본인의 측정 세션 ID만 사용 가능합니다.
-                - careTips는 정확히 3개여야 합니다.
+                """
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200",
+                    content = @Content(examples = @ExampleObject(value = DAILY_FOOT_ANALYSIS_SUCCESS_RESPONSE))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401",
+                    content = @Content(examples = @ExampleObject(value = UNAUTHORIZED_RESPONSE))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+                    content = @Content(examples = @ExampleObject(value = MEASUREMENT_FORBIDDEN_RESPONSE))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
+                    content = @Content(examples = @ExampleObject(value = MEASUREMENT_NOT_FOUND_RESPONSE)))
+    })
+    public ApiResponse<ReportResponseDTO.DailyFootAnalysisResultDTO> saveConditionPart(
+            @RequestBody @Valid ReportRequestDTO.ConditionPartDTO request) {
+        Long userId = findLoginUser.getCurrentUserId();
+        return ApiResponse.onSuccess(reportCommandService.saveConditionPart(userId, request));
+    }
+
+    @PostMapping("/daily-foot-analysis/balance")
+    @Operation(
+            summary = "종합 발 분석 - 자세 균형 저장 [민지]",
+            description = """
+                자세 균형 점수와 코멘트를 저장합니다.
+                Authorization 헤더에 Bearer accessToken이 필요합니다.
+                """
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200",
+                    content = @Content(examples = @ExampleObject(value = DAILY_FOOT_ANALYSIS_SUCCESS_RESPONSE))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401",
+                    content = @Content(examples = @ExampleObject(value = UNAUTHORIZED_RESPONSE))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+                    content = @Content(examples = @ExampleObject(value = MEASUREMENT_FORBIDDEN_RESPONSE))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
+                    content = @Content(examples = @ExampleObject(value = MEASUREMENT_NOT_FOUND_RESPONSE)))
+    })
+    public ApiResponse<ReportResponseDTO.DailyFootAnalysisResultDTO> saveBalancePart(
+            @RequestBody @Valid ReportRequestDTO.BalancePartDTO request) {
+        Long userId = findLoginUser.getCurrentUserId();
+        return ApiResponse.onSuccess(reportCommandService.saveBalancePart(userId, request));
+    }
+
+    @PostMapping(value = "/daily-foot-analysis/pressure",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(
+            summary = "종합 발 분석 - 압력 분포 저장 [민지]",
+            description = """
+                좌우 압력 비율과 압력 분포 이미지를 저장합니다.
+                Authorization 헤더에 Bearer accessToken이 필요합니다.
+                - request 파트: PressurePartDTO JSON (Content-Type: application/json)
+                - leftPressureImage, rightPressureImage: 이미지 파일 (S3 업로드)
                 """,
             requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     required = true,
                     content = @Content(
                             mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
-                            schema = @Schema(implementation = ReportRequestDTO.SaveDailyFootAnalysisMultipartDTO.class)
+                            schema = @Schema(implementation = ReportRequestDTO.PressurePartMultipartDTO.class)
                     )
             )
     )
     @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "200",
-                    description = "종합 발 분석 결과 저장 성공",
-                    content = @Content(examples = @ExampleObject(value = DAILY_FOOT_ANALYSIS_SUCCESS_RESPONSE))
-            ),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "400",
-                    description = "필수값 누락, 이미지 파일 누락, 잘못된 JSON, 완료되지 않은 측정 세션, careTips 3개 아님",
-                    content = @Content(examples = {
-                            @ExampleObject(name = "유효성 검사 실패", value = DAILY_FOOT_ANALYSIS_VALIDATION_ERROR_RESPONSE),
-                            @ExampleObject(name = "이미지 파일 누락", value = IMAGE_REQUIRED_RESPONSE),
-                            @ExampleObject(name = "잘못된 JSON", value = INVALID_JSON_RESPONSE),
-                            @ExampleObject(name = "완료되지 않은 측정 세션", value = MEASUREMENT_NOT_COMPLETED_RESPONSE)
-                    })
-            ),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "401",
-                    description = "Authorization 헤더 누락 또는 유효하지 않은 토큰",
-                    content = @Content(examples = @ExampleObject(value = UNAUTHORIZED_RESPONSE))
-            ),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "403",
-                    description = "본인의 측정 세션이 아님",
-                    content = @Content(examples = @ExampleObject(value = MEASUREMENT_FORBIDDEN_RESPONSE))
-            ),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "404",
-                    description = "측정 세션을 찾을 수 없음",
-                    content = @Content(examples = @ExampleObject(value = MEASUREMENT_NOT_FOUND_RESPONSE))
-            ),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "500",
-                    description = "AWS CLI 미설치, S3 권한 없음, S3 업로드 실패 또는 서버 내부 오류",
-                    content = @Content(examples = {
-                            @ExampleObject(name = "S3 업로드 실패", value = S3_UPLOAD_ERROR_RESPONSE),
-                            @ExampleObject(name = "서버 내부 오류", value = INTERNAL_SERVER_ERROR_RESPONSE)
-                    })
-            )
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200",
+                    content = @Content(examples = @ExampleObject(value = DAILY_FOOT_ANALYSIS_SUCCESS_RESPONSE))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401",
+                    content = @Content(examples = @ExampleObject(value = UNAUTHORIZED_RESPONSE))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+                    content = @Content(examples = @ExampleObject(value = MEASUREMENT_FORBIDDEN_RESPONSE))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
+                    content = @Content(examples = @ExampleObject(value = MEASUREMENT_NOT_FOUND_RESPONSE))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500",
+                    content = @Content(examples = @ExampleObject(name = "S3 업로드 실패", value = S3_UPLOAD_ERROR_RESPONSE)))
     })
-    public ApiResponse<ReportResponseDTO.DailyFootAnalysisResultDTO> saveDailyFootAnalysis(
-            @Parameter(description = "종합 발 분석 JSON 문자열 파트", required = true)
+    public ApiResponse<ReportResponseDTO.DailyFootAnalysisResultDTO> savePressurePart(
             @RequestPart("request") String requestJson,
-            @Parameter(description = "왼발 압력 분포 이미지 파일", required = true)
             @RequestPart("leftPressureImage") MultipartFile leftPressureImage,
-            @Parameter(description = "오른발 압력 분포 이미지 파일", required = true)
-            @RequestPart("rightPressureImage") MultipartFile rightPressureImage
-    ) {
+            @RequestPart("rightPressureImage") MultipartFile rightPressureImage) {
         Long userId = findLoginUser.getCurrentUserId();
-        ReportRequestDTO.SaveDailyFootAnalysisDTO request = parseDailyFootAnalysisRequest(requestJson);
-        return ApiResponse.onSuccess(reportCommandService.saveDailyFootAnalysis(
+        ReportRequestDTO.PressurePartDTO request = parsePressurePartRequest(requestJson);
+        return ApiResponse.onSuccess(reportCommandService.savePressurePart(
                 userId, request, leftPressureImage, rightPressureImage));
     }
 
-    private ReportRequestDTO.SaveDailyFootAnalysisDTO parseDailyFootAnalysisRequest(String requestJson) {
+    private ReportRequestDTO.PressurePartDTO parsePressurePartRequest(String requestJson) {
         if (requestJson == null || requestJson.isBlank()) {
             throw new GeneralException(ErrorStatus._BAD_REQUEST, "request 파트는 필수입니다.");
         }
-
-        ReportRequestDTO.SaveDailyFootAnalysisDTO request;
+        ReportRequestDTO.PressurePartDTO request;
         try {
-            request = objectMapper.readValue(requestJson, ReportRequestDTO.SaveDailyFootAnalysisDTO.class);
+            request = objectMapper.readValue(requestJson, ReportRequestDTO.PressurePartDTO.class);
         } catch (JsonProcessingException e) {
             throw new GeneralException(ErrorStatus._BAD_REQUEST, "요청 본문 형식이 잘못되었습니다.");
         }
-
-        Set<ConstraintViolation<ReportRequestDTO.SaveDailyFootAnalysisDTO>> violations = validator.validate(request);
+        Set<ConstraintViolation<ReportRequestDTO.PressurePartDTO>> violations = validator.validate(request);
         if (!violations.isEmpty()) {
             Map<String, String> errors = new LinkedHashMap<>();
-            violations.forEach(violation -> errors.put(
-                    violation.getPropertyPath().toString(),
-                    violation.getMessage()
-            ));
+            violations.forEach(v -> errors.put(v.getPropertyPath().toString(), v.getMessage()));
             throw new GeneralException(ErrorStatus._BAD_REQUEST, "잘못된 요청입니다.", errors);
         }
-
         return request;
+    }
+
+    @PostMapping("/daily-foot-analysis/metrics")
+    @Operation(
+            summary = "종합 발 분석 - 발 수치 저장 [민지]",
+            description = """
+                측정된 발 길이 및 발볼 너비를 저장합니다.
+                Authorization 헤더에 Bearer accessToken이 필요합니다.
+                """
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200",
+                    content = @Content(examples = @ExampleObject(value = DAILY_FOOT_ANALYSIS_SUCCESS_RESPONSE))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401",
+                    content = @Content(examples = @ExampleObject(value = UNAUTHORIZED_RESPONSE))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+                    content = @Content(examples = @ExampleObject(value = MEASUREMENT_FORBIDDEN_RESPONSE))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
+                    content = @Content(examples = @ExampleObject(value = MEASUREMENT_NOT_FOUND_RESPONSE)))
+    })
+    public ApiResponse<ReportResponseDTO.DailyFootAnalysisResultDTO> saveMetricsPart(
+            @RequestBody @Valid ReportRequestDTO.MetricsPartDTO request) {
+        Long userId = findLoginUser.getCurrentUserId();
+        return ApiResponse.onSuccess(reportCommandService.saveMetricsPart(userId, request));
+    }
+
+    @PostMapping("/daily-foot-analysis/odor")
+    @Operation(
+            summary = "종합 발 분석 - 발냄새 저장 [민지]",
+            description = """
+                VOC 센서 원시값을 받아 발냄새 ppm과 코멘트를 백엔드에서 계산하여 저장합니다.
+                Authorization 헤더에 Bearer accessToken이 필요합니다.
+                - correctedPpb = max(tvocPpb - baselineTvocPpb, 0)
+                - footOdourPpm = clamp(correctedPpb / 1000, 0, 5)
+                - footOdourComment: 0~0.3=낮음, 0.31~1=보통, 1.01~3=높음, 3.01~5=매우높음
+                """
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200",
+                    content = @Content(examples = @ExampleObject(value = DAILY_FOOT_ANALYSIS_SUCCESS_RESPONSE))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401",
+                    content = @Content(examples = @ExampleObject(value = UNAUTHORIZED_RESPONSE))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+                    content = @Content(examples = @ExampleObject(value = MEASUREMENT_FORBIDDEN_RESPONSE))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
+                    content = @Content(examples = @ExampleObject(value = MEASUREMENT_NOT_FOUND_RESPONSE)))
+    })
+    public ApiResponse<ReportResponseDTO.DailyFootAnalysisResultDTO> saveOdorPart(
+            @RequestBody @Valid ReportRequestDTO.OdorPartDTO request) {
+        Long userId = findLoginUser.getCurrentUserId();
+        return ApiResponse.onSuccess(reportCommandService.saveOdorPart(userId, request));
+    }
+
+    @PostMapping("/daily-foot-analysis/environment")
+    @Operation(
+            summary = "종합 발 분석 - 환경 상태 저장 [민지]",
+            description = """
+                발 환경의 평균 온도·습도를 저장합니다.
+                Authorization 헤더에 Bearer accessToken이 필요합니다.
+                """
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200",
+                    content = @Content(examples = @ExampleObject(value = DAILY_FOOT_ANALYSIS_SUCCESS_RESPONSE))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401",
+                    content = @Content(examples = @ExampleObject(value = UNAUTHORIZED_RESPONSE))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+                    content = @Content(examples = @ExampleObject(value = MEASUREMENT_FORBIDDEN_RESPONSE))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
+                    content = @Content(examples = @ExampleObject(value = MEASUREMENT_NOT_FOUND_RESPONSE)))
+    })
+    public ApiResponse<ReportResponseDTO.DailyFootAnalysisResultDTO> saveEnvironmentPart(
+            @RequestBody @Valid ReportRequestDTO.EnvironmentPartDTO request) {
+        Long userId = findLoginUser.getCurrentUserId();
+        return ApiResponse.onSuccess(reportCommandService.saveEnvironmentPart(userId, request));
+    }
+
+    @PostMapping("/daily-foot-analysis/care-tips")
+    @Operation(
+            summary = "종합 발 분석 - 관리팁/발 타입 저장 [민지]",
+            description = """
+                관리 팁 3개와 발 타입 텍스트를 저장합니다.
+                Authorization 헤더에 Bearer accessToken이 필요합니다.
+                - careTips는 정확히 3개여야 합니다.
+                """
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200",
+                    content = @Content(examples = @ExampleObject(value = DAILY_FOOT_ANALYSIS_SUCCESS_RESPONSE))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401",
+                    content = @Content(examples = @ExampleObject(value = UNAUTHORIZED_RESPONSE))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+                    content = @Content(examples = @ExampleObject(value = MEASUREMENT_FORBIDDEN_RESPONSE))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
+                    content = @Content(examples = @ExampleObject(value = MEASUREMENT_NOT_FOUND_RESPONSE)))
+    })
+    public ApiResponse<ReportResponseDTO.DailyFootAnalysisResultDTO> saveCareTipsPart(
+            @RequestBody @Valid ReportRequestDTO.CareTipsPartDTO request) {
+        Long userId = findLoginUser.getCurrentUserId();
+        return ApiResponse.onSuccess(reportCommandService.saveCareTipsPart(userId, request));
     }
 
     @GetMapping("/daily-foot-analysis")
@@ -940,14 +1044,7 @@ public class ReportController {
               "code": "COMMON400",
               "message": "잘못된 요청입니다.",
               "result": {
-                "measurementSessionId": "측정 세션 ID는 필수입니다.",
-                "conditionLevel": "오늘의 발 컨디션 레벨은 필수입니다.",
-                "balanceScore": "자세 균형 점수는 필수입니다.",
-                "balanceComment": "자세 균형 코멘트는 필수입니다.",
-                "avgTemperatureCelsius": "평균 온도는 필수입니다.",
-                "avgHumidityPercent": "평균 습도는 필수입니다.",
-                "careTips": "관리 팁은 3개여야 합니다.",
-                "typeText": "발 타입 텍스트는 필수입니다."
+                "measurementSessionId": "측정 세션 ID는 필수입니다."
               }
             }
             """;
@@ -979,8 +1076,8 @@ public class ReportController {
                 "rightFootSizeDiff": -2.0,
                 "leftFootWidthMm": 85.0,
                 "rightFootWidthMm": 70.0,
-                "footOdourPpm": 76.0,
-                "footOdourComment": "발 냄새 위험도는 76ppm으로 낮은 편이에요.",
+                "footOdourPpm": 0.08,
+                "footOdourComment": "발냄새 위험도는 0.08ppm으로 낮은 편이에요. 현재는 냄새 걱정이 크지 않은 상태예요.",
                 "avgTemperatureCelsius": 34.0,
                 "avgHumidityPercent": 50.0,
                 "careTips": [

@@ -188,38 +188,6 @@ public class ReportConverter {
         return Math.round(value * 10f) / 10f;
     }
 
-    public static DailyFootAnalysis toDailyFootAnalysis(
-            MeasurementSession measurementSession,
-            ReportRequestDTO.SaveDailyFootAnalysisDTO request,
-            String leftPressureImageUrl,
-            String rightPressureImageUrl,
-            com.feetfit.server.service.FootOdourService.FootOdourCalculator.FootOdourResult odour) {
-        return DailyFootAnalysis.builder()
-                .measurementSession(measurementSession)
-                .conditionLevel(request.getConditionLevel())
-                .conditionComments(request.getConditionComments())
-                .balanceScore(request.getBalanceScore())
-                .balanceComment(request.getBalanceComment())
-                .leftPressurePercent(request.getLeftPressurePercent())
-                .rightPressurePercent(request.getRightPressurePercent())
-                .leftPressureImageUrl(leftPressureImageUrl)
-                .rightPressureImageUrl(rightPressureImageUrl)
-                .measuredLeftFootSizeMm(request.getMeasuredLeftFootSizeMm())
-                .measuredRightFootSizeMm(request.getMeasuredRightFootSizeMm())
-                .leftFootWidthMm(request.getLeftFootWidthMm())
-                .rightFootWidthMm(request.getRightFootWidthMm())
-                .tvocPpb(request.getTvocPpb())
-                .baselineTvocPpb(request.getBaselineTvocPpb())
-                .rawFootOdourPpm(odour != null ? odour.rawPpm() : null)
-                .footOdourPpm(odour != null ? odour.displayPpm() : null)
-                .footOdourComment(odour != null ? odour.comment() : null)
-                .avgTemperatureCelsius(request.getAvgTemperatureCelsius())
-                .avgHumidityPercent(request.getAvgHumidityPercent())
-                .careTips(request.getCareTips())
-                .typeText(request.getTypeText())
-                .build();
-    }
-
     public static ReportResponseDTO.DailyFootAnalysisResultDTO toDailyFootAnalysisResultDTO(
             DailyFootAnalysis analysis,
             Integer userFootSize,
