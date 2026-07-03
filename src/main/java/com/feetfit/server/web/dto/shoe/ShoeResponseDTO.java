@@ -104,4 +104,15 @@ public class ShoeResponseDTO {
         private String reviewSummary;     // 긴 멘트
         private List<String> reviewTexts; // AI가 선택한 리뷰 3개
     }
+
+    // 발 적합도 배치 저장 결과
+    @Builder
+    @Getter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class SaveShoeRecommendationResultDTO {
+        private Integer requestedCount;
+        private Integer processedCount;
+        private List<Long> skippedShoeIds;
+    }
 }

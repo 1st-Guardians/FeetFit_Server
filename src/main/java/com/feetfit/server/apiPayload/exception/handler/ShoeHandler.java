@@ -7,4 +7,8 @@ public class ShoeHandler extends GeneralException {
     public ShoeHandler(BaseErrorCode errorCode) {
         super(errorCode);
     }
+
+    public ShoeHandler(BaseErrorCode errorCode, String customMessage) {
+        super(errorCode, customMessage);
+    }
 }

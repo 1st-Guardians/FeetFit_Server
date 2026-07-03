@@ -1,7 +1,6 @@
 package com.feetfit.server.domain;
 
 import com.feetfit.server.domain.common.BaseEntity;
-import com.feetfit.server.domain.enums.RiskLevel;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -29,10 +28,6 @@ public class ShoeRecommendation extends BaseEntity {
     @JoinColumn(name = "shoe_id", nullable = false)
     private Shoe shoe;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private RiskLevel riskLevel;
-
     @Column(nullable = false)
     private Float fitScore;
 
@@ -45,4 +40,10 @@ public class ShoeRecommendation extends BaseEntity {
     @OneToMany(mappedBy = "shoeRecommendation", cascade = CascadeType.ALL)
     @Builder.Default
     private List<ShoeRecommendationReason> reasons = new ArrayList<>();
+
+    public void updateShoeRecommendation(Float fitScore, String pointSummary, LocalDateTime analyzedAt) {
+        this.fitScore = fitScore;
+        this.pointSummary = pointSummary;
+        this.analyzedAt = analyzedAt;
+    }
 }
