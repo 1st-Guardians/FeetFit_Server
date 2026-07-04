@@ -301,6 +301,8 @@ public class ReportCommandServiceImpl implements ReportCommandService {
             totalScore = calculateSimpleTotalScore(allResults);
             report.updateTotalScore(totalScore);
             report.updateReportDate(LocalDateTime.now());
+            // clearAutomatically = true 로 세션이 초기화되기 전에 명시적으로 flush
+            reportRepository.saveAndFlush(report);
             String recommendationContext = buildRecommendationContext(measurementSession, allResults);
 
             List<UserStretchingTodo> matchedTodos = replaceTodayTodoAssignments(
