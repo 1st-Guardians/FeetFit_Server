@@ -408,9 +408,15 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                 recommendationContext,
                 3
         );
+        selectedTodos = distinctTodosById(selectedTodos);
         if (selectedTodos.isEmpty()) {
             return selectedTodos;
         }
+
+        Set<Long> selectedTodoIds = selectedTodos.stream()
+                .map(UserStretchingTodo::getId)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        userStretchingTodoAssignmentRepository.deleteByUserIdAndTodoIdIn(user.getId(), selectedTodoIds);
 
         List<UserStretchingTodoAssignment> assignments = selectedTodos.stream()
                 .map(todo -> UserStretchingTodoAssignment.builder()
@@ -422,6 +428,19 @@ public class ReportCommandServiceImpl implements ReportCommandService {
 
         userStretchingTodoAssignmentRepository.saveAll(assignments);
         return selectedTodos;
+    }
+
+    private List<UserStretchingTodo> distinctTodosById(List<UserStretchingTodo> todos) {
+        Set<Long> seenTodoIds = new LinkedHashSet<>();
+        List<UserStretchingTodo> distinctTodos = new ArrayList<>();
+
+        for (UserStretchingTodo todo : todos) {
+            if (seenTodoIds.add(todo.getId())) {
+                distinctTodos.add(todo);
+            }
+        }
+
+        return distinctTodos;
     }
 
     private List<HealthArticle> replaceUserHealthArticles(
