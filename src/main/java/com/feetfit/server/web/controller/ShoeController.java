@@ -127,7 +127,7 @@ public class ShoeController {
 
         if (result.getPointSummary() == null) {
             String authHeader = httpRequest.getHeader(HttpHeaders.AUTHORIZATION);
-            shoeAiClient.requestShoeSummaryGeneration(shoeId, authHeader);
+            shoeAiClient.requestShoeSummaryGeneration(shoeId, userId, authHeader);
         }
 
         return ApiResponse.onSuccess(result);

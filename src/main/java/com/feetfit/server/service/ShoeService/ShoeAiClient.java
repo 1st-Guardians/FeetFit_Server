@@ -22,27 +22,27 @@ public class ShoeAiClient {
     @Value("${ai.shoe-summary.request-url}")
     private String shoeSummaryRequestUrl;
 
-    public void requestShoeSummaryGeneration(Long shoeId, String authorizationHeader) {
+    public void requestShoeSummaryGeneration(Long shoeId, Long userId, String authorizationHeader) {
         webClient.post()
                 .uri(shoeSummaryRequestUrl)
                 .header(HttpHeaders.AUTHORIZATION, authorizationHeader)
                 .contentType(MediaType.APPLICATION_JSON)
                 .accept(MediaType.APPLICATION_JSON)
-                .bodyValue(Map.of("shoeId", shoeId))
+                .bodyValue(Map.of("shoeId", shoeId, "userId", userId))
                 .retrieve()
                 .toBodilessEntity()
                 .timeout(Duration.ofSeconds(10))
                 .doOnSuccess(response -> log.info(
-                        "Shoe summary generation requested. url={}, shoeId={}, status={}",
-                        shoeSummaryRequestUrl, shoeId, response.getStatusCode()
+                        "Shoe summary generation requested. url={}, shoeId={}, userId={}, status={}",
+                        shoeSummaryRequestUrl, shoeId, userId, response.getStatusCode()
                 ))
                 .doOnError(WebClientResponseException.class, e -> log.error(
-                        "Shoe summary generation request failed. url={}, shoeId={}, status={}, responseBody={}",
-                        shoeSummaryRequestUrl, shoeId, e.getStatusCode(), e.getResponseBodyAsString()
+                        "Shoe summary generation request failed. url={}, shoeId={}, userId={}, status={}, responseBody={}",
+                        shoeSummaryRequestUrl, shoeId, userId, e.getStatusCode(), e.getResponseBodyAsString()
                 ))
                 .doOnError(e -> !(e instanceof WebClientResponseException), e -> log.error(
-                        "Shoe summary generation request failed. url={}, shoeId={}",
-                        shoeSummaryRequestUrl, shoeId, e
+                        "Shoe summary generation request failed. url={}, shoeId={}, userId={}",
+                        shoeSummaryRequestUrl, shoeId, userId, e
                 ))
                 .subscribe();
     }
