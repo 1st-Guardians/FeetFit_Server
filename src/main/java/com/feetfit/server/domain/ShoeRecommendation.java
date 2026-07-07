@@ -44,6 +44,7 @@ public class ShoeRecommendation extends BaseEntity {
     public void updateShoeRecommendation(Float fitScore, LocalDateTime analyzedAt) {
         this.fitScore = fitScore;
         this.analyzedAt = analyzedAt;
+        this.pointSummary = null;
     }
 
     public void updatePointSummary(String pointSummary) {
