@@ -36,7 +36,7 @@ public class ShoeRecommendationReason extends BaseEntity {
     @Column(nullable = false)
     private RiskLevel riskLevel;
 
-    @Column(columnDefinition = "TEXT", nullable = false)
+    @Column(columnDefinition = "TEXT")
     private String reviewSummary;
 
     @OneToMany(mappedBy = "reason", cascade = CascadeType.ALL, orphanRemoval = true)

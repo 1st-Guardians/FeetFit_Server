@@ -123,7 +123,6 @@ public class ShoeConverter {
                 .user(user)
                 .shoe(shoe)
                 .fitScore(item.getFitScore())
-                .pointSummary(item.getPointSummary())
                 .analyzedAt(analyzedAt)
                 .build();
     }
@@ -136,7 +135,6 @@ public class ShoeConverter {
                 .reasonType(reasonDto.getReasonType())
                 .title(reasonDto.getTitle())
                 .riskLevel(reasonDto.getRiskLevel())
-                .reviewSummary(reasonDto.getReviewSummary())
                 .build();
     }
 

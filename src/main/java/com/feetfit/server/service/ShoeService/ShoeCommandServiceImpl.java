@@ -109,7 +109,7 @@ public class ShoeCommandServiceImpl implements ShoeCommandService {
             ShoeRecommendation recommendation = shoeRecommendationRepository
                     .findByUserIdAndShoeId(user.getId(), shoe.getId())
                     .map(existing -> {
-                        existing.updateShoeRecommendation(item.getFitScore(), item.getPointSummary(), analyzedAt);
+                        existing.updateShoeRecommendation(item.getFitScore(), analyzedAt);
                         return existing;
                     })
                     .orElseGet(() -> shoeRecommendationRepository.save(

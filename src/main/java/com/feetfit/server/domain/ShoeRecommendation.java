@@ -31,7 +31,7 @@ public class ShoeRecommendation extends BaseEntity {
     @Column(nullable = false)
     private Float fitScore;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT")
     private String pointSummary;
 
     @Column(nullable = false)
@@ -41,9 +41,12 @@ public class ShoeRecommendation extends BaseEntity {
     @Builder.Default
     private List<ShoeRecommendationReason> reasons = new ArrayList<>();
 
-    public void updateShoeRecommendation(Float fitScore, String pointSummary, LocalDateTime analyzedAt) {
+    public void updateShoeRecommendation(Float fitScore, LocalDateTime analyzedAt) {
         this.fitScore = fitScore;
-        this.pointSummary = pointSummary;
         this.analyzedAt = analyzedAt;
+    }
+
+    public void updatePointSummary(String pointSummary) {
+        this.pointSummary = pointSummary;
     }
 }
