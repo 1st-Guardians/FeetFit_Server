@@ -293,9 +293,6 @@ public class ReportRequestDTO {
         @NotNull(message = "점수는 필수입니다.")
         private Float score;
 
-        @NotNull(message = "상태는 필수입니다.")
-        private GaugeStatus status;
-
         @NotNull(message = "어드바이스는 필수입니다.")
         @Size(min = 2, max = 2, message = "어드바이스는 2개여야 합니다.")
         private List<String> advice;

@@ -5,6 +5,7 @@ import com.feetfit.server.apiPayload.exception.handler.MeasurementHandler;
 import com.feetfit.server.apiPayload.exception.handler.UserHandler;
 import com.feetfit.server.converter.ReportConverter;
 import com.feetfit.server.domain.*;
+import com.feetfit.server.domain.enums.GaugeStatus;
 import com.feetfit.server.domain.enums.HealthType;
 import com.feetfit.server.domain.enums.MeasurementStatus;
 import com.feetfit.server.domain.enums.MetricType;
@@ -261,10 +262,11 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                 ));
 
         // 해당 metricType의 결과를 upsert
+        GaugeStatus calculatedStatus = calculateGaugeStatus(request.getScore());
         MetricAnalysisResult metricResult = metricAnalysisResultRepository
                 .findByReportIdAndMetricType(report.getId(), request.getMetricType())
                 .map(existing -> {
-                    existing.updateMetricResult(request.getScore(), request.getStatus(), request.getAdvice());
+                    existing.updateMetricResult(request.getScore(), calculatedStatus, request.getAdvice());
                     return existing;
                 })
                 .orElseGet(() -> metricAnalysisResultRepository.save(
@@ -272,7 +274,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                                 .report(report)
                                 .metricType(request.getMetricType())
                                 .score(request.getScore())
-                                .status(request.getStatus())
+                                .status(calculatedStatus)
                                 .advice(request.getAdvice())
                                 .build()
                 ));
@@ -339,6 +341,17 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                 .average()
                 .orElse(0.0);
         return (int) Math.round(avg);
+    }
+
+    // score 0~100을 3등분하여 GaugeStatus 계산
+    // 0 이상 ~ 100/3 미만  → NEED_IMPROVEMENT
+    // 100/3 이상 ~ 200/3 미만 → ATTENTION_NEEDED
+    // 200/3 이상 ~ 100 이하 → VERY_GOOD
+    static GaugeStatus calculateGaugeStatus(Float score) {
+        float s = safeScore(score);
+        if (s < 100f / 3f) return GaugeStatus.NEED_IMPROVEMENT;
+        if (s < 200f / 3f) return GaugeStatus.ATTENTION_NEEDED;
+        return GaugeStatus.VERY_GOOD;
     }
 
     private MeasurementSession getValidatedTransferringMeasurementSession(Long userId, Long measurementSessionId) {
