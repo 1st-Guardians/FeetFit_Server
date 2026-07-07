@@ -10,6 +10,7 @@ import com.feetfit.server.domain.ShoeRecommendation;
 import com.feetfit.server.domain.ShoeRecommendationReason;
 import com.feetfit.server.domain.ShoeReview;
 import com.feetfit.server.domain.User;
+import com.feetfit.server.domain.enums.ReasonType;
 import com.feetfit.server.repository.ShoeClickHistoryRepository;
 import com.feetfit.server.repository.ShoeRecommendationReasonRepository;
 import com.feetfit.server.repository.ShoeRecommendationReasonReviewRepository;
@@ -156,6 +157,23 @@ public class ShoeCommandServiceImpl implements ShoeCommandService {
 
         return ShoeConverter.toSaveShoeRecommendationResultDTO(
                 request.getRecommendations().size(), processedCount, skippedShoeIds, invalidReviewShoeIds);
+    }
+
+    @Override
+    public void saveShoeSummaries(Long userId, Long shoeId, ShoeRequestDTO.SaveShoeSummariesDTO request) {
+
+        ShoeRecommendation recommendation = shoeRecommendationRepository
+                .findByUserIdAndShoeId(userId, shoeId)
+                .orElseThrow(() -> new ShoeHandler(ErrorStatus.SHOE_NOT_FOUND));
+
+        recommendation.updatePointSummary(request.getPointSummary());
+
+        for (ShoeRequestDTO.ReasonSummaryDTO reasonSummary : request.getReasons()) {
+            ReasonType reasonType = reasonSummary.getReasonType();
+            shoeRecommendationReasonRepository
+                    .findByShoeRecommendationIdAndReasonType(recommendation.getId(), reasonType)
+                    .ifPresent(reason -> reason.updateReviewSummary(reasonSummary.getReviewSummary()));
+        }
     }
 
     // reviewIds가 모두 해당 shoe에 속한 리뷰인지 검증하고, id -> ShoeReview 맵으로 반환.

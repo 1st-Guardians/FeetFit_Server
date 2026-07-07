@@ -98,6 +98,35 @@ public class ShoeRequestDTO {
 
     @Getter
     @NoArgsConstructor
+    @Schema(description = "신발 착용 포인트·부위별 요약 저장 요청 (Feetfit_AI가 신발 상세 조회 시 생성 후 호출)")
+    public static class SaveShoeSummariesDTO {
+
+        @Schema(description = "착용 포인트 종합 설명", example = "발볼이 슬림하게 나온 편이라 발볼 넓으면 반 사이즈 업 추천합니다.")
+        @NotBlank(message = "pointSummary는 필수입니다.")
+        private String pointSummary;
+
+        @Schema(description = "부위별 리뷰 요약 목록")
+        @NotEmpty(message = "reasons는 최소 1개 이상이어야 합니다.")
+        @Valid
+        private List<ReasonSummaryDTO> reasons;
+    }
+
+    @Getter
+    @NoArgsConstructor
+    @Schema(description = "부위별 리뷰 요약")
+    public static class ReasonSummaryDTO {
+
+        @Schema(description = "부위 타입", example = "FOREFOOT", allowableValues = {"FOREFOOT", "HEEL", "INSOLE"})
+        @NotNull(message = "reasonType은 필수입니다.")
+        private ReasonType reasonType;
+
+        @Schema(description = "리뷰 기반 요약 (2줄 내외)", example = "발볼과 앞코가 여유 있다는 리뷰가 많습니다.")
+        @NotBlank(message = "reviewSummary는 필수입니다.")
+        private String reviewSummary;
+    }
+
+    @Getter
+    @NoArgsConstructor
     @Schema(description = "부위별 발 적합도 근거")
     public static class ShoeRecommendationReasonDTO {
 

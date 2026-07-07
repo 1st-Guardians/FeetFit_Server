@@ -42,4 +42,8 @@ public class ShoeRecommendationReason extends BaseEntity {
     @OneToMany(mappedBy = "reason", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<ShoeRecommendationReasonReview> reasonReviews = new ArrayList<>();
+
+    public void updateReviewSummary(String reviewSummary) {
+        this.reviewSummary = reviewSummary;
+    }
 }
