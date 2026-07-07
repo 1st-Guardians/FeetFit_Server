@@ -3,7 +3,7 @@ package com.feetfit.server.domain.enums;
 public enum HealthType {
     ATHLETES_FOOT,
     HALLUX_VALGUS,
-    FOOT_ODOR,
+    SKIN_IRRITATION,
     POSTURE,
     FOOT_ENVIRONMENT
 }

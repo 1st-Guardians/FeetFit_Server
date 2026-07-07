@@ -236,13 +236,6 @@ public class ReportResponseDTO {
         @Schema(description = "오른발 너비 (mm)", example = "70.0")
         private Float rightFootWidthMm;
 
-        // 발 냄새
-        @Schema(description = "발 냄새 수치 (ppm, 0~5)", example = "0.08")
-        private Float footOdourPpm;
-
-        @Schema(description = "발 냄새 코멘트", example = "발냄새 위험도는 0.08ppm으로 낮은 편이에요. 현재는 냄새 걱정이 크지 않은 상태예요.")
-        private String footOdourComment;
-
         // 발 환경 상태
         @Schema(description = "평균 온도 (°C)", example = "34.0")
         private Float avgTemperatureCelsius;
@@ -308,7 +301,7 @@ public class ReportResponseDTO {
     public static class MetricScoreDTO {
 
         @Schema(description = "지표 타입", example = "PRESSURE_BALANCE",
-                allowableValues = {"PRESSURE_BALANCE", "HALLUX_VALGUS", "ATHLETES_FOOT", "FOOT_ODOR", "FOOT_ENVIRONMENT"})
+                allowableValues = {"PRESSURE_BALANCE", "HALLUX_VALGUS", "ATHLETES_FOOT", "SKIN_IRRITATION", "FOOT_ENVIRONMENT"})
         private MetricType metricType;
 
         @Schema(description = "점수", example = "85.0")
@@ -368,7 +361,7 @@ public class ReportResponseDTO {
         @Schema(description = "종합 점수. 5개 지표 미완성 시 null", example = "80", nullable = true)
         private Integer totalScore;
 
-        @Schema(description = "아직 저장되지 않은 지표 목록. 완료되면 빈 리스트", example = "[\"PRESSURE_BALANCE\", \"FOOT_ODOR\"]")
+        @Schema(description = "아직 저장되지 않은 지표 목록. 완료되면 빈 리스트", example = "[\"PRESSURE_BALANCE\", \"SKIN_IRRITATION\"]")
         private List<MetricType> missingMetrics;
 
         @Schema(description = "투두가 매칭된 건강 타입. 미완성 시 null", nullable = true)
