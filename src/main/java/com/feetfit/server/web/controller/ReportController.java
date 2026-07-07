@@ -591,33 +591,6 @@ public class ReportController {
         return ApiResponse.onSuccess(reportCommandService.saveMetricsPart(userId, request));
     }
 
-    @PostMapping("/daily-foot-analysis/odor")
-    @Operation(
-            summary = "종합 발 분석 - 발냄새 저장 [민지]",
-            description = """
-                VOC 센서 원시값을 받아 발냄새 ppm과 코멘트를 백엔드에서 계산하여 저장합니다.
-                Authorization 헤더에 Bearer accessToken이 필요합니다.
-                - correctedPpb = max(tvocPpb - baselineTvocPpb, 0)
-                - footOdourPpm = clamp(correctedPpb / 1000, 0, 5)
-                - footOdourComment: 0~0.3=낮음, 0.31~1=보통, 1.01~3=높음, 3.01~5=매우높음
-                """
-    )
-    @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200",
-                    content = @Content(examples = @ExampleObject(value = DAILY_FOOT_ANALYSIS_SUCCESS_RESPONSE))),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401",
-                    content = @Content(examples = @ExampleObject(value = UNAUTHORIZED_RESPONSE))),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
-                    content = @Content(examples = @ExampleObject(value = MEASUREMENT_FORBIDDEN_RESPONSE))),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
-                    content = @Content(examples = @ExampleObject(value = MEASUREMENT_NOT_FOUND_RESPONSE)))
-    })
-    public ApiResponse<ReportResponseDTO.DailyFootAnalysisResultDTO> saveOdorPart(
-            @RequestBody @Valid ReportRequestDTO.OdorPartDTO request) {
-        Long userId = findLoginUser.getCurrentUserId();
-        return ApiResponse.onSuccess(reportCommandService.saveOdorPart(userId, request));
-    }
-
     @PostMapping("/daily-foot-analysis/environment")
     @Operation(
             summary = "종합 발 분석 - 환경 상태 저장 [민지]",
@@ -811,7 +784,7 @@ public class ReportController {
             description = """
                 오늘 날짜 기준으로 발 종합 점수, 지표별 점수, 1년간 변화 추이를 조회합니다.
                 Authorization 헤더에 Bearer accessToken이 필요합니다.
-                - 지표 타입: PRESSURE_BALANCE(압력 균형), HALLUX_VALGUS(무지외반), ATHLETES_FOOT(무좀), SKIN_IRRITATION(발냄새), FOOT_ENVIRONMENT(환경 상태)
+                - 지표 타입: PRESSURE_BALANCE(압력 균형), HALLUX_VALGUS(무지외반), ATHLETES_FOOT(무좀), SKIN_IRRITATION(피부 자극도), FOOT_ENVIRONMENT(환경 상태)
                 - monthlyScores: 최근 12개월 월별 종합 점수 평균 (5개 지표 모두 있는 날만 포함)
                 - totalScore: 5개 지표 단순 평균으로 백엔드에서 계산
                 - advice: 각 지표별 설명 2개
@@ -983,8 +956,8 @@ public class ReportController {
                     "score": 88.0,
                     "status": "VERY_GOOD",
                     "advice": [
-                      "발냄새를 유발할 수 있는 습도와 냄새 관련 수치가 전반적으로 매우 안정적인 상태입니다.",
-                      "현재처럼 발을 청결하고 건조하게 관리하면 쾌적한 발 환경을 유지하는 데 도움이 됩니다."
+                      "피부 자극으로 이어질 수 있는 발 피부 변화 영역이 거의 나타나지 않아 전반적으로 매우 안정적인 상태입니다.",
+                      "현재처럼 발을 청결하게 유지하고 마찰이 적은 신발을 착용하면 피부 자극을 줄이는 데 도움이 됩니다."
                     ]
                   },
                   {
@@ -1076,8 +1049,6 @@ public class ReportController {
                 "rightFootSizeDiff": -2.0,
                 "leftFootWidthMm": 85.0,
                 "rightFootWidthMm": 70.0,
-                "footOdourPpm": 0.08,
-                "footOdourComment": "발냄새 위험도는 0.08ppm으로 낮은 편이에요. 현재는 냄새 걱정이 크지 않은 상태예요.",
                 "avgTemperatureCelsius": 34.0,
                 "avgHumidityPercent": 50.0,
                 "careTips": [

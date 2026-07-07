@@ -236,13 +236,6 @@ public class ReportResponseDTO {
         @Schema(description = "오른발 너비 (mm)", example = "70.0")
         private Float rightFootWidthMm;
 
-        // 발 냄새
-        @Schema(description = "발 냄새 수치 (ppm, 0~5)", example = "0.08")
-        private Float footOdourPpm;
-
-        @Schema(description = "발 냄새 코멘트", example = "발냄새 위험도는 0.08ppm으로 낮은 편이에요. 현재는 냄새 걱정이 크지 않은 상태예요.")
-        private String footOdourComment;
-
         // 발 환경 상태
         @Schema(description = "평균 온도 (°C)", example = "34.0")
         private Float avgTemperatureCelsius;

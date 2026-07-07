@@ -38,9 +38,6 @@ public interface ReportCommandService {
     ReportResponseDTO.DailyFootAnalysisResultDTO saveMetricsPart(
             Long userId, ReportRequestDTO.MetricsPartDTO request);
 
-    ReportResponseDTO.DailyFootAnalysisResultDTO saveOdorPart(
-            Long userId, ReportRequestDTO.OdorPartDTO request);
-
     ReportResponseDTO.DailyFootAnalysisResultDTO saveEnvironmentPart(
             Long userId, ReportRequestDTO.EnvironmentPartDTO request);
 

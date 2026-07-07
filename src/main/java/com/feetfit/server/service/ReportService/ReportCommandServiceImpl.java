@@ -10,7 +10,6 @@ import com.feetfit.server.domain.enums.HealthType;
 import com.feetfit.server.domain.enums.MeasurementStatus;
 import com.feetfit.server.domain.enums.MetricType;
 import com.feetfit.server.repository.*;
-import com.feetfit.server.service.FootOdourService.FootOdourCalculator;
 import com.feetfit.server.service.ImageService.ImageUploadService;
 import com.feetfit.server.web.dto.image.ImageResponseDTO;
 import com.feetfit.server.web.dto.report.ReportRequestDTO;
@@ -189,20 +188,6 @@ public class ReportCommandServiceImpl implements ReportCommandService {
         DailyFootAnalysis analysis = findOrCreate(session);
         analysis.updateMetrics(request.getMeasuredLeftFootSizeMm(), request.getMeasuredRightFootSizeMm(),
                 request.getLeftFootWidthMm(), request.getRightFootWidthMm());
-        return buildDailyFootAnalysisResult(userId, analysis);
-    }
-
-    @Override
-    public ReportResponseDTO.DailyFootAnalysisResultDTO saveOdorPart(
-            Long userId, ReportRequestDTO.OdorPartDTO request) {
-        MeasurementSession session = getValidatedTransferringMeasurementSession(userId, request.getMeasurementSessionId());
-
-        FootOdourCalculator.FootOdourResult odour =
-                FootOdourCalculator.calculate(request.getTvocPpb(), request.getBaselineTvocPpb());
-
-        DailyFootAnalysis analysis = findOrCreate(session);
-        analysis.updateOdour(request.getTvocPpb(), request.getBaselineTvocPpb(),
-                odour.rawPpm(), odour.displayPpm(), odour.comment());
         return buildDailyFootAnalysisResult(userId, analysis);
     }
 
