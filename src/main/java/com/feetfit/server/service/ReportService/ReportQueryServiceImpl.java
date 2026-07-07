@@ -28,7 +28,7 @@ public class ReportQueryServiceImpl implements ReportQueryService {
             MetricType.PRESSURE_BALANCE,
             MetricType.HALLUX_VALGUS,
             MetricType.ATHLETES_FOOT,
-            MetricType.FOOT_ODOR,
+            MetricType.SKIN_IRRITATION,
             MetricType.FOOT_ENVIRONMENT
     );
 

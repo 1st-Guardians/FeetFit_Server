@@ -35,7 +35,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
             MetricType.PRESSURE_BALANCE,
             MetricType.HALLUX_VALGUS,
             MetricType.ATHLETES_FOOT,
-            MetricType.FOOT_ODOR,
+            MetricType.SKIN_IRRITATION,
             MetricType.FOOT_ENVIRONMENT
     );
 
@@ -721,10 +721,10 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                     List.of("통증", "염증", "붓", "압박", "마찰"),
                     List.of("교정", "스트레칭", "운동", "테이핑", "보조기")
             );
-            case FOOT_ODOR -> List.of(
-                    List.of("냄새", "악취", "발냄새", "암모니아", "ppm"),
-                    List.of("땀", "습기", "습도", "통풍", "건조", "양말", "신발"),
-                    List.of("세균", "균", "위생", "세척", "소독")
+            case SKIN_IRRITATION -> List.of(
+                    List.of("피부", "자극", "발적", "염증", "따가", "가려", "붉"),
+                    List.of("각질", "갈라", "벗겨", "건조", "보습"),
+                    List.of("마찰", "압박", "신발", "양말", "소재")
             );
             case POSTURE -> List.of(
                     List.of("자세", "균형", "압력", "체중", "보행", "걸음", "좌우"),
@@ -777,7 +777,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
             case ATHLETES_FOOT -> 1.2f;
             case HALLUX_VALGUS -> 1.15f;
             case PRESSURE_BALANCE -> 1.1f;
-            case FOOT_ODOR -> 1.0f;
+            case SKIN_IRRITATION -> 1.0f;
         };
     }
 
@@ -787,7 +787,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
             case FOOT_ENVIRONMENT -> HealthType.FOOT_ENVIRONMENT;
             case ATHLETES_FOOT -> HealthType.ATHLETES_FOOT;
             case HALLUX_VALGUS -> HealthType.HALLUX_VALGUS;
-            case FOOT_ODOR -> HealthType.FOOT_ODOR;
+            case SKIN_IRRITATION -> HealthType.SKIN_IRRITATION;
         };
     }
 

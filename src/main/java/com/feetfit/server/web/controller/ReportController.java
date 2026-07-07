@@ -752,7 +752,7 @@ public class ReportController {
             description = """
                 분석 완료된 단일 지표의 결과를 저장합니다.
                 Authorization 헤더에 Bearer accessToken이 필요합니다.
-                - 지표 타입: PRESSURE_BALANCE, HALLUX_VALGUS, ATHLETES_FOOT, FOOT_ODOR, FOOT_ENVIRONMENT
+                - 지표 타입: PRESSURE_BALANCE, HALLUX_VALGUS, ATHLETES_FOOT, SKIN_IRRITATION, FOOT_ENVIRONMENT
                 - 같은 측정 세션 + 같은 지표 타입이 이미 저장되어 있으면 덮어씁니다 (upsert).
                 - 측정 세션의 status가 TRANSFERRING 상태여야 합니다.
                 - 본인의 측정 세션 ID만 사용 가능합니다.
@@ -811,7 +811,7 @@ public class ReportController {
             description = """
                 오늘 날짜 기준으로 발 종합 점수, 지표별 점수, 1년간 변화 추이를 조회합니다.
                 Authorization 헤더에 Bearer accessToken이 필요합니다.
-                - 지표 타입: PRESSURE_BALANCE(압력 균형), HALLUX_VALGUS(무지외반), ATHLETES_FOOT(무좀), FOOT_ODOR(발냄새), FOOT_ENVIRONMENT(환경 상태)
+                - 지표 타입: PRESSURE_BALANCE(압력 균형), HALLUX_VALGUS(무지외반), ATHLETES_FOOT(무좀), SKIN_IRRITATION(발냄새), FOOT_ENVIRONMENT(환경 상태)
                 - monthlyScores: 최근 12개월 월별 종합 점수 평균 (5개 지표 모두 있는 날만 포함)
                 - totalScore: 5개 지표 단순 평균으로 백엔드에서 계산
                 - advice: 각 지표별 설명 2개
@@ -919,7 +919,7 @@ public class ReportController {
             ],
             "allMetricsComplete": false,
             "totalScore": null,
-            "missingMetrics": ["ATHLETES_FOOT", "FOOT_ENVIRONMENT", "FOOT_ODOR", "PRESSURE_BALANCE"],
+            "missingMetrics": ["ATHLETES_FOOT", "FOOT_ENVIRONMENT", "SKIN_IRRITATION", "PRESSURE_BALANCE"],
             "matchedHealthTypes": null,
             "matchedTodoCount": null,
             "createdAt": "2026-05-20T09:00:00",
@@ -979,7 +979,7 @@ public class ReportController {
                     ]
                   },
                   {
-                    "metricType": "FOOT_ODOR",
+                    "metricType": "SKIN_IRRITATION",
                     "score": 88.0,
                     "status": "VERY_GOOD",
                     "advice": [
