@@ -3,6 +3,7 @@ package com.feetfit.server.web.controller;
 import com.feetfit.server.apiPayload.ApiResponse;
 import com.feetfit.server.domain.enums.ShoeSort;
 import com.feetfit.server.jwt.FindLoginUser;
+import com.feetfit.server.service.ShoeService.ShoeAiClient;
 import com.feetfit.server.service.ShoeService.ShoeCommandService;
 import com.feetfit.server.service.ShoeService.ShoeQueryService;
 import com.feetfit.server.service.ShoeService.ShoeSearchQueryService;
@@ -14,11 +15,13 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -32,6 +35,7 @@ public class ShoeController {
     private final ShoeQueryService shoeQueryService;
     private final ShoeCommandService shoeCommandService;
     private final ShoeSearchQueryService shoeSearchQueryService;
+    private final ShoeAiClient shoeAiClient;
     private final FindLoginUser findLoginUser;
 
     @GetMapping
@@ -115,10 +119,18 @@ public class ShoeController {
             )
     })
     public ApiResponse<ShoeResponseDTO.ShoeDetailResultDTO> getShoeDetail(
-            @PathVariable Long shoeId
+            @PathVariable Long shoeId,
+            HttpServletRequest httpRequest
     ) {
         Long userId = findLoginUser.getCurrentUserId();
-        return ApiResponse.onSuccess(shoeSearchQueryService.getShoeDetail(userId, shoeId));
+        ShoeResponseDTO.ShoeDetailResultDTO result = shoeSearchQueryService.getShoeDetail(userId, shoeId);
+
+        if (result.getPointSummary() == null) {
+            String authHeader = httpRequest.getHeader(HttpHeaders.AUTHORIZATION);
+            shoeAiClient.requestShoeSummaryGeneration(shoeId, authHeader);
+        }
+
+        return ApiResponse.onSuccess(result);
     }
 
     @PostMapping("/{shoeId}/click")
@@ -207,6 +219,50 @@ public class ShoeController {
     ) {
         Long userId = findLoginUser.getCurrentUserId();
         return ApiResponse.onSuccess(shoeCommandService.saveShoeRecommendations(userId, request));
+    }
+
+    @PostMapping("/{shoeId}/summaries")
+    @Operation(
+            summary = "신발 착용 포인트·부위별 요약 저장",
+            description = """
+                Feetfit_AI가 신발 상세 조회 요청을 받아 pointSummary와 각 부위별 reviewSummary를 생성한 뒤 호출합니다.
+                Authorization 헤더에 Bearer accessToken이 필요합니다 (사용자의 accessToken을 그대로 포워딩).
+                - 토큰에서 추출한 userId와 shoeId 조합의 ShoeRecommendation이 없으면 404를 반환합니다.
+                - 존재하지 않는 reasonType은 무시합니다 (reasons 배열에 없는 타입은 기존 값 유지).
+                """
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "요약 저장 성공"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "요청 형식 오류"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = "Authorization 헤더 누락 또는 유효하지 않은 토큰",
+                    content = @Content(examples = @ExampleObject(value = UNAUTHORIZED_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "해당 사용자-신발 적합도 데이터가 없음",
+                    content = @Content(examples = @ExampleObject(value = SHOE_NOT_FOUND_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "500",
+                    description = "서버 내부 오류",
+                    content = @Content(examples = @ExampleObject(value = INTERNAL_SERVER_ERROR_RESPONSE))
+            )
+    })
+    public ApiResponse<Void> saveShoeSummaries(
+            @PathVariable Long shoeId,
+            @RequestBody @Valid ShoeRequestDTO.SaveShoeSummariesDTO request
+    ) {
+        Long userId = findLoginUser.getCurrentUserId();
+        shoeCommandService.saveShoeSummaries(userId, shoeId, request);
+        return ApiResponse.onSuccess(null);
     }
 
     @GetMapping("/search")

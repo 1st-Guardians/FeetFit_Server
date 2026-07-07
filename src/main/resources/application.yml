@@ -51,3 +51,7 @@ file:
 hardware:
   measurement:
     start-url: ${HARDWARE_MEASUREMENT_START_URL:https://bf29-2001-e60-3162-4147-da3a-ddff-fe82-9fa6.ngrok-free.app/api/reports/all}
+
+ai:
+  shoe-summary:
+    request-url: ${AI_SHOE_SUMMARY_REQUEST_URL:http://localhost:8000/api/shoes/summaries}
