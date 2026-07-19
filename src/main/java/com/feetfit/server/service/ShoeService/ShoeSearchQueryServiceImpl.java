@@ -67,6 +67,18 @@ public class ShoeSearchQueryServiceImpl implements ShoeSearchQueryService {
 
     @Override
     @Transactional(readOnly = true)
+    public ShoeSearchResponseDTO.ShoeSearchResultDTO searchSuggestions(String keyword, int page, int size) {
+
+        // 검색 기록을 저장하지 않는 연관 검색어용 조회 (전체 DB 기준)
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Shoe> shoePage = shoeRepository
+                .findByShoeNameContainingOrBrandNameContaining(keyword, keyword, pageable);
+
+        return ShoeSearchConverter.toShoeSearchResultDTO(shoePage);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public ShoeSearchResponseDTO.ShoeSearchHistoryResultDTO getSearchHistory(Long userId) {
 
         // 만료되지 않은 최근 10개 기록 조회
