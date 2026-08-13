@@ -247,6 +247,42 @@ public class ShoeController {
         return ApiResponse.onSuccess(shoeSearchQueryService.search(userId, keyword, page, size));
     }
 
+    @GetMapping("/search/suggestions")
+    @Operation(
+            summary = "연관 검색어 조회 [민지]",
+            description = """
+                    키워드로 신발을 검색하되, 검색 기록을 저장하지 않습니다.
+                    Authorization 헤더에 Bearer accessToken이 필요합니다.
+                    - 신발명, 브랜드명 기준으로 전체 DB에서 검색합니다.
+                    - 자동완성/연관 검색어 목적으로 사용하며, 검색 기록에 남지 않습니다.
+                    """
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "연관 검색어 조회 성공",
+                    content = @Content(examples = @ExampleObject(value = SHOE_SEARCH_SUCCESS_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = "Authorization 헤더 누락 또는 유효하지 않은 토큰",
+                    content = @Content(examples = @ExampleObject(value = UNAUTHORIZED_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "500",
+                    description = "서버 내부 오류",
+                    content = @Content(examples = @ExampleObject(value = INTERNAL_SERVER_ERROR_RESPONSE))
+            )
+    })
+    public ApiResponse<ShoeSearchResponseDTO.ShoeSearchResultDTO> searchSuggestions(
+            @RequestParam @NotBlank(message = "keyword는 비어 있을 수 없습니다.") String keyword,
+            @RequestParam(defaultValue = "0") @Min(value = 0, message = "page는 0 이상이어야 합니다.") int page,
+            @RequestParam(defaultValue = "20") @Min(value = 1, message = "size는 1 이상이어야 합니다.") @Max(value = 100, message = "size는 100 이하이어야 합니다.") int size
+    ) {
+        findLoginUser.getCurrentUserId();
+        return ApiResponse.onSuccess(shoeSearchQueryService.searchSuggestions(keyword, page, size));
+    }
+
     @GetMapping("/search/history")
     @Operation(
             summary = "최근 검색 기록 조회 [민지]",

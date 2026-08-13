@@ -5,11 +5,11 @@ import com.feetfit.server.apiPayload.exception.handler.MeasurementHandler;
 import com.feetfit.server.apiPayload.exception.handler.UserHandler;
 import com.feetfit.server.converter.ReportConverter;
 import com.feetfit.server.domain.*;
+import com.feetfit.server.domain.enums.GaugeStatus;
 import com.feetfit.server.domain.enums.HealthType;
 import com.feetfit.server.domain.enums.MeasurementStatus;
 import com.feetfit.server.domain.enums.MetricType;
 import com.feetfit.server.repository.*;
-import com.feetfit.server.service.FootOdourService.FootOdourCalculator;
 import com.feetfit.server.service.ImageService.ImageUploadService;
 import com.feetfit.server.web.dto.image.ImageResponseDTO;
 import com.feetfit.server.web.dto.report.ReportRequestDTO;
@@ -34,7 +34,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
             MetricType.PRESSURE_BALANCE,
             MetricType.HALLUX_VALGUS,
             MetricType.ATHLETES_FOOT,
-            MetricType.FOOT_ODOR,
+            MetricType.SKIN_IRRITATION,
             MetricType.FOOT_ENVIRONMENT
     );
 
@@ -192,20 +192,6 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     }
 
     @Override
-    public ReportResponseDTO.DailyFootAnalysisResultDTO saveOdorPart(
-            Long userId, ReportRequestDTO.OdorPartDTO request) {
-        MeasurementSession session = getValidatedTransferringMeasurementSession(userId, request.getMeasurementSessionId());
-
-        FootOdourCalculator.FootOdourResult odour =
-                FootOdourCalculator.calculate(request.getTvocPpb(), request.getBaselineTvocPpb());
-
-        DailyFootAnalysis analysis = findOrCreate(session);
-        analysis.updateOdour(request.getTvocPpb(), request.getBaselineTvocPpb(),
-                odour.rawPpm(), odour.displayPpm(), odour.comment());
-        return buildDailyFootAnalysisResult(userId, analysis);
-    }
-
-    @Override
     public ReportResponseDTO.DailyFootAnalysisResultDTO saveEnvironmentPart(
             Long userId, ReportRequestDTO.EnvironmentPartDTO request) {
         MeasurementSession session = getValidatedTransferringMeasurementSession(userId, request.getMeasurementSessionId());
@@ -261,10 +247,11 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                 ));
 
         // 해당 metricType의 결과를 upsert
+        GaugeStatus calculatedStatus = calculateGaugeStatus(request.getScore());
         MetricAnalysisResult metricResult = metricAnalysisResultRepository
                 .findByReportIdAndMetricType(report.getId(), request.getMetricType())
                 .map(existing -> {
-                    existing.updateMetricResult(request.getScore(), request.getStatus(), request.getAdvice());
+                    existing.updateMetricResult(request.getScore(), calculatedStatus, request.getAdvice());
                     return existing;
                 })
                 .orElseGet(() -> metricAnalysisResultRepository.save(
@@ -272,7 +259,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                                 .report(report)
                                 .metricType(request.getMetricType())
                                 .score(request.getScore())
-                                .status(request.getStatus())
+                                .status(calculatedStatus)
                                 .advice(request.getAdvice())
                                 .build()
                 ));
@@ -301,6 +288,8 @@ public class ReportCommandServiceImpl implements ReportCommandService {
             totalScore = calculateSimpleTotalScore(allResults);
             report.updateTotalScore(totalScore);
             report.updateReportDate(LocalDateTime.now());
+            // clearAutomatically = true 로 세션이 초기화되기 전에 명시적으로 flush
+            reportRepository.saveAndFlush(report);
             String recommendationContext = buildRecommendationContext(measurementSession, allResults);
 
             List<UserFootCareTodo> matchedTodos = replaceTodayTodoAssignments(
@@ -337,6 +326,17 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                 .average()
                 .orElse(0.0);
         return (int) Math.round(avg);
+    }
+
+    // score 0~100을 3등분하여 GaugeStatus 계산
+    // 0 이상 ~ 100/3 미만  → NEED_IMPROVEMENT
+    // 100/3 이상 ~ 200/3 미만 → ATTENTION_NEEDED
+    // 200/3 이상 ~ 100 이하 → VERY_GOOD
+    static GaugeStatus calculateGaugeStatus(Float score) {
+        float s = safeScore(score);
+        if (s < 100f / 3f) return GaugeStatus.NEED_IMPROVEMENT;
+        if (s < 200f / 3f) return GaugeStatus.ATTENTION_NEEDED;
+        return GaugeStatus.VERY_GOOD;
     }
 
     private MeasurementSession getValidatedTransferringMeasurementSession(Long userId, Long measurementSessionId) {
@@ -406,9 +406,15 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                 recommendationContext,
                 3
         );
+        selectedTodos = distinctTodosById(selectedTodos);
         if (selectedTodos.isEmpty()) {
             return selectedTodos;
         }
+
+        Set<Long> selectedTodoIds = selectedTodos.stream()
+                .map(UserFootCareTodo::getId)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        userFootCareTodoAssignmentRepository.deleteByUserIdAndTodoIdIn(user.getId(), selectedTodoIds);
 
         List<UserFootCareTodoAssignment> assignments = selectedTodos.stream()
                 .map(todo -> UserFootCareTodoAssignment.builder()
@@ -420,6 +426,19 @@ public class ReportCommandServiceImpl implements ReportCommandService {
 
         userFootCareTodoAssignmentRepository.saveAll(assignments);
         return selectedTodos;
+    }
+
+    private List<UserFootCareTodo> distinctTodosById(List<UserFootCareTodo> todos) {
+        Set<Long> seenTodoIds = new LinkedHashSet<>();
+        List<UserFootCareTodo> distinctTodos = new ArrayList<>();
+
+        for (UserFootCareTodo todo : todos) {
+            if (seenTodoIds.add(todo.getId())) {
+                distinctTodos.add(todo);
+            }
+        }
+
+        return distinctTodos;
     }
 
     private List<HealthArticle> replaceUserHealthArticles(
@@ -688,13 +707,9 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                     List.of("교정", "스트레칭", "운동", "테이핑", "보조기")
             );
             case SKIN_IRRITATION -> List.of(
-                    List.of("피부", "자극", "발적", "염증", "가려", "따가"),
-                    List.of("보습", "세척", "건조", "통풍", "위생")
-            );
-            case FOOT_ODOR -> List.of(
-                    List.of("냄새", "악취", "발냄새", "암모니아", "ppm"),
-                    List.of("땀", "습기", "습도", "통풍", "건조", "양말", "신발"),
-                    List.of("세균", "균", "위생", "세척", "소독")
+                    List.of("피부", "자극", "발적", "염증", "따가", "가려", "붉"),
+                    List.of("각질", "갈라", "벗겨", "건조", "보습"),
+                    List.of("마찰", "압박", "신발", "양말", "소재")
             );
             case POSTURE -> List.of(
                     List.of("자세", "균형", "압력", "체중", "보행", "걸음", "좌우"),
@@ -746,9 +761,8 @@ public class ReportCommandServiceImpl implements ReportCommandService {
             case FOOT_ENVIRONMENT -> 1.25f;
             case ATHLETES_FOOT -> 1.2f;
             case HALLUX_VALGUS -> 1.15f;
-            case SKIN_IRRITATION -> 1.1f;
             case PRESSURE_BALANCE -> 1.1f;
-            case FOOT_ODOR -> 1.0f;
+            case SKIN_IRRITATION -> 1.0f;
         };
     }
 
@@ -759,7 +773,6 @@ public class ReportCommandServiceImpl implements ReportCommandService {
             case ATHLETES_FOOT -> HealthType.ATHLETES_FOOT;
             case HALLUX_VALGUS -> HealthType.HALLUX_VALGUS;
             case SKIN_IRRITATION -> HealthType.SKIN_IRRITATION;
-            case FOOT_ODOR -> HealthType.FOOT_ODOR;
         };
     }
 

@@ -298,7 +298,7 @@ class ReportCommandServiceImplTest {
                 metricAnalysisResult(MetricType.FOOT_ENVIRONMENT, 50.0f),
                 metricAnalysisResult(MetricType.ATHLETES_FOOT, 90.0f),
                 metricAnalysisResult(MetricType.HALLUX_VALGUS, 70.0f),
-                metricAnalysisResult(MetricType.FOOT_ODOR, 80.0f)
+                metricAnalysisResult(MetricType.SKIN_IRRITATION, 80.0f)
         ));
         return request;
     }

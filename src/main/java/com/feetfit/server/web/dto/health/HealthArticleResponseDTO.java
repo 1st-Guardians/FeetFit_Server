@@ -32,7 +32,7 @@ public class HealthArticleResponseDTO {
         @Schema(description = "발행 시각", example = "2026-05-20T08:30:00")
         private LocalDateTime publishedAt;
 
-        @Schema(description = "건강 타입", example = "HALLUX_VALGUS", allowableValues = {"ATHLETES_FOOT", "HALLUX_VALGUS", "FOOT_ODOR", "POSTURE", "FOOT_ENVIRONMENT"})
+        @Schema(description = "건강 타입", example = "HALLUX_VALGUS", allowableValues = {"ATHLETES_FOOT", "HALLUX_VALGUS", "SKIN_IRRITATION", "POSTURE", "FOOT_ENVIRONMENT"})
         private String healthType;
 
         @Schema(description = "아티클 설명", example = "엄지발가락 관절 부담을 줄이는 생활 습관과 스트레칭을 소개합니다.")

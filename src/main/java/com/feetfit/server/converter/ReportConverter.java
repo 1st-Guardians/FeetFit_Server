@@ -228,8 +228,6 @@ public class ReportConverter {
                 .rightFootSizeDiff(rightFootSizeDiff)
                 .leftFootWidthMm(analysis.getLeftFootWidthMm())
                 .rightFootWidthMm(analysis.getRightFootWidthMm())
-                .footOdourPpm(analysis.getFootOdourPpm())
-                .footOdourComment(analysis.getFootOdourComment())
                 .avgTemperatureCelsius(analysis.getAvgTemperatureCelsius())
                 .avgHumidityPercent(analysis.getAvgHumidityPercent())
                 .careTips(analysis.getCareTips())

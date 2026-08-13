@@ -23,7 +23,7 @@ public class FootCareTodoResponseDTO {
         @Schema(description = "스트레칭 제목", example = "수건으로 발 당기기")
         private String title;
 
-        @Schema(description = "건강 타입", example = "HALLUX_VALGUS", allowableValues = {"ATHLETES_FOOT", "HALLUX_VALGUS", "FOOT_ODOR", "POSTURE", "FOOT_ENVIRONMENT"})
+        @Schema(description = "건강 타입", example = "HALLUX_VALGUS", allowableValues = {"ATHLETES_FOOT", "HALLUX_VALGUS", "SKIN_IRRITATION", "POSTURE", "FOOT_ENVIRONMENT"})
         private String healthType;
 
         @Schema(description = "스트레칭 영상 URL", example = "https://www.youtube.com/watch?v=stretching001")

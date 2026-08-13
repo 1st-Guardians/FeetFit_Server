@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -50,5 +51,16 @@ public interface UserFootCareTodoAssignmentRepository extends JpaRepository<User
             @Param("userId") Long userId,
             @Param("startOfDay") LocalDateTime startOfDay,
             @Param("startOfNextDay") LocalDateTime startOfNextDay
+    );
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            DELETE FROM UserFootCareTodoAssignment assignment
+            WHERE assignment.user.id = :userId
+              AND assignment.footCareTodo.id IN :todoIds
+            """)
+    void deleteByUserIdAndTodoIdIn(
+            @Param("userId") Long userId,
+            @Param("todoIds") Collection<Long> todoIds
     );
 }

@@ -226,22 +226,6 @@ public class ReportRequestDTO {
 
     @Getter
     @NoArgsConstructor
-    @Schema(description = "발냄새 저장 요청 (POST /daily-foot-analysis/odor)")
-    public static class OdorPartDTO {
-
-        @Schema(description = "측정 세션 ID", example = "1")
-        @NotNull(message = "측정 세션 ID는 필수입니다.")
-        private Long measurementSessionId;
-
-        @Schema(description = "VOC 센서 원시값(ppb)", example = "76000")
-        private Integer tvocPpb;
-
-        @Schema(description = "VOC baseline 값(ppb)", example = "1000")
-        private Integer baselineTvocPpb;
-    }
-
-    @Getter
-    @NoArgsConstructor
     @Schema(description = "환경 상태 저장 요청 (POST /daily-foot-analysis/environment)")
     public static class EnvironmentPartDTO {
 
@@ -292,9 +276,6 @@ public class ReportRequestDTO {
 
         @NotNull(message = "점수는 필수입니다.")
         private Float score;
-
-        @NotNull(message = "상태는 필수입니다.")
-        private GaugeStatus status;
 
         @NotNull(message = "어드바이스는 필수입니다.")
         @Size(min = 2, max = 2, message = "어드바이스는 2개여야 합니다.")
