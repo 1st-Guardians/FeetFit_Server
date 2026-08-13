@@ -65,13 +65,13 @@ public class FootCareTodoController {
 
     @PatchMapping("/{todoId}/completion")
     @Operation(
-            summary = "스트레칭 완료 여부 체크 [은서]",
+            summary = "발 관리 투두 완료 여부 체크 [은서]",
             description = "로그인한 사용자의 발 관리 투두 완료 여부를 true 또는 false로 변경합니다."
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
-                    description = "스트레칭 완료 여부 변경 성공",
+                    description = "발 관리 투두 완료 여부 변경 성공",
                     content = @Content(examples = @ExampleObject(value = FOOT_CARE_TODO_COMPLETION_SUCCESS_RESPONSE))
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
