@@ -28,7 +28,10 @@ public class Shoe extends BaseEntity {
     private String shoeName;
 
     @Column(nullable = false)
-    private String shoeUrl;
+    private String modelCode;
+
+    @Column(nullable = false)
+    private String musinsaUrl;
 
     @Column
     private Integer price;
@@ -54,4 +57,8 @@ public class Shoe extends BaseEntity {
     @OneToMany(mappedBy = "shoe", cascade = CascadeType.ALL)
     @Builder.Default
     private List<ShoeReview> reviews = new ArrayList<>();
+
+    @OneToMany(mappedBy = "shoe", cascade = CascadeType.ALL)
+    @Builder.Default
+    private List<ShoeLabMeasurement> labMeasurements = new ArrayList<>();
 }

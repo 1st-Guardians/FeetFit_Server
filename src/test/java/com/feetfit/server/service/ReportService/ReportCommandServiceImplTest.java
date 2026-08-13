@@ -2,8 +2,8 @@ package com.feetfit.server.service.ReportService;
 
 import com.feetfit.server.apiPayload.exception.handler.MeasurementHandler;
 import com.feetfit.server.domain.Report;
-import com.feetfit.server.domain.UserStretchingTodo;
-import com.feetfit.server.domain.UserStretchingTodoAssignment;
+import com.feetfit.server.domain.UserFootCareTodo;
+import com.feetfit.server.domain.UserFootCareTodoAssignment;
 import com.feetfit.server.domain.MeasurementSession;
 import com.feetfit.server.domain.TinaPedisAnalysis;
 import com.feetfit.server.domain.User;
@@ -17,8 +17,8 @@ import com.feetfit.server.repository.DailyFootAnalysisRepository;
 import com.feetfit.server.repository.MetricAnalysisResultRepository;
 import com.feetfit.server.repository.ReportRepository;
 import com.feetfit.server.repository.UserRepository;
-import com.feetfit.server.repository.UserStretchingTodoAssignmentRepository;
-import com.feetfit.server.repository.UserStretchingTodoRepository;
+import com.feetfit.server.repository.UserFootCareTodoAssignmentRepository;
+import com.feetfit.server.repository.UserFootCareTodoRepository;
 import com.feetfit.server.repository.HalluxValgusAnalysisRepository;
 import com.feetfit.server.repository.MeasurementSessionRepository;
 import com.feetfit.server.repository.TinaPedisAnalysisRepository;
@@ -74,10 +74,10 @@ class ReportCommandServiceImplTest {
     private MetricAnalysisResultRepository metricAnalysisResultRepository;
 
     @Mock
-    private UserStretchingTodoRepository userStretchingTodoRepository;
+    private UserFootCareTodoRepository userFootCareTodoRepository;
 
     @Mock
-    private UserStretchingTodoAssignmentRepository userStretchingTodoAssignmentRepository;
+    private UserFootCareTodoAssignmentRepository userFootCareTodoAssignmentRepository;
 
     @Mock
     private ImageUploadService imageUploadService;
@@ -166,12 +166,12 @@ class ReportCommandServiceImplTest {
     void saveReport_matchesThreeTodosByWeightedLowScoreDistribution() {
         MeasurementSession measurementSession = measurementSession(MeasurementStatus.TRANSFERRING);
         ReportRequestDTO.SaveReportDTO request = saveReportRequest();
-        List<UserStretchingTodo> todos = List.of(
-                stretchingTodo(1L, HealthType.FOOT_ENVIRONMENT, "발 건조 관리"),
-                stretchingTodo(2L, HealthType.FOOT_ENVIRONMENT, "통풍 스트레칭"),
-                stretchingTodo(3L, HealthType.FOOT_ENVIRONMENT, "발 환경 관리"),
-                stretchingTodo(4L, HealthType.HALLUX_VALGUS, "발가락 벌리기"),
-                stretchingTodo(5L, HealthType.POSTURE, "균형 스트레칭")
+        List<UserFootCareTodo> todos = List.of(
+                footCareTodo(1L, HealthType.FOOT_ENVIRONMENT, "발 건조 관리"),
+                footCareTodo(2L, HealthType.FOOT_ENVIRONMENT, "통풍 스트레칭"),
+                footCareTodo(3L, HealthType.FOOT_ENVIRONMENT, "발 환경 관리"),
+                footCareTodo(4L, HealthType.HALLUX_VALGUS, "발가락 벌리기"),
+                footCareTodo(5L, HealthType.POSTURE, "균형 스트레칭")
         );
 
         given(measurementSessionRepository.findById(1L)).willReturn(Optional.of(measurementSession));
@@ -185,7 +185,7 @@ class ReportCommandServiceImplTest {
         });
         given(metricAnalysisResultRepository.saveAll(any()))
                 .willAnswer(invocation -> invocation.getArgument(0));
-        given(userStretchingTodoRepository.findByHealthTypeInAndTodoDateGreaterThanEqualAndTodoDateLessThanOrderByIdAsc(
+        given(userFootCareTodoRepository.findByHealthTypeInAndTodoDateGreaterThanEqualAndTodoDateLessThanOrderByIdAsc(
                 any(), any(LocalDateTime.class), any(LocalDateTime.class)
         )).willReturn(todos);
 
@@ -194,18 +194,18 @@ class ReportCommandServiceImplTest {
         assertThat(response.getTotalScore()).isEqualTo(73);
         assertThat(response.getMatchedTodoCount()).isEqualTo(3);
         assertThat(response.getMatchedHealthTypes()).containsExactly(HealthType.FOOT_ENVIRONMENT, HealthType.HALLUX_VALGUS);
-        verify(userStretchingTodoAssignmentRepository).deleteByUserIdAndTodoDateBetween(
+        verify(userFootCareTodoAssignmentRepository).deleteByUserIdAndCreatedAtBetween(
                 eq(1L), any(LocalDateTime.class), any(LocalDateTime.class)
         );
 
-        ArgumentCaptor<Iterable<UserStretchingTodoAssignment>> captor = ArgumentCaptor.forClass(Iterable.class);
-        verify(userStretchingTodoAssignmentRepository).saveAll(captor.capture());
-        List<UserStretchingTodoAssignment> assignments = StreamSupport.stream(captor.getValue().spliterator(), false)
+        ArgumentCaptor<Iterable<UserFootCareTodoAssignment>> captor = ArgumentCaptor.forClass(Iterable.class);
+        verify(userFootCareTodoAssignmentRepository).saveAll(captor.capture());
+        List<UserFootCareTodoAssignment> assignments = StreamSupport.stream(captor.getValue().spliterator(), false)
                 .toList();
 
         assertThat(assignments).hasSize(3);
         assertThat(assignments)
-                .extracting(assignment -> assignment.getStretchingTodo().getHealthType())
+                .extracting(assignment -> assignment.getFootCareTodo().getHealthType())
                 .containsExactly(HealthType.FOOT_ENVIRONMENT, HealthType.HALLUX_VALGUS, HealthType.FOOT_ENVIRONMENT);
     }
 
@@ -298,7 +298,7 @@ class ReportCommandServiceImplTest {
                 metricAnalysisResult(MetricType.FOOT_ENVIRONMENT, 50.0f),
                 metricAnalysisResult(MetricType.ATHLETES_FOOT, 90.0f),
                 metricAnalysisResult(MetricType.HALLUX_VALGUS, 70.0f),
-                metricAnalysisResult(MetricType.FOOT_ODOR, 80.0f)
+                metricAnalysisResult(MetricType.SKIN_IRRITATION, 80.0f)
         ));
         return request;
     }
@@ -312,8 +312,8 @@ class ReportCommandServiceImplTest {
         return request;
     }
 
-    private static UserStretchingTodo stretchingTodo(Long id, HealthType healthType, String title) {
-        return UserStretchingTodo.builder()
+    private static UserFootCareTodo footCareTodo(Long id, HealthType healthType, String title) {
+        return UserFootCareTodo.builder()
                 .id(id)
                 .title(title)
                 .healthType(healthType)

@@ -39,7 +39,7 @@ public class User extends BaseEntity {
     @Column
     private Float weightKg;
 
-    @Column
+    @Column(name = "footSize")
     private Integer footSize;
 
     @Enumerated(EnumType.STRING)
@@ -84,7 +84,7 @@ public class User extends BaseEntity {
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<UserStretchingTodoAssignment> stretchingTodoAssignments = new ArrayList<>();
+    private List<UserFootCareTodoAssignment> footCareTodoAssignments = new ArrayList<>();
 
     public void updateProfile(
             String nickname,

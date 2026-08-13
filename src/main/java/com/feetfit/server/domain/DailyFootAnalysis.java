@@ -10,7 +10,6 @@ import org.hibernate.type.SqlTypes;
 import java.util.List;
 
 @Entity
-@Table(name = "daily_foot_analysis")
 @Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -22,23 +21,23 @@ public class DailyFootAnalysis extends BaseEntity {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "measurement_session_id", nullable = false)
+    @JoinColumn(name = "measurement_id", nullable = false)
     private MeasurementSession measurementSession;
 
     // 종합 상태
     @Enumerated(EnumType.STRING)
-    @Column
+    @Column(nullable = false)
     private GaugeStatus conditionLevel;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "JSON")
+    @Column(nullable = false, columnDefinition = "JSON")
     private List<String> conditionComments;
 
     // 자세 균형
-    @Column
+    @Column(nullable = false)
     private Float balanceScore;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String balanceComment;
 
     // 압력 분포
@@ -86,19 +85,19 @@ public class DailyFootAnalysis extends BaseEntity {
     private String footOdourComment;
 
     // 환경
-    @Column
+    @Column(nullable = false)
     private Float avgTemperatureCelsius;
 
-    @Column
+    @Column(nullable = false)
     private Float avgHumidityPercent;
 
     // 관리 팁
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "JSON")
+    @Column(nullable = false, columnDefinition = "JSON")
     private List<String> careTips;
 
     // 신발 리스트 페이지용 발 타입 텍스트
-    @Column(columnDefinition = "TEXT")
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String typeText;
 
     public void updateCondition(GaugeStatus conditionLevel, List<String> conditionComments) {

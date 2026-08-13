@@ -22,7 +22,8 @@ public class ShoeConverter {
                 .id(shoe.getId())
                 .brandName(shoe.getBrandName())
                 .shoeName(shoe.getShoeName())
-                .shoeUrl(shoe.getShoeUrl())
+                .modelCode(shoe.getModelCode())
+                .musinsaUrl(shoe.getMusinsaUrl())
                 .price(shoe.getPrice())
                 .imageUrl(shoe.getImageUrl())
                 .overallRating(shoe.getOverallRating())
@@ -61,7 +62,8 @@ public class ShoeConverter {
                 .id(shoe.getId())
                 .brandName(shoe.getBrandName())
                 .shoeName(shoe.getShoeName())
-                .shoeUrl(shoe.getShoeUrl())
+                .modelCode(shoe.getModelCode())
+                .musinsaUrl(shoe.getMusinsaUrl())
                 .price(shoe.getPrice())
                 .imageUrl(shoe.getImageUrl())
                 .overallRating(shoe.getOverallRating())
@@ -102,7 +104,8 @@ public class ShoeConverter {
                 .id(shoe.getId())
                 .brandName(shoe.getBrandName())
                 .shoeName(shoe.getShoeName())
-                .shoeUrl(shoe.getShoeUrl())
+                .modelCode(shoe.getModelCode())
+                .musinsaUrl(shoe.getMusinsaUrl())
                 .price(shoe.getPrice())
                 .imageUrl(shoe.getImageUrl())
                 .overallRating(shoe.getOverallRating())
@@ -123,6 +126,7 @@ public class ShoeConverter {
                 .user(user)
                 .shoe(shoe)
                 .fitScore(item.getFitScore())
+                .pointSummary(item.getPointSummary())
                 .analyzedAt(analyzedAt)
                 .build();
     }
@@ -135,6 +139,7 @@ public class ShoeConverter {
                 .reasonType(reasonDto.getReasonType())
                 .title(reasonDto.getTitle())
                 .riskLevel(reasonDto.getRiskLevel())
+                .reviewSummary(reasonDto.getReviewSummary())
                 .build();
     }
 

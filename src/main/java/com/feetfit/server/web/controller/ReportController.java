@@ -730,7 +730,7 @@ public class ReportController {
                 - 측정 세션의 status가 TRANSFERRING 상태여야 합니다.
                 - 본인의 측정 세션 ID만 사용 가능합니다.
                 - advice는 정확히 2개여야 합니다.
-                - 5개 지표가 모두 저장 완료되면 totalScore(단순 평균)를 계산하고 스트레칭 투두를 매칭합니다.
+                - 5개 지표가 모두 저장 완료되면 totalScore(단순 평균)를 계산하고 발 관리 투두를 매칭합니다.
                 - allMetricsComplete: 5개 지표 모두 저장 완료 여부
                 - missingMetrics: 아직 저장되지 않은 지표 목록 (완료 시 빈 리스트)
                 - totalScore, matchedHealthTypes, matchedTodoCount: 완료 시에만 반환 (미완료 시 null)
@@ -895,6 +895,8 @@ public class ReportController {
             "missingMetrics": ["ATHLETES_FOOT", "FOOT_ENVIRONMENT", "SKIN_IRRITATION", "PRESSURE_BALANCE"],
             "matchedHealthTypes": null,
             "matchedTodoCount": null,
+            "matchedArticleHealthTypes": null,
+            "matchedArticleCount": null,
             "createdAt": "2026-05-20T09:00:00",
             "updatedAt": "2026-05-20T09:00:00"
           }
@@ -910,7 +912,6 @@ public class ReportController {
             "measurementSessionId": "측정 세션 ID는 필수입니다.",
             "metricType": "지표 타입은 필수입니다.",
             "score": "점수는 필수입니다.",
-            "status": "상태는 필수입니다.",
             "advice": "어드바이스는 2개여야 합니다."
           }
         }
@@ -1070,11 +1071,13 @@ public class ReportController {
               "message": "성공입니다.",
               "result": {
                 "id": 1,
-                "imageUrl": "https://example.com/hallux.jpg",
+                "measurementSessionId": 1,
                 "leftToeAngleDegree": 23.5,
                 "leftAnalysisText": "왼발 무지외반 주의 필요",
+                "leftImageUrl": "https://example.com/hallux-left.jpg",
                 "rightToeAngleDegree": 15.2,
                 "rightAnalysisText": "오른발 양호",
+                "rightImageUrl": "https://example.com/hallux-right.jpg",
                 "riskScore": 75.5,
                 "scoreAnalysisText": "전반적으로 주의가 필요합니다.",
                 "previousRiskScore": 70.0,

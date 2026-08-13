@@ -23,11 +23,11 @@ import java.time.ZoneId;
 
 @Entity
 @Table(
-        name = "user_stretching_todo_assignment",
+        name = "user_foot_care_todo_assignment",
         uniqueConstraints = {
                 @UniqueConstraint(
-                        name = "uk_user_stretching_todo_assignment",
-                        columnNames = {"user_id", "stretching_todo_id"}
+                        name = "uk_user_foot_care_todo_assignment",
+                        columnNames = {"user_id", "user_foot_care_todo_id"}
                 )
         }
 )
@@ -36,10 +36,11 @@ import java.time.ZoneId;
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
-public class UserStretchingTodoAssignment extends BaseEntity {
+public class UserFootCareTodoAssignment extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "user_foot_care_todo_assignment_id")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -47,8 +48,8 @@ public class UserStretchingTodoAssignment extends BaseEntity {
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "stretching_todo_id", nullable = false)
-    private UserStretchingTodo stretchingTodo;
+    @JoinColumn(name = "user_foot_care_todo_id", nullable = false)
+    private UserFootCareTodo footCareTodo;
 
     @Column(nullable = false)
     @Builder.Default

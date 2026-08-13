@@ -2,6 +2,7 @@ package com.feetfit.server.domain;
 
 import com.feetfit.server.domain.common.BaseEntity;
 import com.feetfit.server.domain.enums.FootSide;
+import com.feetfit.server.domain.enums.FootRegion;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -27,8 +28,9 @@ public class PressureSensorReading extends BaseEntity {
     @Column(nullable = false)
     private FootSide footSide;
 
-    @Column
-    private String footRegion;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private FootRegion footRegion;
 
     @Column
     private Integer sensorIndex;
@@ -37,7 +39,7 @@ public class PressureSensorReading extends BaseEntity {
     private Float pressureValue;
 
     @Column
-    private String pressureUnit;
+    private Float pressureUnit;
 
     @Column
     private LocalDateTime recordedAt;

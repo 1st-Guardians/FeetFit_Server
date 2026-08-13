@@ -30,8 +30,7 @@ public class ShoeRequestDTO {
     @Schema(
             description = "사용자-신발 발 적합도 생성/갱신 요청 (Feetfit_AI가 신발 전체에 대해 배치로 호출). "
                     + "reasons는 FOREFOOT/HEEL/INSOLE을 한 번에 배열로 담아 보낼 수 있으며, "
-                    + "갱신 시 기존 reasons를 통째로 교체하므로 3개 모두 유지하려면 매번 3개를 모두 보내야 합니다. "
-                    + "pointSummary·reviewSummary는 신발 상세 조회 시 AI가 별도로 생성하므로 배치에서는 전송하지 않습니다.",
+                    + "갱신 시 기존 reasons를 통째로 교체하므로 3개 모두 유지하려면 매번 3개를 모두 보내야 합니다.",
             example = """
                     {
                       "measurementSessionId": 28,
@@ -39,23 +38,27 @@ public class ShoeRequestDTO {
                         {
                           "shoeId": 45,
                           "fitScore": 87,
+                          "pointSummary": "발볼이 슬림하게 나온 편이라...",
                           "reasons": [
                             {
                               "reasonType": "FOREFOOT",
                               "title": "발볼 여유로움",
                               "riskLevel": "LOW",
+                              "reviewSummary": "발볼과 앞코가 여유 있다는 리뷰가 많습니다.",
                               "reviewIds": [3033, 3044, 3055]
                             },
                             {
                               "reasonType": "HEEL",
                               "title": "뒤꿈치 까짐 주의",
                               "riskLevel": "MEDIUM",
+                              "reviewSummary": "뒤꿈치 마찰에 대한 의견이 엇갈립니다.",
                               "reviewIds": [3021, 3040]
                             },
                             {
                               "reasonType": "INSOLE",
                               "title": "쿠션/통기성 우수",
                               "riskLevel": "LOW",
+                              "reviewSummary": "쿠션감과 통기성이 좋다는 의견이 많습니다.",
                               "reviewIds": [3012, 3018, 3050]
                             }
                           ]
@@ -89,40 +92,15 @@ public class ShoeRequestDTO {
         @NotNull(message = "발 적합도 점수는 필수입니다.")
         private Float fitScore;
 
+        @Schema(description = "착용 포인트 종합 설명", example = "발볼이 슬림하게 나온 편이라...")
+        @NotBlank(message = "pointSummary는 필수입니다.")
+        private String pointSummary;
+
         @Schema(description = "부위별(발볼/뒤꿈치/깔창) 근거 목록. FOREFOOT/HEEL/INSOLE을 배열에 함께 담아 한 번에 보낼 수 있습니다. "
                 + "최소 1개 이상이어야 하며, 갱신 시 기존 근거를 통째로 교체하므로 3개를 모두 유지하려면 매번 3개를 모두 보내야 합니다.")
         @NotEmpty(message = "reasons는 최소 1개 이상이어야 합니다.")
         @Valid
         private List<ShoeRecommendationReasonDTO> reasons;
-    }
-
-    @Getter
-    @NoArgsConstructor
-    @Schema(description = "신발 착용 포인트·부위별 요약 저장 요청 (Feetfit_AI가 신발 상세 조회 시 생성 후 호출)")
-    public static class SaveShoeSummariesDTO {
-
-        @Schema(description = "착용 포인트 종합 설명", example = "발볼이 슬림하게 나온 편이라 발볼 넓으면 반 사이즈 업 추천합니다.")
-        @NotBlank(message = "pointSummary는 필수입니다.")
-        private String pointSummary;
-
-        @Schema(description = "부위별 리뷰 요약 목록")
-        @NotEmpty(message = "reasons는 최소 1개 이상이어야 합니다.")
-        @Valid
-        private List<ReasonSummaryDTO> reasons;
-    }
-
-    @Getter
-    @NoArgsConstructor
-    @Schema(description = "부위별 리뷰 요약")
-    public static class ReasonSummaryDTO {
-
-        @Schema(description = "부위 타입", example = "FOREFOOT", allowableValues = {"FOREFOOT", "HEEL", "INSOLE"})
-        @NotNull(message = "reasonType은 필수입니다.")
-        private ReasonType reasonType;
-
-        @Schema(description = "리뷰 기반 요약 (2줄 내외)", example = "발볼과 앞코가 여유 있다는 리뷰가 많습니다.")
-        @NotBlank(message = "reviewSummary는 필수입니다.")
-        private String reviewSummary;
     }
 
     @Getter
@@ -141,6 +119,10 @@ public class ShoeRequestDTO {
         @Schema(description = "해당 부위 위험도", example = "LOW", allowableValues = {"LOW", "MEDIUM", "HIGH"})
         @NotNull(message = "riskLevel은 필수입니다.")
         private RiskLevel riskLevel;
+
+        @Schema(description = "리뷰 기반 요약 (2줄 내외)")
+        @NotBlank(message = "reviewSummary는 필수입니다.")
+        private String reviewSummary;
 
         @Schema(description = "근거로 사용된 리뷰 ID 목록", example = "[101, 205, 300]")
         @NotNull(message = "reviewIds는 필수입니다.")

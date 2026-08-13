@@ -1,7 +1,6 @@
 package com.feetfit.server.domain;
 
 import com.feetfit.server.domain.common.BaseEntity;
-import jakarta.persistence.AttributeOverride;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -21,7 +20,6 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "tina_pedis_analyses")
-@AttributeOverride(name = "createdAt", column = @Column(name = "created_at", nullable = false))
 @Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

@@ -46,6 +46,10 @@ public class MeasurementSession extends BaseEntity {
 
     @OneToMany(mappedBy = "measurementSession", cascade = CascadeType.ALL)
     @Builder.Default
+    private List<PlantarFootprint> plantarFootprints = new ArrayList<>();
+
+    @OneToMany(mappedBy = "measurementSession", cascade = CascadeType.ALL)
+    @Builder.Default
     private List<FootEnvironmentReading> footEnvironmentReadings = new ArrayList<>();
 
     @OneToMany(mappedBy = "measurementSession", cascade = CascadeType.ALL)

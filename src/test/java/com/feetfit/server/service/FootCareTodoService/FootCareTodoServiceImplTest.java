@@ -1,17 +1,17 @@
-package com.feetfit.server.service.StretchingTodoService;
+package com.feetfit.server.service.FootCareTodoService;
 
-import com.feetfit.server.apiPayload.exception.handler.StretchingTodoHandler;
+import com.feetfit.server.apiPayload.exception.handler.FootCareTodoHandler;
 import com.feetfit.server.apiPayload.exception.handler.UserHandler;
 import com.feetfit.server.domain.User;
-import com.feetfit.server.domain.UserStretchingTodo;
-import com.feetfit.server.domain.UserStretchingTodoAssignment;
+import com.feetfit.server.domain.UserFootCareTodo;
+import com.feetfit.server.domain.UserFootCareTodoAssignment;
 import com.feetfit.server.domain.enums.HealthType;
 import com.feetfit.server.domain.enums.SocialType;
 import com.feetfit.server.domain.enums.UserStatus;
 import com.feetfit.server.repository.UserRepository;
-import com.feetfit.server.repository.UserStretchingTodoAssignmentRepository;
-import com.feetfit.server.web.dto.stretching.StretchingTodoRequestDTO;
-import com.feetfit.server.web.dto.stretching.StretchingTodoResponseDTO;
+import com.feetfit.server.repository.UserFootCareTodoAssignmentRepository;
+import com.feetfit.server.web.dto.footcare.FootCareTodoRequestDTO;
+import com.feetfit.server.web.dto.footcare.FootCareTodoResponseDTO;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -30,33 +30,33 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 
 @ExtendWith(MockitoExtension.class)
-class StretchingTodoServiceImplTest {
+class FootCareTodoServiceImplTest {
 
     @Mock
-    private UserStretchingTodoAssignmentRepository userStretchingTodoAssignmentRepository;
+    private UserFootCareTodoAssignmentRepository userFootCareTodoAssignmentRepository;
 
     @Mock
     private UserRepository userRepository;
 
     @InjectMocks
-    private StretchingTodoServiceImpl stretchingTodoService;
+    private FootCareTodoServiceImpl footCareTodoService;
 
     @Test
-    void getMyStretchingTodos_existingUser_returnsTodos() {
+    void getMyFootCareTodos_existingUser_returnsTodos() {
         given(userRepository.existsById(1L)).willReturn(true);
-        given(userStretchingTodoAssignmentRepository.findTodayAssignmentsByUserId(
+        given(userFootCareTodoAssignmentRepository.findTodayAssignmentsByUserId(
                 eq(1L),
                 any(LocalDateTime.class),
                 any(LocalDateTime.class)
         ))
-                .willReturn(List.of(stretchingTodoAssignment(false)));
+                .willReturn(List.of(footCareTodoAssignment(false)));
 
-        StretchingTodoResponseDTO.StretchingTodoListResponseDTO response =
-                stretchingTodoService.getMyStretchingTodos(1L);
+        FootCareTodoResponseDTO.FootCareTodoListResponseDTO response =
+                footCareTodoService.getMyFootCareTodos(1L);
 
         assertThat(response.getTotalCount()).isEqualTo(1);
         assertThat(response.getHasTodayTodos()).isTrue();
-        assertThat(response.getMessage()).isEqualTo("오늘 스트레칭 투두입니다.");
+        assertThat(response.getMessage()).isEqualTo("오늘 발 관리 투두입니다.");
         assertThat(response.getTodos()).hasSize(1);
         assertThat(response.getTodos().get(0).getTodoId()).isEqualTo(1L);
         assertThat(response.getTodos().get(0).getTitle()).isEqualTo("수건으로 발 당기기");
@@ -65,40 +65,40 @@ class StretchingTodoServiceImplTest {
     }
 
     @Test
-    void getMyStretchingTodos_noTodayMeasurement_returnsEmptyTodosWithMessage() {
+    void getMyFootCareTodos_noTodayMeasurement_returnsEmptyTodosWithMessage() {
         given(userRepository.existsById(1L)).willReturn(true);
-        given(userStretchingTodoAssignmentRepository.findTodayAssignmentsByUserId(
+        given(userFootCareTodoAssignmentRepository.findTodayAssignmentsByUserId(
                 eq(1L),
                 any(LocalDateTime.class),
                 any(LocalDateTime.class)
         )).willReturn(List.of());
 
-        StretchingTodoResponseDTO.StretchingTodoListResponseDTO response =
-                stretchingTodoService.getMyStretchingTodos(1L);
+        FootCareTodoResponseDTO.FootCareTodoListResponseDTO response =
+                footCareTodoService.getMyFootCareTodos(1L);
 
         assertThat(response.getTotalCount()).isZero();
         assertThat(response.getHasTodayTodos()).isFalse();
-        assertThat(response.getMessage()).isEqualTo("오늘 스트레칭 투두가 없습니다.");
+        assertThat(response.getMessage()).isEqualTo("오늘 발 관리 투두가 없습니다.");
         assertThat(response.getTodos()).isEmpty();
     }
 
     @Test
-    void getMyStretchingTodos_missingUser_throwsUserHandler() {
+    void getMyFootCareTodos_missingUser_throwsUserHandler() {
         given(userRepository.existsById(404L)).willReturn(false);
 
-        assertThatThrownBy(() -> stretchingTodoService.getMyStretchingTodos(404L))
+        assertThatThrownBy(() -> footCareTodoService.getMyFootCareTodos(404L))
                 .isInstanceOf(UserHandler.class);
     }
 
     @Test
     void updateCompletion_existingTodo_updatesCompletion() {
-        UserStretchingTodoAssignment assignment = stretchingTodoAssignment(false);
+        UserFootCareTodoAssignment assignment = footCareTodoAssignment(false);
         given(userRepository.existsById(1L)).willReturn(true);
-        given(userStretchingTodoAssignmentRepository.findByUserIdAndTodoId(1L, 1L))
+        given(userFootCareTodoAssignmentRepository.findByUserIdAndTodoId(1L, 1L))
                 .willReturn(Optional.of(assignment));
 
-        StretchingTodoResponseDTO.StretchingTodoInfoResponseDTO response =
-                stretchingTodoService.updateCompletion(1L, 1L, completionRequest(true));
+        FootCareTodoResponseDTO.FootCareTodoInfoResponseDTO response =
+                footCareTodoService.updateCompletion(1L, 1L, completionRequest(true));
 
         assertThat(assignment.getIsCompleted()).isTrue();
         assertThat(assignment.getCompletedAt()).isNotNull();
@@ -108,13 +108,13 @@ class StretchingTodoServiceImplTest {
 
     @Test
     void updateCompletion_existingTodo_canUncheckCompletion() {
-        UserStretchingTodoAssignment assignment = stretchingTodoAssignment(true);
+        UserFootCareTodoAssignment assignment = footCareTodoAssignment(true);
         given(userRepository.existsById(1L)).willReturn(true);
-        given(userStretchingTodoAssignmentRepository.findByUserIdAndTodoId(1L, 1L))
+        given(userFootCareTodoAssignmentRepository.findByUserIdAndTodoId(1L, 1L))
                 .willReturn(Optional.of(assignment));
 
-        StretchingTodoResponseDTO.StretchingTodoInfoResponseDTO response =
-                stretchingTodoService.updateCompletion(1L, 1L, completionRequest(false));
+        FootCareTodoResponseDTO.FootCareTodoInfoResponseDTO response =
+                footCareTodoService.updateCompletion(1L, 1L, completionRequest(false));
 
         assertThat(assignment.getIsCompleted()).isFalse();
         assertThat(assignment.getCompletedAt()).isNull();
@@ -122,32 +122,32 @@ class StretchingTodoServiceImplTest {
     }
 
     @Test
-    void updateCompletion_missingTodo_throwsStretchingTodoHandler() {
+    void updateCompletion_missingTodo_throwsFootCareTodoHandler() {
         given(userRepository.existsById(1L)).willReturn(true);
-        given(userStretchingTodoAssignmentRepository.findByUserIdAndTodoId(1L, 404L)).willReturn(Optional.empty());
+        given(userFootCareTodoAssignmentRepository.findByUserIdAndTodoId(1L, 404L)).willReturn(Optional.empty());
 
-        assertThatThrownBy(() -> stretchingTodoService.updateCompletion(1L, 404L, completionRequest(true)))
-                .isInstanceOf(StretchingTodoHandler.class);
+        assertThatThrownBy(() -> footCareTodoService.updateCompletion(1L, 404L, completionRequest(true)))
+                .isInstanceOf(FootCareTodoHandler.class);
     }
 
-    private static StretchingTodoRequestDTO.UpdateCompletionRequestDTO completionRequest(Boolean isCompleted) {
-        StretchingTodoRequestDTO.UpdateCompletionRequestDTO request =
-                new StretchingTodoRequestDTO.UpdateCompletionRequestDTO();
+    private static FootCareTodoRequestDTO.UpdateCompletionRequestDTO completionRequest(Boolean isCompleted) {
+        FootCareTodoRequestDTO.UpdateCompletionRequestDTO request =
+                new FootCareTodoRequestDTO.UpdateCompletionRequestDTO();
         ReflectionTestUtils.setField(request, "isCompleted", isCompleted);
         return request;
     }
 
-    private static UserStretchingTodoAssignment stretchingTodoAssignment(Boolean isCompleted) {
-        return UserStretchingTodoAssignment.builder()
+    private static UserFootCareTodoAssignment footCareTodoAssignment(Boolean isCompleted) {
+        return UserFootCareTodoAssignment.builder()
                 .id(1L)
                 .user(user())
-                .stretchingTodo(stretchingTodo())
+                .footCareTodo(footCareTodo())
                 .isCompleted(isCompleted)
                 .build();
     }
 
-    private static UserStretchingTodo stretchingTodo() {
-        return UserStretchingTodo.builder()
+    private static UserFootCareTodo footCareTodo() {
+        return UserFootCareTodo.builder()
                 .id(1L)
                 .title("수건으로 발 당기기")
                 .healthType(HealthType.POSTURE)
