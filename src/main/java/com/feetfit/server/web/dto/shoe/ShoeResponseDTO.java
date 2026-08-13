@@ -31,7 +31,8 @@ public class ShoeResponseDTO {
         private Long id;
         private String brandName;
         private String shoeName;
-        private String shoeUrl;
+        private String modelCode;
+        private String musinsaUrl;
         private Integer price;
         private String imageUrl;
         private Float overallRating;
@@ -66,8 +67,9 @@ public class ShoeResponseDTO {
         private Long id;
         private String brandName;
         private String shoeName;
+        private String modelCode;
         private Integer price;
-        private String shoeUrl;
+        private String musinsaUrl;
         private String imageUrl;
         private Float overallRating;
         private Float fitScore;
@@ -82,7 +84,8 @@ public class ShoeResponseDTO {
         private Long id;
         private String brandName;
         private String shoeName;
-        private String shoeUrl;
+        private String modelCode;
+        private String musinsaUrl;
         private Integer price;
         private String imageUrl;
         private Float overallRating;      // 별점

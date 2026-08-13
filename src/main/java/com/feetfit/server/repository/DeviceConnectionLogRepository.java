@@ -10,9 +10,10 @@ import java.util.Optional;
 public interface DeviceConnectionLogRepository extends JpaRepository<DeviceConnectionLog, Long> {
     @Query(value = """
             SELECT *
-            FROM device_connection_log
-            WHERE user_id = :userId
-              AND device_id = :deviceId
+            FROM device_connection_logs log
+            JOIN device d ON d.device_id = log.device_id
+            WHERE d.user_id = :userId
+              AND log.device_id = :deviceId
               AND connection_status = :connectionStatus
               AND connection_type IN ('BLUETOOTH', 'WIFI')
             ORDER BY started_at DESC

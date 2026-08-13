@@ -2,9 +2,9 @@ package com.feetfit.server.web.controller;
 
 import com.feetfit.server.apiPayload.ApiResponse;
 import com.feetfit.server.jwt.FindLoginUser;
-import com.feetfit.server.service.StretchingTodoService.StretchingTodoService;
-import com.feetfit.server.web.dto.stretching.StretchingTodoRequestDTO;
-import com.feetfit.server.web.dto.stretching.StretchingTodoResponseDTO;
+import com.feetfit.server.service.FootCareTodoService.FootCareTodoService;
+import com.feetfit.server.web.dto.footcare.FootCareTodoRequestDTO;
+import com.feetfit.server.web.dto.footcare.FootCareTodoResponseDTO;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -19,27 +19,27 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "StretchingTodo", description = "스트레칭 투두 API")
+@Tag(name = "FootCareTodo", description = "발 관리 투두 API")
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/stretching-todos")
-public class StretchingTodoController {
+@RequestMapping("/api/foot-care-todos")
+public class FootCareTodoController {
 
-    private final StretchingTodoService stretchingTodoService;
+    private final FootCareTodoService footCareTodoService;
     private final FindLoginUser findLoginUser;
 
     @GetMapping
     @Operation(
-            summary = "스트레칭 투두 조회 [은서]",
-            description = "로그인한 사용자의 오늘 날짜 스트레칭 투두 목록을 todoDate 오름차순으로 조회합니다."
+            summary = "발 관리 투두 조회 [은서]",
+            description = "로그인한 사용자의 오늘 날짜 발 관리 투두 목록을 todoDate 오름차순으로 조회합니다."
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
-                    description = "스트레칭 투두 조회 성공. 오늘 투두가 없어도 빈 배열로 성공 응답합니다.",
+                    description = "발 관리 투두 조회 성공. 오늘 투두가 없어도 빈 배열로 성공 응답합니다.",
                     content = @Content(examples = {
-                            @ExampleObject(name = "투두 목록 있음", value = STRETCHING_TODO_LIST_SUCCESS_RESPONSE),
-                            @ExampleObject(name = "투두 목록 없음", value = STRETCHING_TODO_LIST_EMPTY_RESPONSE)
+                            @ExampleObject(name = "투두 목록 있음", value = FOOT_CARE_TODO_LIST_SUCCESS_RESPONSE),
+                            @ExampleObject(name = "투두 목록 없음", value = FOOT_CARE_TODO_LIST_EMPTY_RESPONSE)
                     })
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -58,21 +58,21 @@ public class StretchingTodoController {
                     content = @Content(examples = @ExampleObject(value = INTERNAL_SERVER_ERROR_RESPONSE))
             )
     })
-    public ApiResponse<StretchingTodoResponseDTO.StretchingTodoListResponseDTO> getMyStretchingTodos() {
+    public ApiResponse<FootCareTodoResponseDTO.FootCareTodoListResponseDTO> getMyFootCareTodos() {
         Long userId = findLoginUser.getCurrentUserId();
-        return ApiResponse.onSuccess(stretchingTodoService.getMyStretchingTodos(userId));
+        return ApiResponse.onSuccess(footCareTodoService.getMyFootCareTodos(userId));
     }
 
     @PatchMapping("/{todoId}/completion")
     @Operation(
             summary = "스트레칭 완료 여부 체크 [은서]",
-            description = "로그인한 사용자의 스트레칭 투두 완료 여부를 true 또는 false로 변경합니다."
+            description = "로그인한 사용자의 발 관리 투두 완료 여부를 true 또는 false로 변경합니다."
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
                     description = "스트레칭 완료 여부 변경 성공",
-                    content = @Content(examples = @ExampleObject(value = STRETCHING_TODO_COMPLETION_SUCCESS_RESPONSE))
+                    content = @Content(examples = @ExampleObject(value = FOOT_CARE_TODO_COMPLETION_SUCCESS_RESPONSE))
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "400",
@@ -90,10 +90,10 @@ public class StretchingTodoController {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "404",
-                    description = "유저가 없거나, 내 스트레칭 투두가 아님",
+                    description = "유저가 없거나, 내 발 관리 투두가 아님",
                     content = @Content(examples = {
                             @ExampleObject(name = "유저 없음", value = USER_NOT_FOUND_RESPONSE),
-                            @ExampleObject(name = "스트레칭 투두 없음", value = STRETCHING_TODO_NOT_FOUND_RESPONSE)
+                            @ExampleObject(name = "발 관리 투두 없음", value = FOOT_CARE_TODO_NOT_FOUND_RESPONSE)
                     })
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -102,15 +102,15 @@ public class StretchingTodoController {
                     content = @Content(examples = @ExampleObject(value = INTERNAL_SERVER_ERROR_RESPONSE))
             )
     })
-    public ApiResponse<StretchingTodoResponseDTO.StretchingTodoInfoResponseDTO> updateCompletion(
+    public ApiResponse<FootCareTodoResponseDTO.FootCareTodoInfoResponseDTO> updateCompletion(
             @PathVariable Long todoId,
-            @RequestBody @Valid StretchingTodoRequestDTO.UpdateCompletionRequestDTO request
+            @RequestBody @Valid FootCareTodoRequestDTO.UpdateCompletionRequestDTO request
     ) {
         Long userId = findLoginUser.getCurrentUserId();
-        return ApiResponse.onSuccess(stretchingTodoService.updateCompletion(userId, todoId, request));
+        return ApiResponse.onSuccess(footCareTodoService.updateCompletion(userId, todoId, request));
     }
 
-    private static final String STRETCHING_TODO_LIST_SUCCESS_RESPONSE = """
+    private static final String FOOT_CARE_TODO_LIST_SUCCESS_RESPONSE = """
             {
               "isSuccess": true,
               "code": "COMMON200",
@@ -118,7 +118,7 @@ public class StretchingTodoController {
               "result": {
                 "totalCount": 1,
                 "hasTodayTodos": true,
-                "message": "오늘 스트레칭 투두입니다.",
+                "message": "오늘 발 관리 투두입니다.",
                 "todos": [
                   {
                     "todoId": 1,
@@ -134,7 +134,7 @@ public class StretchingTodoController {
             }
             """;
 
-    private static final String STRETCHING_TODO_LIST_EMPTY_RESPONSE = """
+    private static final String FOOT_CARE_TODO_LIST_EMPTY_RESPONSE = """
             {
               "isSuccess": true,
               "code": "COMMON200",
@@ -142,13 +142,13 @@ public class StretchingTodoController {
               "result": {
                 "totalCount": 0,
                 "hasTodayTodos": false,
-                "message": "오늘 스트레칭 투두가 없습니다.",
+                "message": "오늘 발 관리 투두가 없습니다.",
                 "todos": []
               }
             }
             """;
 
-    private static final String STRETCHING_TODO_COMPLETION_SUCCESS_RESPONSE = """
+    private static final String FOOT_CARE_TODO_COMPLETION_SUCCESS_RESPONSE = """
             {
               "isSuccess": true,
               "code": "COMMON200",
@@ -203,11 +203,11 @@ public class StretchingTodoController {
             }
             """;
 
-    private static final String STRETCHING_TODO_NOT_FOUND_RESPONSE = """
+    private static final String FOOT_CARE_TODO_NOT_FOUND_RESPONSE = """
             {
               "isSuccess": false,
-              "code": "STRETCHING_TODO4001",
-              "message": "스트레칭 투두를 찾을 수 없습니다.",
+              "code": "FOOT_CARE_TODO4001",
+              "message": "발 관리 투두를 찾을 수 없습니다.",
               "result": null
             }
             """;

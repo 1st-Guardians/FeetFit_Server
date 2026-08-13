@@ -45,8 +45,8 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     private final UserRepository userRepository;
     private final ReportRepository reportRepository;
     private final MetricAnalysisResultRepository metricAnalysisResultRepository;
-    private final UserStretchingTodoRepository userStretchingTodoRepository;
-    private final UserStretchingTodoAssignmentRepository userStretchingTodoAssignmentRepository;
+    private final UserFootCareTodoRepository userFootCareTodoRepository;
+    private final UserFootCareTodoAssignmentRepository userFootCareTodoAssignmentRepository;
     private final HealthArticleRepository healthArticleRepository;
     private final UserHealthArticleRepository userHealthArticleRepository;
     private final ImageUploadService imageUploadService;
@@ -303,10 +303,10 @@ public class ReportCommandServiceImpl implements ReportCommandService {
             report.updateReportDate(LocalDateTime.now());
             String recommendationContext = buildRecommendationContext(measurementSession, allResults);
 
-            List<UserStretchingTodo> matchedTodos = replaceTodayTodoAssignments(
+            List<UserFootCareTodo> matchedTodos = replaceTodayTodoAssignments(
                     measurementSession.getUser(), allResults, LocalDate.now(), recommendationContext);
             matchedHealthTypes = matchedTodos.stream()
-                    .map(UserStretchingTodo::getHealthType)
+                    .map(UserFootCareTodo::getHealthType)
                     .collect(Collectors.collectingAndThen(
                             Collectors.toCollection(LinkedHashSet::new),
                             ArrayList::new
@@ -359,7 +359,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
         return measurementSession;
     }
 
-    private List<UserStretchingTodo> replaceTodayTodoAssignments(
+    private List<UserFootCareTodo> replaceTodayTodoAssignments(
             User user,
             List<MetricAnalysisResult> metricResults,
             LocalDate reportDate,
@@ -368,7 +368,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
         LocalDateTime startOfDay = reportDate.atStartOfDay();
         LocalDateTime startOfNextDay = reportDate.plusDays(1).atStartOfDay();
 
-        userStretchingTodoAssignmentRepository.deleteByUserIdAndCreatedAtBetween(
+        userFootCareTodoAssignmentRepository.deleteByUserIdAndCreatedAtBetween(
                 user.getId(), startOfDay, startOfNextDay);
 
         List<WeightedMetric> weightedMetrics = metricResults.stream()
@@ -385,11 +385,11 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                 .map(WeightedMetric::healthType)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
 
-        Map<HealthType, Queue<UserStretchingTodo>> todosByHealthType = new EnumMap<>(HealthType.class);
-        userStretchingTodoRepository
+        Map<HealthType, Queue<UserFootCareTodo>> todosByHealthType = new EnumMap<>(HealthType.class);
+        userFootCareTodoRepository
                 .findByHealthTypeInOrderByIdAsc(healthTypes)
                 .stream()
-                .sorted(Comparator.<UserStretchingTodo>comparingDouble(
+                .sorted(Comparator.<UserFootCareTodo>comparingDouble(
                         todo -> keywordSimilarityScore(
                                 recommendationContext,
                                 todo.getTitle(),
@@ -400,7 +400,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                         .computeIfAbsent(todo.getHealthType(), ignored -> new ArrayDeque<>())
                         .add(todo));
 
-        List<UserStretchingTodo> selectedTodos = selectWeightedTodos(
+        List<UserFootCareTodo> selectedTodos = selectWeightedTodos(
                 weightedMetrics,
                 todosByHealthType,
                 recommendationContext,
@@ -410,15 +410,15 @@ public class ReportCommandServiceImpl implements ReportCommandService {
             return selectedTodos;
         }
 
-        List<UserStretchingTodoAssignment> assignments = selectedTodos.stream()
-                .map(todo -> UserStretchingTodoAssignment.builder()
+        List<UserFootCareTodoAssignment> assignments = selectedTodos.stream()
+                .map(todo -> UserFootCareTodoAssignment.builder()
                         .user(user)
-                        .stretchingTodo(todo)
+                        .footCareTodo(todo)
                         .isCompleted(false)
                         .build())
                 .toList();
 
-        userStretchingTodoAssignmentRepository.saveAll(assignments);
+        userFootCareTodoAssignmentRepository.saveAll(assignments);
         return selectedTodos;
     }
 
@@ -478,25 +478,25 @@ public class ReportCommandServiceImpl implements ReportCommandService {
         return selectedArticles;
     }
 
-    private List<UserStretchingTodo> selectWeightedTodos(
+    private List<UserFootCareTodo> selectWeightedTodos(
             List<WeightedMetric> weightedMetrics,
-            Map<HealthType, Queue<UserStretchingTodo>> todosByHealthType,
+            Map<HealthType, Queue<UserFootCareTodo>> todosByHealthType,
             String recommendationContext,
             int limit
     ) {
         Map<HealthType, Integer> selectedCountByHealthType = new EnumMap<>(HealthType.class);
-        List<UserStretchingTodo> selectedTodos = new ArrayList<>();
+        List<UserFootCareTodo> selectedTodos = new ArrayList<>();
 
         while (selectedTodos.size() < limit) {
             WeightedMetric selectedMetric = null;
             double selectedPriority = -1.0;
 
             for (WeightedMetric metric : weightedMetrics) {
-                Queue<UserStretchingTodo> todos = todosByHealthType.get(metric.healthType());
+                Queue<UserFootCareTodo> todos = todosByHealthType.get(metric.healthType());
                 if (todos == null || todos.isEmpty()) {
                     continue;
                 }
-                UserStretchingTodo candidate = todos.peek();
+                UserFootCareTodo candidate = todos.peek();
                 int alreadySelectedCount = selectedCountByHealthType.getOrDefault(metric.healthType(), 0);
                 double keywordScore = keywordSimilarityScore(
                         recommendationContext,
@@ -687,6 +687,10 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                     List.of("통증", "염증", "붓", "압박", "마찰"),
                     List.of("교정", "스트레칭", "운동", "테이핑", "보조기")
             );
+            case SKIN_IRRITATION -> List.of(
+                    List.of("피부", "자극", "발적", "염증", "가려", "따가"),
+                    List.of("보습", "세척", "건조", "통풍", "위생")
+            );
             case FOOT_ODOR -> List.of(
                     List.of("냄새", "악취", "발냄새", "암모니아", "ppm"),
                     List.of("땀", "습기", "습도", "통풍", "건조", "양말", "신발"),
@@ -742,6 +746,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
             case FOOT_ENVIRONMENT -> 1.25f;
             case ATHLETES_FOOT -> 1.2f;
             case HALLUX_VALGUS -> 1.15f;
+            case SKIN_IRRITATION -> 1.1f;
             case PRESSURE_BALANCE -> 1.1f;
             case FOOT_ODOR -> 1.0f;
         };
@@ -753,6 +758,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
             case FOOT_ENVIRONMENT -> HealthType.FOOT_ENVIRONMENT;
             case ATHLETES_FOOT -> HealthType.ATHLETES_FOOT;
             case HALLUX_VALGUS -> HealthType.HALLUX_VALGUS;
+            case SKIN_IRRITATION -> HealthType.SKIN_IRRITATION;
             case FOOT_ODOR -> HealthType.FOOT_ODOR;
         };
     }

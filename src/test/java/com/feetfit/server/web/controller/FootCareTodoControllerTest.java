@@ -2,11 +2,11 @@ package com.feetfit.server.web.controller;
 
 import com.feetfit.server.apiPayload.code.status.ErrorStatus;
 import com.feetfit.server.apiPayload.exception.ExceptionAdvice;
-import com.feetfit.server.apiPayload.exception.handler.StretchingTodoHandler;
+import com.feetfit.server.apiPayload.exception.handler.FootCareTodoHandler;
 import com.feetfit.server.jwt.FindLoginUser;
 import com.feetfit.server.jwt.TokenProvider;
-import com.feetfit.server.service.StretchingTodoService.StretchingTodoService;
-import com.feetfit.server.web.dto.stretching.StretchingTodoResponseDTO;
+import com.feetfit.server.service.FootCareTodoService.FootCareTodoService;
+import com.feetfit.server.web.dto.footcare.FootCareTodoResponseDTO;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -28,16 +28,16 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(StretchingTodoController.class)
+@WebMvcTest(FootCareTodoController.class)
 @AutoConfigureMockMvc(addFilters = false)
 @Import(ExceptionAdvice.class)
-class StretchingTodoControllerTest {
+class FootCareTodoControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
     @MockBean
-    private StretchingTodoService stretchingTodoService;
+    private FootCareTodoService footCareTodoService;
 
     @MockBean
     private FindLoginUser findLoginUser;
@@ -49,17 +49,17 @@ class StretchingTodoControllerTest {
     private JpaMetamodelMappingContext jpaMappingContext;
 
     @Test
-    void getMyStretchingTodos_success_returnsTodos() throws Exception {
+    void getMyFootCareTodos_success_returnsTodos() throws Exception {
         given(findLoginUser.getCurrentUserId()).willReturn(1L);
-        given(stretchingTodoService.getMyStretchingTodos(1L)).willReturn(todoListResponse());
+        given(footCareTodoService.getMyFootCareTodos(1L)).willReturn(todoListResponse());
 
-        mockMvc.perform(get("/api/stretching-todos"))
+        mockMvc.perform(get("/api/foot-care-todos"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isSuccess").value(true))
                 .andExpect(jsonPath("$.code").value("COMMON200"))
                 .andExpect(jsonPath("$.result.totalCount").value(1))
                 .andExpect(jsonPath("$.result.hasTodayTodos").value(true))
-                .andExpect(jsonPath("$.result.message").value("오늘 스트레칭 투두입니다."))
+                .andExpect(jsonPath("$.result.message").value("오늘 발 관리 투두입니다."))
                 .andExpect(jsonPath("$.result.todos[0].todoId").value(1L))
                 .andExpect(jsonPath("$.result.todos[0].title").value("수건으로 발 당기기"))
                 .andExpect(jsonPath("$.result.todos[0].healthType").value("POSTURE"))
@@ -71,10 +71,10 @@ class StretchingTodoControllerTest {
     @Test
     void updateCompletion_success_returnsUpdatedTodo() throws Exception {
         given(findLoginUser.getCurrentUserId()).willReturn(1L);
-        given(stretchingTodoService.updateCompletion(eq(1L), eq(1L), any()))
+        given(footCareTodoService.updateCompletion(eq(1L), eq(1L), any()))
                 .willReturn(todoInfoResponse(true));
 
-        mockMvc.perform(patch("/api/stretching-todos/1/completion")
+        mockMvc.perform(patch("/api/foot-care-todos/1/completion")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -93,7 +93,7 @@ class StretchingTodoControllerTest {
 
     @Test
     void updateCompletion_missingIsCompleted_returnsValidationError() throws Exception {
-        mockMvc.perform(patch("/api/stretching-todos/1/completion")
+        mockMvc.perform(patch("/api/foot-care-todos/1/completion")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest())
@@ -105,10 +105,10 @@ class StretchingTodoControllerTest {
     @Test
     void updateCompletion_missingTodo_returnsNotFoundError() throws Exception {
         given(findLoginUser.getCurrentUserId()).willReturn(1L);
-        given(stretchingTodoService.updateCompletion(eq(1L), eq(404L), any()))
-                .willThrow(new StretchingTodoHandler(ErrorStatus.STRETCHING_TODO_NOT_FOUND));
+        given(footCareTodoService.updateCompletion(eq(1L), eq(404L), any()))
+                .willThrow(new FootCareTodoHandler(ErrorStatus.FOOT_CARE_TODO_NOT_FOUND));
 
-        mockMvc.perform(patch("/api/stretching-todos/404/completion")
+        mockMvc.perform(patch("/api/foot-care-todos/404/completion")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -117,21 +117,21 @@ class StretchingTodoControllerTest {
                                 """))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.isSuccess").value(false))
-                .andExpect(jsonPath("$.code").value("STRETCHING_TODO4001"))
-                .andExpect(jsonPath("$.message").value("스트레칭 투두를 찾을 수 없습니다."));
+                .andExpect(jsonPath("$.code").value("FOOT_CARE_TODO4001"))
+                .andExpect(jsonPath("$.message").value("발 관리 투두를 찾을 수 없습니다."));
     }
 
-    private static StretchingTodoResponseDTO.StretchingTodoListResponseDTO todoListResponse() {
-        return StretchingTodoResponseDTO.StretchingTodoListResponseDTO.builder()
+    private static FootCareTodoResponseDTO.FootCareTodoListResponseDTO todoListResponse() {
+        return FootCareTodoResponseDTO.FootCareTodoListResponseDTO.builder()
                 .totalCount(1)
                 .hasTodayTodos(true)
-                .message("오늘 스트레칭 투두입니다.")
+                .message("오늘 발 관리 투두입니다.")
                 .todos(List.of(todoInfoResponse(false)))
                 .build();
     }
 
-    private static StretchingTodoResponseDTO.StretchingTodoInfoResponseDTO todoInfoResponse(Boolean isCompleted) {
-        return StretchingTodoResponseDTO.StretchingTodoInfoResponseDTO.builder()
+    private static FootCareTodoResponseDTO.FootCareTodoInfoResponseDTO todoInfoResponse(Boolean isCompleted) {
+        return FootCareTodoResponseDTO.FootCareTodoInfoResponseDTO.builder()
                 .todoId(1L)
                 .title("수건으로 발 당기기")
                 .healthType("POSTURE")

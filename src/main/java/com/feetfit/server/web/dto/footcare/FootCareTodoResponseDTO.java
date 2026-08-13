@@ -1,4 +1,4 @@
-package com.feetfit.server.web.dto.stretching;
+package com.feetfit.server.web.dto.footcare;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
@@ -9,14 +9,14 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.List;
 
-public class StretchingTodoResponseDTO {
+public class FootCareTodoResponseDTO {
 
     @Builder
     @Getter
     @NoArgsConstructor
     @AllArgsConstructor
     @Schema(description = "스트레칭 투두 상세 응답")
-    public static class StretchingTodoInfoResponseDTO {
+    public static class FootCareTodoInfoResponseDTO {
         @Schema(description = "사용자 투두 ID. 완료 여부 변경 시 이 값을 path variable로 사용합니다.", example = "1")
         private Long todoId;
 
@@ -44,7 +44,7 @@ public class StretchingTodoResponseDTO {
     @NoArgsConstructor
     @AllArgsConstructor
     @Schema(description = "오늘 스트레칭 투두 목록 응답")
-    public static class StretchingTodoListResponseDTO {
+    public static class FootCareTodoListResponseDTO {
         @Schema(description = "오늘 조회된 투두 개수", example = "3")
         private Integer totalCount;
 
@@ -55,6 +55,6 @@ public class StretchingTodoResponseDTO {
         private String message;
 
         @Schema(description = "오늘 스트레칭 투두 목록")
-        private List<StretchingTodoInfoResponseDTO> todos;
+        private List<FootCareTodoInfoResponseDTO> todos;
     }
 }

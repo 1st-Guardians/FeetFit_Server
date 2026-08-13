@@ -49,7 +49,7 @@ public enum ErrorStatus implements BaseErrorCode {
     TINA_PEDIS_ANALYSIS_NOT_FOUND(HttpStatus.NOT_FOUND, "TINA_PEDIS4001", "무좀 분석 결과를 찾을 수 없습니다."),
 
     // Stretching Todo
-    STRETCHING_TODO_NOT_FOUND(HttpStatus.NOT_FOUND, "STRETCHING_TODO4001", "스트레칭 투두를 찾을 수 없습니다."),
+    FOOT_CARE_TODO_NOT_FOUND(HttpStatus.NOT_FOUND, "FOOT_CARE_TODO4001", "발 관리 투두를 찾을 수 없습니다."),
 
     // Shoe
     SHOE_NOT_FOUND(HttpStatus.NOT_FOUND, "SHOE4001", "신발 정보를 찾을 수 없습니다."),

@@ -11,16 +11,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "user_stretching_todo")
+@Table(name = "user_foot_care_todo")
 @Getter
 @DynamicUpdate
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
-public class UserStretchingTodo extends BaseEntity {
+public class UserFootCareTodo extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "user_todo_id")
     private Long id;
 
     @Column(nullable = false, length = 100)
@@ -36,7 +37,7 @@ public class UserStretchingTodo extends BaseEntity {
     @Column(nullable = false)
     private LocalDateTime todoDate;
 
-    @OneToMany(mappedBy = "stretchingTodo", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "footCareTodo", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
-    private List<UserStretchingTodoAssignment> assignments = new ArrayList<>();
+    private List<UserFootCareTodoAssignment> assignments = new ArrayList<>();
 }

@@ -1,6 +1,7 @@
 package com.feetfit.server.domain;
 
 import com.feetfit.server.domain.common.BaseEntity;
+import com.feetfit.server.domain.enums.ShoeReviewSource;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -27,6 +28,12 @@ public class ShoeReview extends BaseEntity {
 
     @Column(nullable = false, columnDefinition = "TEXT")
     private String reviewText;
+
+    // 리뷰 수집 출처
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    @Builder.Default
+    private ShoeReviewSource source = ShoeReviewSource.MUSINSA;
 
     @Column(nullable = false)
     private LocalDateTime collectedAt;

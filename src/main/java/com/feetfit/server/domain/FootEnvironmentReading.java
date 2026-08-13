@@ -2,6 +2,7 @@ package com.feetfit.server.domain;
 
 import com.feetfit.server.domain.common.BaseEntity;
 import com.feetfit.server.domain.enums.FootSide;
+import com.feetfit.server.domain.enums.SensorPlacement;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -27,8 +28,9 @@ public class FootEnvironmentReading extends BaseEntity {
     @Column(nullable = false)
     private FootSide footSide;
 
+    @Enumerated(EnumType.STRING)
     @Column
-    private String sensorPlacement;
+    private SensorPlacement sensorPlacement;
 
     @Column
     private Float temperatureCelsius;
