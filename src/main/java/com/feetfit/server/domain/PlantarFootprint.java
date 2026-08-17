@@ -28,7 +28,7 @@ public class PlantarFootprint extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "tina_pedis_analysis_id")
+    @Column(name = "planter_footprint_id")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
