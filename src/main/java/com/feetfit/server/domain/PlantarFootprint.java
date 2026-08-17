@@ -28,7 +28,7 @@ public class PlantarFootprint extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "tina_pedis_analysis_id")
+    @Column(name = "planter_footprint_id")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -36,9 +36,9 @@ public class PlantarFootprint extends BaseEntity {
     private MeasurementSession measurementSession;
 
     // 족저 이미지 URL
-    @Column(name = "plantar_footprint_image_image", nullable = false)
+    @Column(name = "plantar_footprint_image_image")
     private String plantarFootprintImageImage;
 
-    @Column(nullable = false)
+    @Column
     private LocalDateTime recordedAt;
 }

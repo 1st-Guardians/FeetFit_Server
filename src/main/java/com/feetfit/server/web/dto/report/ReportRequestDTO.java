@@ -204,6 +204,36 @@ public class ReportRequestDTO {
 
     @Getter
     @NoArgsConstructor
+    @Schema(description = "발 눌림 영역 세그먼테이션 이미지 저장 요청 (POST /daily-foot-analysis/plantar-footprint)")
+    public static class PlantarFootprintImageDTO {
+
+        @Schema(description = "측정 세션 ID", example = "1")
+        @NotNull(message = "측정 세션 ID는 필수입니다.")
+        private Long measurementSessionId;
+    }
+
+    @Getter
+    @NoArgsConstructor
+    @Schema(description = "발 눌림 영역 세그먼테이션 이미지 저장 multipart 요청 (POST /daily-foot-analysis/plantar-footprint)")
+    public static class PlantarFootprintImageMultipartDTO {
+
+        @Schema(
+                description = "발 눌림 영역 세그먼테이션 이미지 저장 JSON 문자열 파트",
+                type = "string",
+                example = """
+                    {
+                      "measurementSessionId": 1
+                    }
+                    """
+        )
+        private String request;
+
+        @Schema(description = "발 눌림 영역 세그먼테이션 결과 이미지 파일", type = "string", format = "binary")
+        private String plantarFootprintImage;
+    }
+
+    @Getter
+    @NoArgsConstructor
     @Schema(description = "발 수치 저장 요청 (POST /daily-foot-analysis/metrics)")
     public static class MetricsPartDTO {
 
