@@ -567,6 +567,68 @@ public class ReportController {
         return request;
     }
 
+    @PostMapping(value = "/daily-foot-analysis/plantar-footprint",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(
+            summary = "종합 발 분석 - 발 눌림 영역 세그먼테이션 이미지 저장 [은서]",
+            description = """
+                AI 서버에서 생성한 발 눌림 영역 세그먼테이션 결과 이미지를 S3에 업로드하고 PlantarFootprint 결과로 저장합니다.
+                Authorization 헤더에 Bearer accessToken이 필요합니다.
+                - request 파트: PlantarFootprintImageDTO JSON (Content-Type: application/json)
+                - plantarFootprintImage: 발 눌림 영역 세그먼테이션 결과 이미지 파일 (S3 업로드)
+                - 저장 API 응답은 저장된 이미지 링크를 반환합니다.
+                - 저장된 URL은 종합 발 분석 결과 조회 응답의 plantarFootprintImageUrl로 반환됩니다.
+                """,
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = true,
+                    content = @Content(
+                            mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+                            schema = @Schema(implementation = ReportRequestDTO.PlantarFootprintImageMultipartDTO.class)
+                    )
+            )
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200",
+                    content = @Content(examples = @ExampleObject(value = PLANTAR_FOOTPRINT_IMAGE_SUCCESS_RESPONSE))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400",
+                    content = @Content(examples = @ExampleObject(value = DAILY_FOOT_ANALYSIS_VALIDATION_ERROR_RESPONSE))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401",
+                    content = @Content(examples = @ExampleObject(value = UNAUTHORIZED_RESPONSE))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+                    content = @Content(examples = @ExampleObject(value = MEASUREMENT_FORBIDDEN_RESPONSE))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
+                    content = @Content(examples = @ExampleObject(value = MEASUREMENT_NOT_FOUND_RESPONSE))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500",
+                    content = @Content(examples = @ExampleObject(name = "S3 업로드 실패", value = S3_UPLOAD_ERROR_RESPONSE)))
+    })
+    public ApiResponse<ReportResponseDTO.PlantarFootprintImageResultDTO> savePlantarFootprintImage(
+            @RequestPart("request") String requestJson,
+            @RequestPart("plantarFootprintImage") MultipartFile plantarFootprintImage) {
+        Long userId = findLoginUser.getCurrentUserId();
+        ReportRequestDTO.PlantarFootprintImageDTO request = parsePlantarFootprintImageRequest(requestJson);
+        return ApiResponse.onSuccess(reportCommandService.savePlantarFootprintImage(
+                userId, request, plantarFootprintImage));
+    }
+
+    private ReportRequestDTO.PlantarFootprintImageDTO parsePlantarFootprintImageRequest(String requestJson) {
+        if (requestJson == null || requestJson.isBlank()) {
+            throw new GeneralException(ErrorStatus._BAD_REQUEST, "request 파트는 필수입니다.");
+        }
+        ReportRequestDTO.PlantarFootprintImageDTO request;
+        try {
+            request = objectMapper.readValue(requestJson, ReportRequestDTO.PlantarFootprintImageDTO.class);
+        } catch (JsonProcessingException e) {
+            throw new GeneralException(ErrorStatus._BAD_REQUEST, "요청 본문 형식이 잘못되었습니다.");
+        }
+        Set<ConstraintViolation<ReportRequestDTO.PlantarFootprintImageDTO>> violations = validator.validate(request);
+        if (!violations.isEmpty()) {
+            Map<String, String> errors = new LinkedHashMap<>();
+            violations.forEach(v -> errors.put(v.getPropertyPath().toString(), v.getMessage()));
+            throw new GeneralException(ErrorStatus._BAD_REQUEST, "잘못된 요청입니다.", errors);
+        }
+        return request;
+    }
+
     @PostMapping("/daily-foot-analysis/metrics")
     @Operation(
             summary = "종합 발 분석 - 발 수치 저장 [민지]",
@@ -1041,8 +1103,9 @@ public class ReportController {
                 "balanceScoreDiff": 4.0,
                 "leftPressurePercent": 46.0,
                 "rightPressurePercent": 54.0,
-                "leftPressureImageUrl": "https://example.com/left-pressure.jpg",
-                "rightPressureImageUrl": "https://example.com/right-pressure.jpg",
+                "leftPressureImageUrl": "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/pressure-left/7ac068ed-a203-4b95-a280-257a37ce3053.png",
+                "rightPressureImageUrl": "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/pressure-right/e245c3c1-930c-41c1-8423-e60268fe3f17.png",
+                "plantarFootprintImageUrl": "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/plantar-footprint/df4b3137-2432-4a85-a47d-1bb39a8dbf80.png",
                 "userFootSize": 250,
                 "measuredLeftFootSizeMm": 253.0,
                 "measuredRightFootSizeMm": 248.0,
@@ -1061,6 +1124,20 @@ public class ReportController {
                 "createdAt": "2026-05-20T09:00:00",
                 "updatedAt": "2026-05-20T09:00:00"
               }
+            }
+            """;
+
+    private static final String PLANTAR_FOOTPRINT_IMAGE_SUCCESS_RESPONSE = """
+            {
+              "isSuccess": true,
+              "code": "COMMON200",
+              "message": "성공입니다.",
+                "result": {
+                  "id": 1,
+                  "measurementSessionId": 34,
+                  "plantarFootprintImageUrl": "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/plantar-footprint/df4b3137-2432-4a85-a47d-1bb39a8dbf80.png",
+                  "recordedAt": "2026-08-17T18:20:00"
+                }
             }
             """;
 

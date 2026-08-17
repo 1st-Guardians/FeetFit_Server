@@ -49,6 +49,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     private final UserFootCareTodoAssignmentRepository userFootCareTodoAssignmentRepository;
     private final HealthArticleRepository healthArticleRepository;
     private final UserHealthArticleRepository userHealthArticleRepository;
+    private final PlantarFootprintRepository plantarFootprintRepository;
     private final ImageUploadService imageUploadService;
 
     @Override
@@ -182,6 +183,32 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     }
 
     @Override
+    public ReportResponseDTO.PlantarFootprintImageResultDTO savePlantarFootprintImage(
+            Long userId,
+            ReportRequestDTO.PlantarFootprintImageDTO request,
+            MultipartFile plantarFootprintImage) {
+        MeasurementSession session = getValidatedTransferringMeasurementSession(userId, request.getMeasurementSessionId());
+
+        ImageResponseDTO.UploadImageResultDTO upload =
+                imageUploadService.upload("plantar-footprint", plantarFootprintImage);
+
+        PlantarFootprint saved = plantarFootprintRepository.save(
+                PlantarFootprint.builder()
+                        .measurementSession(session)
+                        .plantarFootprintImageImage(upload.getImageUrl())
+                        .recordedAt(LocalDateTime.now(ZoneId.of("Asia/Seoul")))
+                        .build()
+        );
+
+        return ReportResponseDTO.PlantarFootprintImageResultDTO.builder()
+                .id(saved.getId())
+                .measurementSessionId(session.getId())
+                .plantarFootprintImageUrl(saved.getPlantarFootprintImageImage())
+                .recordedAt(saved.getRecordedAt())
+                .build();
+    }
+
+    @Override
     public ReportResponseDTO.DailyFootAnalysisResultDTO saveMetricsPart(
             Long userId, ReportRequestDTO.MetricsPartDTO request) {
         MeasurementSession session = getValidatedTransferringMeasurementSession(userId, request.getMeasurementSessionId());
@@ -225,7 +252,13 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                 .findTopByMeasurementSessionUserIdAndCreatedAtLessThanOrderByCreatedAtDesc(
                         userId, analysis.getCreatedAt().toLocalDate().atStartOfDay())
                 .orElse(null);
-        return ReportConverter.toDailyFootAnalysisResultDTO(analysis, user.getFootSize(), previousAnalysis);
+        String plantarFootprintImageUrl = plantarFootprintRepository
+                .findTopByMeasurementSessionIdOrderByRecordedAtDesc(analysis.getMeasurementSession().getId())
+                .map(PlantarFootprint::getPlantarFootprintImageImage)
+                .orElse(null);
+
+        return ReportConverter.toDailyFootAnalysisResultDTO(
+                analysis, user.getFootSize(), previousAnalysis, plantarFootprintImageUrl);
     }
 
     @Override

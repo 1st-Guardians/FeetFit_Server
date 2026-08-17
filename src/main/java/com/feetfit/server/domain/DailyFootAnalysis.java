@@ -26,18 +26,18 @@ public class DailyFootAnalysis extends BaseEntity {
 
     // 종합 상태
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column
     private GaugeStatus conditionLevel;
 
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(nullable = false, columnDefinition = "JSON")
+    @Column(columnDefinition = "JSON")
     private List<String> conditionComments;
 
     // 자세 균형
-    @Column(nullable = false)
+    @Column
     private Float balanceScore;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT")
     private String balanceComment;
 
     // 압력 분포
@@ -85,19 +85,19 @@ public class DailyFootAnalysis extends BaseEntity {
     private String footOdourComment;
 
     // 환경
-    @Column(nullable = false)
+    @Column
     private Float avgTemperatureCelsius;
 
-    @Column(nullable = false)
+    @Column
     private Float avgHumidityPercent;
 
     // 관리 팁
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(nullable = false, columnDefinition = "JSON")
+    @Column(columnDefinition = "JSON")
     private List<String> careTips;
 
     // 신발 리스트 페이지용 발 타입 텍스트
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT")
     private String typeText;
 
     public void updateCondition(GaugeStatus conditionLevel, List<String> conditionComments) {

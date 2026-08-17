@@ -36,6 +36,7 @@ public class ReportQueryServiceImpl implements ReportQueryService {
     private final TinaPedisAnalysisRepository tinaPedisAnalysisRepository;
     private final UserRepository userRepository;
     private final DailyFootAnalysisRepository dailyFootAnalysisRepository;
+    private final PlantarFootprintRepository plantarFootprintRepository;
     private final ReportRepository reportRepository;
     private final MeasurementSessionRepository measurementSessionRepository;
 
@@ -95,7 +96,13 @@ public class ReportQueryServiceImpl implements ReportQueryService {
                         userId, startOfDay)
                 .orElse(null);
 
-        return ReportConverter.toDailyFootAnalysisResultDTO(analysis, user.getFootSize(), previousAnalysis);
+        String plantarFootprintImageUrl = plantarFootprintRepository
+                .findTopByMeasurementSessionIdOrderByRecordedAtDesc(analysis.getMeasurementSession().getId())
+                .map(PlantarFootprint::getPlantarFootprintImageImage)
+                .orElse(null);
+
+        return ReportConverter.toDailyFootAnalysisResultDTO(
+                analysis, user.getFootSize(), previousAnalysis, plantarFootprintImageUrl);
     }
 
     @Override
