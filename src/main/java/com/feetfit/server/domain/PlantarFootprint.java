@@ -36,9 +36,9 @@ public class PlantarFootprint extends BaseEntity {
     private MeasurementSession measurementSession;
 
     // 족저 이미지 URL
-    @Column(name = "plantar_footprint_image_image", nullable = false)
+    @Column(name = "plantar_footprint_image_image")
     private String plantarFootprintImageImage;
 
-    @Column(nullable = false)
+    @Column
     private LocalDateTime recordedAt;
 }
