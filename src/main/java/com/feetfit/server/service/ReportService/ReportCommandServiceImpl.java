@@ -11,6 +11,7 @@ import com.feetfit.server.domain.enums.MeasurementStatus;
 import com.feetfit.server.domain.enums.MetricType;
 import com.feetfit.server.repository.*;
 import com.feetfit.server.service.ImageService.ImageUploadService;
+import com.feetfit.server.service.MeasurementService.MeasurementSocketService;
 import com.feetfit.server.web.dto.image.ImageResponseDTO;
 import com.feetfit.server.web.dto.report.ReportRequestDTO;
 import com.feetfit.server.web.dto.report.ReportResponseDTO;
@@ -51,6 +52,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     private final UserHealthArticleRepository userHealthArticleRepository;
     private final PlantarFootprintRepository plantarFootprintRepository;
     private final ImageUploadService imageUploadService;
+    private final MeasurementSocketService measurementSocketService;
 
     @Override
     public ReportResponseDTO.SaveHalluxValgusResultDTO saveHalluxValgusAnalysis(
@@ -381,15 +383,25 @@ public class ReportCommandServiceImpl implements ReportCommandService {
             throw new MeasurementHandler(ErrorStatus.MEASUREMENT_FORBIDDEN);
         }
 
-        if (measurementSession.getStatus() == MeasurementStatus.MEASURING) {
-            measurementSession.updateStatus(MeasurementStatus.TRANSFERRING, measurementSession.getMeasurementDurationSec());
+        if (canMoveToProcessing(measurementSession.getStatus())) {
+            measurementSession.updateStatus(MeasurementStatus.PROCESSING, measurementSession.getMeasurementDurationSec());
+            measurementSocketService.sendMeasurementStatusChanged(measurementSession);
         }
 
-        if (!measurementSession.getStatus().equals(MeasurementStatus.TRANSFERRING)) {
+        if (!measurementSession.getStatus().equals(MeasurementStatus.PROCESSING)) {
             throw new MeasurementHandler(ErrorStatus.MEASUREMENT_NOT_TRANSFERRING);
         }
 
         return measurementSession;
+    }
+
+    private boolean canMoveToProcessing(MeasurementStatus status) {
+        return status == MeasurementStatus.WAITING_FOR_PHOTO
+                || status == MeasurementStatus.CAPTURING_PHOTO
+                || status == MeasurementStatus.WAITING_FOR_PRESSURE
+                || status == MeasurementStatus.MEASURING_PRESSURE
+                || status == MeasurementStatus.MEASURING
+                || status == MeasurementStatus.TRANSFERRING;
     }
 
     private List<UserFootCareTodo> replaceTodayTodoAssignments(

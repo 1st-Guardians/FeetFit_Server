@@ -32,7 +32,7 @@ public class MeasurementSession extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
-    private MeasurementStatus status = MeasurementStatus.PENDING;
+    private MeasurementStatus status = MeasurementStatus.WAITING_FOR_PHOTO;
 
     @Column
     private Integer measurementDurationSec;

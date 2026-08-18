@@ -38,13 +38,13 @@ public class MeasurementController {
                     새로운 측정 세션을 생성합니다.
                     Authorization 헤더에 Bearer accessToken이 필요합니다.
                     - 요청 바디는 없습니다.
-                    - 생성 시 status는 자동으로 MEASURING으로 설정됩니다.
+                    - 생성 시 status는 자동으로 WAITING_FOR_PHOTO로 설정됩니다.
                     - 로그인 사용자에게 연결된 디바이스로 측정을 시작합니다.
                     - WebSocket 연결 주소: /ws/measurements
                     - 측정 상태 구독 topic: /topic/measurements/{measurementSessionId}
                     - 사용자 단위 측정 상태 구독 topic: /topic/users/{userId}/measurements
                     - 응답의 webSocketTopic은 측정 세션별 구독 방 이름입니다.
-                    - 세션 생성 후 프론트가 구독 중인 WebSocket topic으로 측정 시작 메시지를 발행합니다.
+                    - 세션 생성 후 프론트가 구독 중인 WebSocket topic으로 WAITING_FOR_PHOTO 상태 메시지를 발행합니다.
                     - 생성된 measurementSessionId를 하드웨어 서버로 전달합니다.
                     - 하드웨어 서버 요청에는 프론트가 보낸 Authorization 헤더 값을 그대로 전달합니다.
                     """
@@ -110,13 +110,16 @@ public class MeasurementController {
             description = """
                 측정 세션의 상태를 업데이트합니다.
                 Authorization 헤더에 Bearer accessToken이 필요합니다.
-                - PENDING: 측정 대기 중. 측정 세션이 생성된 초기 상태입니다.
-                - MEASURING: 측정 진행 중. 기기에서 센서 데이터를 수집하고 있는 상태입니다.
-                - TRANSFERRING: 데이터 전송 중. 수집된 데이터를 서버로 전송하고 있는 상태입니다. 이 상태에서 리포트 저장이 가능합니다.
+                - WAITING_FOR_PHOTO: 사진 촬영 준비 대기. FSR 센서 판을 올리고 유리판 위에 올라와야 하는 상태입니다.
+                - CAPTURING_PHOTO: 발 사진 촬영 중. 사용자가 움직이지 않아야 하는 상태입니다.
+                - WAITING_FOR_PRESSURE: 사진 촬영 완료 후 압력 측정 준비 대기. 사용자가 내려와 FSR 센서 판을 내리고 다시 올라와야 하는 상태입니다.
+                - MEASURING_PRESSURE: FSR 압력 측정 중. 사용자가 움직이지 않아야 하는 상태입니다.
+                - PROCESSING: 이미지/압력 데이터 전송 및 분석 처리 중. 이 상태에서 리포트 저장이 가능합니다.
                 - COMPLETED: 측정 완료. 무지외반, 무좀 분석 결과가 모두 저장된 경우에만 완료 처리가 가능합니다.
-                - COMPLETED 처리 성공 시 WebSocket으로 MEASUREMENT_COMPLETED 메시지를 발행합니다.
-                - 완료 메시지의 shouldDisconnect=true를 받은 프론트는 측정 세션 topic 구독을 해제하거나 WebSocket 연결을 종료하면 됩니다.
                 - FAILED: 측정 실패. 측정 중 오류가 발생한 상태입니다.
+                - 상태 업데이트 성공 시 WebSocket으로 상태 메시지를 발행합니다.
+                - COMPLETED/FAILED 메시지의 shouldDisconnect=true를 받은 프론트는 측정 세션 topic 구독을 해제하거나 WebSocket 연결을 종료하면 됩니다.
+                - PENDING/MEASURING/TRANSFERRING은 기존 DB 데이터 호환용 상태입니다.
                 - 본인의 측정 세션 ID만 사용 가능합니다.
                 """
     )
@@ -157,7 +160,7 @@ public class MeasurementController {
     })
     public ApiResponse<MeasurementResponseDTO.UpdateMeasurementStatusResultDTO> updateMeasurementStatus(
             @PathVariable Long measurementSessionId,
-            @Parameter(description = "측정 세션 상태", example = "COMPLETED")
+            @Parameter(description = "측정 세션 상태", example = "CAPTURING_PHOTO")
             @RequestParam MeasurementStatus status,
             @Parameter(description = "측정 소요 시간 (초). COMPLETED 시 생략하면 자동 계산", example = "180")
             @RequestParam(required = false) Integer measurementDurationSec
@@ -277,7 +280,7 @@ public class MeasurementController {
               "result": {
                 "id": 1,
                 "deviceId": 1,
-                "status": "MEASURING",
+                "status": "WAITING_FOR_PHOTO",
                 "measuredAt": "2026-05-20T01:55:09",
                 "createdAt": "2026-05-20T01:55:09",
                 "webSocketTopic": "/topic/measurements/1"
@@ -292,8 +295,8 @@ public class MeasurementController {
               "message": "성공입니다.",
               "result": {
                 "id": 1,
-                "status": "COMPLETED",
-                "measurementDurationSec": 30,
+                "status": "CAPTURING_PHOTO",
+                "measurementDurationSec": null,
                 "updatedAt": "2026-05-20T02:00:09"
               }
             }
