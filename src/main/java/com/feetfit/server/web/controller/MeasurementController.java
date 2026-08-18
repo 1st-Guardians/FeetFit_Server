@@ -111,8 +111,10 @@ public class MeasurementController {
                 측정 세션의 상태를 업데이트합니다.
                 Authorization 헤더에 Bearer accessToken이 필요합니다.
                 - WAITING_FOR_PHOTO: 사진 촬영 준비 대기. FSR 센서 판을 올리고 유리판 위에 올라와야 하는 상태입니다.
+                - READY_FOR_PHOTO: 사진 촬영 준비 완료. 프론트가 사용자의 준비 완료 버튼 입력 후 보내는 상태입니다.
                 - CAPTURING_PHOTO: 발 사진 촬영 중. 사용자가 움직이지 않아야 하는 상태입니다.
                 - WAITING_FOR_PRESSURE: 사진 촬영 완료 후 압력 측정 준비 대기. 사용자가 내려와 FSR 센서 판을 내리고 다시 올라와야 하는 상태입니다.
+                - READY_FOR_PRESSURE: 압력 측정 준비 완료. 프론트가 사용자의 준비 완료 버튼 입력 후 보내는 상태입니다.
                 - MEASURING_PRESSURE: FSR 압력 측정 중. 사용자가 움직이지 않아야 하는 상태입니다.
                 - PROCESSING: 이미지/압력 데이터 전송 및 분석 처리 중. 이 상태에서 리포트 저장이 가능합니다.
                 - COMPLETED: 측정 완료. 무지외반, 무좀 분석 결과가 모두 저장된 경우에만 완료 처리가 가능합니다.
@@ -160,7 +162,7 @@ public class MeasurementController {
     })
     public ApiResponse<MeasurementResponseDTO.UpdateMeasurementStatusResultDTO> updateMeasurementStatus(
             @PathVariable Long measurementSessionId,
-            @Parameter(description = "측정 세션 상태", example = "CAPTURING_PHOTO")
+            @Parameter(description = "측정 세션 상태", example = "READY_FOR_PHOTO")
             @RequestParam MeasurementStatus status,
             @Parameter(description = "측정 소요 시간 (초). COMPLETED 시 생략하면 자동 계산", example = "180")
             @RequestParam(required = false) Integer measurementDurationSec
@@ -295,7 +297,7 @@ public class MeasurementController {
               "message": "성공입니다.",
               "result": {
                 "id": 1,
-                "status": "CAPTURING_PHOTO",
+                "status": "READY_FOR_PHOTO",
                 "measurementDurationSec": null,
                 "updatedAt": "2026-05-20T02:00:09"
               }
