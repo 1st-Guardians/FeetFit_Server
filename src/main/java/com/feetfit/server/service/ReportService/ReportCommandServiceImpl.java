@@ -397,8 +397,10 @@ public class ReportCommandServiceImpl implements ReportCommandService {
 
     private boolean canMoveToProcessing(MeasurementStatus status) {
         return status == MeasurementStatus.WAITING_FOR_PHOTO
+                || status == MeasurementStatus.READY_FOR_PHOTO
                 || status == MeasurementStatus.CAPTURING_PHOTO
                 || status == MeasurementStatus.WAITING_FOR_PRESSURE
+                || status == MeasurementStatus.READY_FOR_PRESSURE
                 || status == MeasurementStatus.MEASURING_PRESSURE
                 || status == MeasurementStatus.MEASURING
                 || status == MeasurementStatus.TRANSFERRING;
