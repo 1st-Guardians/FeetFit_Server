@@ -25,7 +25,7 @@ public class MeasurementResponseDTO {
         @Schema(description = "측정에 사용된 디바이스 ID", example = "1")
         private Long deviceId;
 
-        @Schema(description = "측정 상태", example = "MEASURING", allowableValues = {"PENDING", "MEASURING", "TRANSFERRING", "COMPLETED", "FAILED"})
+        @Schema(description = "측정 상태", example = "WAITING_FOR_PHOTO", allowableValues = {"WAITING_FOR_PHOTO", "CAPTURING_PHOTO", "WAITING_FOR_PRESSURE", "MEASURING_PRESSURE", "PROCESSING", "COMPLETED", "FAILED", "PENDING", "MEASURING", "TRANSFERRING"})
         private MeasurementStatus status;
 
         @Schema(description = "측정 시작 시각", example = "2026-05-20T09:00:00")
@@ -47,7 +47,7 @@ public class MeasurementResponseDTO {
         @Schema(description = "측정 세션 ID", example = "1")
         private Long id;
 
-        @Schema(description = "측정 상태", example = "COMPLETED", allowableValues = {"PENDING", "MEASURING", "TRANSFERRING", "COMPLETED", "FAILED"})
+        @Schema(description = "측정 상태", example = "COMPLETED", allowableValues = {"WAITING_FOR_PHOTO", "CAPTURING_PHOTO", "WAITING_FOR_PRESSURE", "MEASURING_PRESSURE", "PROCESSING", "COMPLETED", "FAILED", "PENDING", "MEASURING", "TRANSFERRING"})
         private MeasurementStatus status;
 
         @Schema(description = "측정 소요 시간(초)", example = "180")
@@ -117,7 +117,7 @@ public class MeasurementResponseDTO {
     @AllArgsConstructor
     @Schema(description = "측정 WebSocket 상태 메시지")
     public static class MeasurementSocketMessageDTO {
-        @Schema(description = "이벤트 타입", example = "MEASUREMENT_STARTED")
+        @Schema(description = "이벤트 타입", example = "MEASUREMENT_STATUS_CHANGED")
         private String eventType;
 
         @Schema(description = "측정 세션 ID", example = "1")
@@ -132,8 +132,11 @@ public class MeasurementResponseDTO {
         @Schema(description = "디바이스 고유 코드", example = "FeetFit-001")
         private String deviceName;
 
-        @Schema(description = "측정 상태", example = "MEASURING")
+        @Schema(description = "측정 상태", example = "WAITING_FOR_PHOTO")
         private MeasurementStatus status;
+
+        @Schema(description = "측정 상태별 사용자 안내 문구", example = "FSR 센서 판을 올리고 유리판 위에 올라와 주세요.")
+        private String statusMessage;
 
         @Schema(description = "메시지 수신 후 WebSocket 연결 종료 권장 여부", example = "false")
         private Boolean shouldDisconnect;

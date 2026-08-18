@@ -53,9 +53,9 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
         MeasurementSession saved = measurementSessionRepository.save(
                 MeasurementConverter.toMeasurementSession(user, device)
         );
-        saved.updateStatus(MeasurementStatus.MEASURING, null);
+        saved.updateStatus(MeasurementStatus.WAITING_FOR_PHOTO, null);
 
-        measurementSocketService.sendMeasurementStarted(saved);
+        measurementSocketService.sendMeasurementStatusChanged(saved);
         measurementHardwareClient.requestMeasurementStart(saved.getId(), authorizationHeader);
 
         return MeasurementConverter.toCreateMeasurementSessionResultDTO(saved);
@@ -73,6 +73,7 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
         }
 
         measurementSession.updateStatus(request.getStatus(), request.getMeasurementDurationSec());
+        measurementSocketService.sendMeasurementStatusChanged(measurementSession);
         return MeasurementConverter.toUpdateMeasurementStatusResultDTO(measurementSession);
     }
 
@@ -105,7 +106,7 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
         );
 
         if (!wasCompleted) {
-            measurementSocketService.sendMeasurementCompleted(measurementSession);
+            measurementSocketService.sendMeasurementStatusChanged(measurementSession);
         }
     }
 
