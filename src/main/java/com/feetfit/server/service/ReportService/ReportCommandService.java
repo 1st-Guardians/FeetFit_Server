@@ -35,6 +35,12 @@ public interface ReportCommandService {
             MultipartFile leftPressureImage,
             MultipartFile rightPressureImage);
 
+    ReportResponseDTO.PressureHeatmapImageResultDTO savePressureHeatmapImage(
+            Long userId,
+            ReportRequestDTO.PressureHeatmapImageDTO request,
+            MultipartFile leftPressureHeatmapImage,
+            MultipartFile rightPressureHeatmapImage);
+
     ReportResponseDTO.PlantarFootprintImageResultDTO savePlantarFootprintImage(
             Long userId,
             ReportRequestDTO.PlantarFootprintImageDTO request,

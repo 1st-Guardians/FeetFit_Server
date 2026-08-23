@@ -204,6 +204,39 @@ public class ReportRequestDTO {
 
     @Getter
     @NoArgsConstructor
+    @Schema(description = "좌우 발 압력 히트맵 이미지 저장 요청 (POST /daily-foot-analysis/pressure-heatmap)")
+    public static class PressureHeatmapImageDTO {
+
+        @Schema(description = "측정 세션 ID", example = "1")
+        @NotNull(message = "측정 세션 ID는 필수입니다.")
+        private Long measurementSessionId;
+    }
+
+    @Getter
+    @NoArgsConstructor
+    @Schema(description = "좌우 발 압력 히트맵 이미지 저장 multipart 요청 (POST /daily-foot-analysis/pressure-heatmap)")
+    public static class PressureHeatmapImageMultipartDTO {
+
+        @Schema(
+                description = "좌우 발 압력 히트맵 이미지 저장 JSON 문자열 파트",
+                type = "string",
+                example = """
+                    {
+                      "measurementSessionId": 1
+                    }
+                    """
+        )
+        private String request;
+
+        @Schema(description = "왼발 압력 히트맵 이미지 파일", type = "string", format = "binary")
+        private String leftPressureHeatmapImage;
+
+        @Schema(description = "오른발 압력 히트맵 이미지 파일", type = "string", format = "binary")
+        private String rightPressureHeatmapImage;
+    }
+
+    @Getter
+    @NoArgsConstructor
     @Schema(description = "발 눌림 영역 세그먼테이션 이미지 저장 요청 (POST /daily-foot-analysis/plantar-footprint)")
     public static class PlantarFootprintImageDTO {
 
