@@ -11,7 +11,6 @@ import com.feetfit.server.domain.enums.MeasurementStatus;
 import com.feetfit.server.domain.enums.MetricType;
 import com.feetfit.server.repository.*;
 import com.feetfit.server.service.ImageService.ImageUploadService;
-import com.feetfit.server.service.MeasurementService.MeasurementSocketService;
 import com.feetfit.server.web.dto.image.ImageResponseDTO;
 import com.feetfit.server.web.dto.report.ReportRequestDTO;
 import com.feetfit.server.web.dto.report.ReportResponseDTO;
@@ -52,7 +51,6 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     private final UserHealthArticleRepository userHealthArticleRepository;
     private final PlantarFootprintRepository plantarFootprintRepository;
     private final ImageUploadService imageUploadService;
-    private final MeasurementSocketService measurementSocketService;
 
     @Override
     public ReportResponseDTO.SaveHalluxValgusResultDTO saveHalluxValgusAnalysis(
@@ -61,7 +59,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
             MultipartFile leftFootImage,
             MultipartFile rightFootImage) {
 
-        MeasurementSession measurementSession = getValidatedTransferringMeasurementSession(
+        MeasurementSession measurementSession = getValidatedReportWritableMeasurementSession(
                 userId, request.getMeasurementSessionId());
 
         ImageResponseDTO.UploadImageResultDTO leftImageUpload =
@@ -100,7 +98,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
             MultipartFile suspiciousAreaMapImage,
             MultipartFile originalFootImage
     ) {
-        MeasurementSession measurementSession = getValidatedTransferringMeasurementSession(
+        MeasurementSession measurementSession = getValidatedReportWritableMeasurementSession(
                 userId, request.getMeasurementSessionId());
         LocalDateTime recordedAt = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
 
@@ -150,7 +148,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     @Override
     public ReportResponseDTO.DailyFootAnalysisResultDTO saveConditionPart(
             Long userId, ReportRequestDTO.ConditionPartDTO request) {
-        MeasurementSession session = getValidatedTransferringMeasurementSession(userId, request.getMeasurementSessionId());
+        MeasurementSession session = getValidatedReportWritableMeasurementSession(userId, request.getMeasurementSessionId());
         DailyFootAnalysis analysis = findOrCreate(session);
         analysis.updateCondition(request.getConditionLevel(), request.getConditionComments());
         return buildDailyFootAnalysisResult(userId, analysis);
@@ -159,7 +157,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     @Override
     public ReportResponseDTO.DailyFootAnalysisResultDTO saveBalancePart(
             Long userId, ReportRequestDTO.BalancePartDTO request) {
-        MeasurementSession session = getValidatedTransferringMeasurementSession(userId, request.getMeasurementSessionId());
+        MeasurementSession session = getValidatedReportWritableMeasurementSession(userId, request.getMeasurementSessionId());
         DailyFootAnalysis analysis = findOrCreate(session);
         analysis.updateBalance(request.getBalanceScore(), request.getBalanceComment());
         return buildDailyFootAnalysisResult(userId, analysis);
@@ -171,7 +169,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
             ReportRequestDTO.PressurePartDTO request,
             MultipartFile leftPressureImage,
             MultipartFile rightPressureImage) {
-        MeasurementSession session = getValidatedTransferringMeasurementSession(userId, request.getMeasurementSessionId());
+        MeasurementSession session = getValidatedReportWritableMeasurementSession(userId, request.getMeasurementSessionId());
 
         ImageResponseDTO.UploadImageResultDTO leftUpload =
                 imageUploadService.upload("pressure-left", leftPressureImage);
@@ -185,11 +183,36 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     }
 
     @Override
+    public ReportResponseDTO.PressureHeatmapImageResultDTO savePressureHeatmapImage(
+            Long userId,
+            ReportRequestDTO.PressureHeatmapImageDTO request,
+            MultipartFile leftPressureHeatmapImage,
+            MultipartFile rightPressureHeatmapImage) {
+        MeasurementSession session = getValidatedReportWritableMeasurementSession(userId, request.getMeasurementSessionId());
+
+        ImageResponseDTO.UploadImageResultDTO leftUpload =
+                imageUploadService.upload("pressure-heatmap-left", leftPressureHeatmapImage);
+        ImageResponseDTO.UploadImageResultDTO rightUpload =
+                imageUploadService.upload("pressure-heatmap-right", rightPressureHeatmapImage);
+
+        DailyFootAnalysis analysis = findOrCreate(session);
+        analysis.updatePressureHeatmapImages(leftUpload.getImageUrl(), rightUpload.getImageUrl());
+
+        return ReportResponseDTO.PressureHeatmapImageResultDTO.builder()
+                .id(analysis.getId())
+                .measurementSessionId(session.getId())
+                .leftPressureHeatmapImageUrl(analysis.getLeftPressureHeatmapImageUrl())
+                .rightPressureHeatmapImageUrl(analysis.getRightPressureHeatmapImageUrl())
+                .updatedAt(analysis.getUpdatedAt())
+                .build();
+    }
+
+    @Override
     public ReportResponseDTO.PlantarFootprintImageResultDTO savePlantarFootprintImage(
             Long userId,
             ReportRequestDTO.PlantarFootprintImageDTO request,
             MultipartFile plantarFootprintImage) {
-        MeasurementSession session = getValidatedTransferringMeasurementSession(userId, request.getMeasurementSessionId());
+        MeasurementSession session = getValidatedReportWritableMeasurementSession(userId, request.getMeasurementSessionId());
 
         ImageResponseDTO.UploadImageResultDTO upload =
                 imageUploadService.upload("plantar-footprint", plantarFootprintImage);
@@ -213,7 +236,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     @Override
     public ReportResponseDTO.DailyFootAnalysisResultDTO saveMetricsPart(
             Long userId, ReportRequestDTO.MetricsPartDTO request) {
-        MeasurementSession session = getValidatedTransferringMeasurementSession(userId, request.getMeasurementSessionId());
+        MeasurementSession session = getValidatedReportWritableMeasurementSession(userId, request.getMeasurementSessionId());
         DailyFootAnalysis analysis = findOrCreate(session);
         analysis.updateMetrics(request.getMeasuredLeftFootSizeMm(), request.getMeasuredRightFootSizeMm(),
                 request.getLeftFootWidthMm(), request.getRightFootWidthMm());
@@ -223,7 +246,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     @Override
     public ReportResponseDTO.DailyFootAnalysisResultDTO saveEnvironmentPart(
             Long userId, ReportRequestDTO.EnvironmentPartDTO request) {
-        MeasurementSession session = getValidatedTransferringMeasurementSession(userId, request.getMeasurementSessionId());
+        MeasurementSession session = getValidatedReportWritableMeasurementSession(userId, request.getMeasurementSessionId());
         DailyFootAnalysis analysis = findOrCreate(session);
         analysis.updateEnvironment(request.getAvgTemperatureCelsius(), request.getAvgHumidityPercent());
         return buildDailyFootAnalysisResult(userId, analysis);
@@ -232,7 +255,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     @Override
     public ReportResponseDTO.DailyFootAnalysisResultDTO saveCareTipsPart(
             Long userId, ReportRequestDTO.CareTipsPartDTO request) {
-        MeasurementSession session = getValidatedTransferringMeasurementSession(userId, request.getMeasurementSessionId());
+        MeasurementSession session = getValidatedReportWritableMeasurementSession(userId, request.getMeasurementSessionId());
         DailyFootAnalysis analysis = findOrCreate(session);
         analysis.updateCareTips(request.getCareTips(), request.getTypeText());
         return buildDailyFootAnalysisResult(userId, analysis);
@@ -267,7 +290,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     public ReportResponseDTO.SaveMetricResultResultDTO saveMetricResult(
             Long userId, ReportRequestDTO.SaveMetricResultDTO request) {
 
-        MeasurementSession measurementSession = getValidatedTransferringMeasurementSession(
+        MeasurementSession measurementSession = getValidatedReportWritableMeasurementSession(
                 userId, request.getMeasurementSessionId());
 
         // 측정 세션에 대한 Report를 찾거나 생성
@@ -374,7 +397,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
         return GaugeStatus.VERY_GOOD;
     }
 
-    private MeasurementSession getValidatedTransferringMeasurementSession(Long userId, Long measurementSessionId) {
+    private MeasurementSession getValidatedReportWritableMeasurementSession(Long userId, Long measurementSessionId) {
         MeasurementSession measurementSession = measurementSessionRepository
                 .findById(measurementSessionId)
                 .orElseThrow(() -> new MeasurementHandler(ErrorStatus.MEASUREMENT_NOT_FOUND));
@@ -383,22 +406,15 @@ public class ReportCommandServiceImpl implements ReportCommandService {
             throw new MeasurementHandler(ErrorStatus.MEASUREMENT_FORBIDDEN);
         }
 
-        if (canMoveToProcessing(measurementSession.getStatus())) {
-            measurementSession.updateStatus(MeasurementStatus.PROCESSING, measurementSession.getMeasurementDurationSec());
-            measurementSocketService.sendMeasurementStatusChanged(measurementSession);
-        }
-
-        if (!measurementSession.getStatus().equals(MeasurementStatus.PROCESSING)) {
+        if (!canSaveReportResult(measurementSession.getStatus())) {
             throw new MeasurementHandler(ErrorStatus.MEASUREMENT_NOT_TRANSFERRING);
         }
 
         return measurementSession;
     }
 
-    private boolean canMoveToProcessing(MeasurementStatus status) {
-        return status == MeasurementStatus.WAITING_FOR_PHOTO
-                || status == MeasurementStatus.READY_FOR_PHOTO
-                || status == MeasurementStatus.CAPTURING_PHOTO
+    private boolean canSaveReportResult(MeasurementStatus status) {
+        return status == MeasurementStatus.CAPTURING_PHOTO
                 || status == MeasurementStatus.WAITING_FOR_PRESSURE
                 || status == MeasurementStatus.READY_FOR_PRESSURE
                 || status == MeasurementStatus.MEASURING_PRESSURE

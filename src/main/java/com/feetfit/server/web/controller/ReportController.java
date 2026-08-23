@@ -567,6 +567,70 @@ public class ReportController {
         return request;
     }
 
+    @PostMapping(value = "/daily-foot-analysis/pressure-heatmap",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(
+            summary = "종합 발 분석 - 좌우 발 압력 히트맵 이미지 저장 [은서]",
+            description = """
+                AI 서버에서 생성한 왼발/오른발 압력 히트맵 이미지를 S3에 업로드하고 종합 발 분석 결과에 저장합니다.
+                Authorization 헤더에 Bearer accessToken이 필요합니다.
+                - request 파트: PressureHeatmapImageDTO JSON (Content-Type: application/json)
+                - leftPressureHeatmapImage: 왼발 압력 히트맵 이미지 파일 (S3 업로드)
+                - rightPressureHeatmapImage: 오른발 압력 히트맵 이미지 파일 (S3 업로드)
+                - 저장 API 응답은 저장된 왼발/오른발 이미지 링크를 반환합니다.
+                - 저장된 URL은 종합 발 분석 결과 조회 응답의 leftPressureHeatmapImageUrl, rightPressureHeatmapImageUrl로 반환됩니다.
+                """,
+            requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    required = true,
+                    content = @Content(
+                            mediaType = MediaType.MULTIPART_FORM_DATA_VALUE,
+                            schema = @Schema(implementation = ReportRequestDTO.PressureHeatmapImageMultipartDTO.class)
+                    )
+            )
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200",
+                    content = @Content(examples = @ExampleObject(value = PRESSURE_HEATMAP_IMAGE_SUCCESS_RESPONSE))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400",
+                    content = @Content(examples = @ExampleObject(value = DAILY_FOOT_ANALYSIS_VALIDATION_ERROR_RESPONSE))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401",
+                    content = @Content(examples = @ExampleObject(value = UNAUTHORIZED_RESPONSE))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
+                    content = @Content(examples = @ExampleObject(value = MEASUREMENT_FORBIDDEN_RESPONSE))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
+                    content = @Content(examples = @ExampleObject(value = MEASUREMENT_NOT_FOUND_RESPONSE))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "500",
+                    content = @Content(examples = @ExampleObject(name = "S3 업로드 실패", value = S3_UPLOAD_ERROR_RESPONSE)))
+    })
+    public ApiResponse<ReportResponseDTO.PressureHeatmapImageResultDTO> savePressureHeatmapImage(
+            @RequestPart("request") String requestJson,
+            @RequestPart("leftPressureHeatmapImage") MultipartFile leftPressureHeatmapImage,
+            @RequestPart("rightPressureHeatmapImage") MultipartFile rightPressureHeatmapImage) {
+        Long userId = findLoginUser.getCurrentUserId();
+        ReportRequestDTO.PressureHeatmapImageDTO request = parsePressureHeatmapImageRequest(requestJson);
+        return ApiResponse.onSuccess(reportCommandService.savePressureHeatmapImage(
+                userId, request, leftPressureHeatmapImage, rightPressureHeatmapImage));
+    }
+
+    private ReportRequestDTO.PressureHeatmapImageDTO parsePressureHeatmapImageRequest(String requestJson) {
+        if (requestJson == null || requestJson.isBlank()) {
+            throw new GeneralException(ErrorStatus._BAD_REQUEST, "request 파트는 필수입니다.");
+        }
+        ReportRequestDTO.PressureHeatmapImageDTO request;
+        try {
+            request = objectMapper.readValue(requestJson, ReportRequestDTO.PressureHeatmapImageDTO.class);
+        } catch (JsonProcessingException e) {
+            throw new GeneralException(ErrorStatus._BAD_REQUEST, "요청 본문 형식이 잘못되었습니다.");
+        }
+        Set<ConstraintViolation<ReportRequestDTO.PressureHeatmapImageDTO>> violations = validator.validate(request);
+        if (!violations.isEmpty()) {
+            Map<String, String> errors = new LinkedHashMap<>();
+            violations.forEach(v -> errors.put(v.getPropertyPath().toString(), v.getMessage()));
+            throw new GeneralException(ErrorStatus._BAD_REQUEST, "잘못된 요청입니다.", errors);
+        }
+        return request;
+    }
+
     @PostMapping(value = "/daily-foot-analysis/plantar-footprint",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(
@@ -1106,6 +1170,8 @@ public class ReportController {
                 "leftPressureImageUrl": "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/pressure-left/7ac068ed-a203-4b95-a280-257a37ce3053.png",
                 "rightPressureImageUrl": "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/pressure-right/e245c3c1-930c-41c1-8423-e60268fe3f17.png",
                 "plantarFootprintImageUrl": "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/plantar-footprint/df4b3137-2432-4a85-a47d-1bb39a8dbf80.png",
+                "leftPressureHeatmapImageUrl": "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/pressure-heatmap-left/df4b3137-2432-4a85-a47d-1bb39a8dbf80.png",
+                "rightPressureHeatmapImageUrl": "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/pressure-heatmap-right/e245c3c1-930c-41c1-8423-e60268fe3f17.png",
                 "userFootSize": 250,
                 "measuredLeftFootSizeMm": 253.0,
                 "measuredRightFootSizeMm": 248.0,
@@ -1123,6 +1189,21 @@ public class ReportController {
                 "typeText": "발의 아치가 낮아 발바닥이 넓게 닿는 편이에요. 오래 걷거나 서 있으면 피로가 커질 수 있어 아치를 잘 받쳐주는 신발이 더 편안할 수 있어요.",
                 "createdAt": "2026-05-20T09:00:00",
                 "updatedAt": "2026-05-20T09:00:00"
+              }
+            }
+            """;
+
+    private static final String PRESSURE_HEATMAP_IMAGE_SUCCESS_RESPONSE = """
+            {
+              "isSuccess": true,
+              "code": "COMMON200",
+              "message": "성공입니다.",
+              "result": {
+                "id": 1,
+                "measurementSessionId": 34,
+                "leftPressureHeatmapImageUrl": "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/pressure-heatmap-left/df4b3137-2432-4a85-a47d-1bb39a8dbf80.png",
+                "rightPressureHeatmapImageUrl": "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/pressure-heatmap-right/e245c3c1-930c-41c1-8423-e60268fe3f17.png",
+                "updatedAt": "2026-08-23T18:20:00"
               }
             }
             """;

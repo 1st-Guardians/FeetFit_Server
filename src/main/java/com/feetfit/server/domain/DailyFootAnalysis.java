@@ -53,6 +53,12 @@ public class DailyFootAnalysis extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String rightPressureImageUrl;
 
+    @Column(columnDefinition = "TEXT")
+    private String leftPressureHeatmapImageUrl;
+
+    @Column(columnDefinition = "TEXT")
+    private String rightPressureHeatmapImageUrl;
+
     // 발 수치
     @Column
     private Float measuredLeftFootSizeMm;
@@ -116,6 +122,11 @@ public class DailyFootAnalysis extends BaseEntity {
         this.rightPressurePercent = rightPressurePercent;
         this.leftPressureImageUrl = leftPressureImageUrl;
         this.rightPressureImageUrl = rightPressureImageUrl;
+    }
+
+    public void updatePressureHeatmapImages(String leftPressureHeatmapImageUrl, String rightPressureHeatmapImageUrl) {
+        this.leftPressureHeatmapImageUrl = leftPressureHeatmapImageUrl;
+        this.rightPressureHeatmapImageUrl = rightPressureHeatmapImageUrl;
     }
 
     public void updateMetrics(Float measuredLeftFootSizeMm, Float measuredRightFootSizeMm,

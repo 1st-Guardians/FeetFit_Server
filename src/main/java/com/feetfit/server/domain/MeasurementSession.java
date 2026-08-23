@@ -1,6 +1,7 @@
 package com.feetfit.server.domain;
 
 import com.feetfit.server.domain.common.BaseEntity;
+import com.feetfit.server.domain.enums.MeasurementFailureReason;
 import com.feetfit.server.domain.enums.MeasurementStatus;
 import jakarta.persistence.*;
 import lombok.*;
@@ -39,6 +40,13 @@ public class MeasurementSession extends BaseEntity {
 
     @Column(nullable = false)
     private LocalDateTime measuredAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "failure_reason")
+    private MeasurementFailureReason failureReason;
+
+    @Column(name = "failure_detail", columnDefinition = "TEXT")
+    private String failureDetail;
 
     @OneToMany(mappedBy = "measurementSession", cascade = CascadeType.ALL)
     @Builder.Default
@@ -82,5 +90,15 @@ public class MeasurementSession extends BaseEntity {
     public void updateStatus(MeasurementStatus status, Integer measurementDurationSec) {
         this.status = status;
         this.measurementDurationSec = measurementDurationSec;
+    }
+
+    public void updateFailure(MeasurementFailureReason failureReason, String failureDetail) {
+        this.failureReason = failureReason;
+        this.failureDetail = failureDetail;
+    }
+
+    public void clearFailure() {
+        this.failureReason = null;
+        this.failureDetail = null;
     }
 }

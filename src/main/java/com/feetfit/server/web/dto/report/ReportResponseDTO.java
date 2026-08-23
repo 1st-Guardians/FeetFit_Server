@@ -215,6 +215,12 @@ public class ReportResponseDTO {
         @Schema(description = "발 눌림 영역 세그먼테이션 결과 이미지 URL", example = "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/plantar-footprint/7ac068ed-a203-4b95-a280-257a37ce3053.png")
         private String plantarFootprintImageUrl;
 
+        @Schema(description = "왼발 압력 히트맵 이미지 URL", example = "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/pressure-heatmap-left/7ac068ed-a203-4b95-a280-257a37ce3053.png")
+        private String leftPressureHeatmapImageUrl;
+
+        @Schema(description = "오른발 압력 히트맵 이미지 URL", example = "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/pressure-heatmap-right/e245c3c1-930c-41c1-8423-e60268fe3f17.png")
+        private String rightPressureHeatmapImageUrl;
+
         // 발 수치
         @Schema(description = "사용자가 최초 입력한 발 사이즈 (mm)", example = "250")
         private Integer userFootSize;
@@ -281,6 +287,29 @@ public class ReportResponseDTO {
 
         @Schema(description = "기록 시각", example = "2026-08-17T18:20:00")
         private LocalDateTime recordedAt;
+    }
+
+    @Builder
+    @Getter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Schema(description = "좌우 발 압력 히트맵 이미지 저장 응답")
+    public static class PressureHeatmapImageResultDTO {
+
+        @Schema(description = "종합 발 분석 결과 ID", example = "1")
+        private Long id;
+
+        @Schema(description = "측정 세션 ID", example = "34")
+        private Long measurementSessionId;
+
+        @Schema(description = "왼발 압력 히트맵 이미지 URL", example = "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/pressure-heatmap-left/df4b3137-2432-4a85-a47d-1bb39a8dbf80.png")
+        private String leftPressureHeatmapImageUrl;
+
+        @Schema(description = "오른발 압력 히트맵 이미지 URL", example = "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/pressure-heatmap-right/e245c3c1-930c-41c1-8423-e60268fe3f17.png")
+        private String rightPressureHeatmapImageUrl;
+
+        @Schema(description = "수정 시각", example = "2026-08-23T18:20:00")
+        private LocalDateTime updatedAt;
     }
 
     @Builder

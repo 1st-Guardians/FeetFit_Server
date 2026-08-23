@@ -7,7 +7,6 @@ public enum MeasurementStatus {
     WAITING_FOR_PRESSURE,
     READY_FOR_PRESSURE,
     MEASURING_PRESSURE,
-    PROCESSING,
     COMPLETED,
     FAILED,
 

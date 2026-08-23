@@ -42,11 +42,16 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+
                         .requestMatchers(request ->
                                 "GET".equals(request.getMethod())
                                         && request.getRequestURI().matches("^/api/shoes/\\d+$"))
                         .permitAll()
+
                         .requestMatchers(HttpMethod.GET, "/api/shoes/*/characteristics").permitAll()
+
+                        .requestMatchers(HttpMethod.DELETE, "/api/measurement-sessions/*/records").permitAll()
+
                         .requestMatchers(
                                 "/api/auth/**",
                                 "/swagger-ui.html",
@@ -57,6 +62,7 @@ public class SecurityConfig {
                                 "/internal/shoes/**",
                                 "/error"
                         ).permitAll()
+
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
