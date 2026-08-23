@@ -239,25 +239,29 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     public ReportResponseDTO.PlantarFootprintImageResultDTO savePlantarFootprintImage(
             Long userId,
             ReportRequestDTO.PlantarFootprintImageDTO request,
-            MultipartFile plantarFootprintImage) {
+            MultipartFile leftPlantarFootprintImage,
+            MultipartFile rightPlantarFootprintImage) {
         MeasurementSession session = getValidatedReportWritableMeasurementSession(userId, request.getMeasurementSessionId());
 
-        ImageResponseDTO.UploadImageResultDTO upload =
-                imageUploadService.upload("plantar-footprint", plantarFootprintImage);
+        ImageResponseDTO.UploadImageResultDTO leftUpload =
+                imageUploadService.upload("plantar-footprint-left", leftPlantarFootprintImage);
+        ImageResponseDTO.UploadImageResultDTO rightUpload =
+                imageUploadService.upload("plantar-footprint-right", rightPlantarFootprintImage);
 
-        PlantarFootprint saved = plantarFootprintRepository.save(
-                PlantarFootprint.builder()
-                        .measurementSession(session)
-                        .plantarFootprintImageImage(upload.getImageUrl())
-                        .recordedAt(LocalDateTime.now(ZoneId.of("Asia/Seoul")))
-                        .build()
+        DailyFootAnalysis analysis = findOrCreate(session);
+        analysis.updatePlantarFootprint(
+                leftUpload.getImageUrl(),
+                rightUpload.getImageUrl(),
+                request.getPlantarFootprintAnalysisText()
         );
 
         return ReportResponseDTO.PlantarFootprintImageResultDTO.builder()
-                .id(saved.getId())
+                .id(analysis.getId())
                 .measurementSessionId(session.getId())
-                .plantarFootprintImageUrl(saved.getPlantarFootprintImageImage())
-                .recordedAt(saved.getRecordedAt())
+                .leftPlantarFootprintImageUrl(analysis.getLeftPlantarFootprintImageUrl())
+                .rightPlantarFootprintImageUrl(analysis.getRightPlantarFootprintImageUrl())
+                .plantarFootprintAnalysisText(analysis.getPlantarFootprintAnalysisText())
+                .updatedAt(analysis.getUpdatedAt())
                 .build();
     }
 

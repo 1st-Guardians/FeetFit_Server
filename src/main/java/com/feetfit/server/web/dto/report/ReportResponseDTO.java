@@ -227,6 +227,15 @@ public class ReportResponseDTO {
         @Schema(description = "오른발 압력 히트맵 이미지 URL", example = "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/pressure-heatmap-right/e245c3c1-930c-41c1-8423-e60268fe3f17.png")
         private String rightPressureHeatmapImageUrl;
 
+        @Schema(description = "왼발 발 눌림 영역 세그먼테이션 결과 이미지 URL", example = "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/plantar-footprint-left/7ac068ed-a203-4b95-a280-257a37ce3053.png")
+        private String leftPlantarFootprintImageUrl;
+
+        @Schema(description = "오른발 발 눌림 영역 세그먼테이션 결과 이미지 URL", example = "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/plantar-footprint-right/e245c3c1-930c-41c1-8423-e60268fe3f17.png")
+        private String rightPlantarFootprintImageUrl;
+
+        @Schema(description = "발 눌림 분석 결과 텍스트", example = "왼발 뒤꿈치와 오른발 앞꿈치에 압력이 집중되어 있습니다.")
+        private String plantarFootprintAnalysisText;
+
         // 발 수치
         @Schema(description = "사용자가 최초 입력한 발 사이즈 (mm)", example = "250")
         private Integer userFootSize;
@@ -288,11 +297,17 @@ public class ReportResponseDTO {
         @Schema(description = "측정 세션 ID", example = "34")
         private Long measurementSessionId;
 
-        @Schema(description = "발 눌림 영역 세그먼테이션 결과 이미지 URL", example = "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/plantar-footprint/df4b3137-2432-4a85-a47d-1bb39a8dbf80.png")
-        private String plantarFootprintImageUrl;
+        @Schema(description = "왼발 발 눌림 영역 세그먼테이션 결과 이미지 URL", example = "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/plantar-footprint-left/df4b3137-2432-4a85-a47d-1bb39a8dbf80.png")
+        private String leftPlantarFootprintImageUrl;
 
-        @Schema(description = "기록 시각", example = "2026-08-17T18:20:00")
-        private LocalDateTime recordedAt;
+        @Schema(description = "오른발 발 눌림 영역 세그먼테이션 결과 이미지 URL", example = "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/plantar-footprint-right/e245c3c1-930c-41c1-8423-e60268fe3f17.png")
+        private String rightPlantarFootprintImageUrl;
+
+        @Schema(description = "발 눌림 분석 결과 텍스트", example = "왼발 뒤꿈치와 오른발 앞꿈치에 압력이 집중되어 있습니다.")
+        private String plantarFootprintAnalysisText;
+
+        @Schema(description = "수정 시각", example = "2026-08-17T18:20:00")
+        private LocalDateTime updatedAt;
     }
 
     @Builder

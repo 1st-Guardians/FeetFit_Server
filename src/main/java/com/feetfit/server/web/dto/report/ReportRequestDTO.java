@@ -277,6 +277,10 @@ public class ReportRequestDTO {
         @Schema(description = "측정 세션 ID", example = "1")
         @NotNull(message = "측정 세션 ID는 필수입니다.")
         private Long measurementSessionId;
+
+        @Schema(description = "발 눌림 분석 결과 텍스트", example = "왼발 뒤꿈치와 오른발 앞꿈치에 압력이 집중되어 있습니다.")
+        @NotBlank(message = "발 눌림 분석 결과 텍스트는 필수입니다.")
+        private String plantarFootprintAnalysisText;
     }
 
     @Getter
@@ -289,14 +293,18 @@ public class ReportRequestDTO {
                 type = "string",
                 example = """
                     {
-                      "measurementSessionId": 1
+                      "measurementSessionId": 1,
+                      "plantarFootprintAnalysisText": "왼발 뒤꿈치와 오른발 앞꿈치에 압력이 집중되어 있습니다."
                     }
                     """
         )
         private String request;
 
-        @Schema(description = "발 눌림 영역 세그먼테이션 결과 이미지 파일", type = "string", format = "binary")
-        private String plantarFootprintImage;
+        @Schema(description = "왼발 발 눌림 영역 세그먼테이션 결과 이미지 파일", type = "string", format = "binary")
+        private String leftPlantarFootprintImage;
+
+        @Schema(description = "오른발 발 눌림 영역 세그먼테이션 결과 이미지 파일", type = "string", format = "binary")
+        private String rightPlantarFootprintImage;
     }
 
     @Getter
