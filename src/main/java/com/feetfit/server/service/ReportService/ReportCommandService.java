@@ -46,7 +46,8 @@ public interface ReportCommandService {
     ReportResponseDTO.PlantarFootprintImageResultDTO savePlantarFootprintImage(
             Long userId,
             ReportRequestDTO.PlantarFootprintImageDTO request,
-            MultipartFile plantarFootprintImage);
+            MultipartFile leftPlantarFootprintImage,
+            MultipartFile rightPlantarFootprintImage);
 
     ReportResponseDTO.DailyFootAnalysisResultDTO saveMetricsPart(
             Long userId, ReportRequestDTO.MetricsPartDTO request);

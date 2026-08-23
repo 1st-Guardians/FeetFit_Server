@@ -650,12 +650,13 @@ public class ReportController {
     @Operation(
             summary = "종합 발 분석 - 발 눌림 영역 세그먼테이션 이미지 저장 [은서]",
             description = """
-                AI 서버에서 생성한 발 눌림 영역 세그먼테이션 결과 이미지를 S3에 업로드하고 PlantarFootprint 결과로 저장합니다.
+                AI 서버에서 생성한 좌우 발 눌림 영역 세그먼테이션 결과 이미지를 S3에 업로드하고 daily_foot_analysis에 저장합니다.
                 Authorization 헤더에 Bearer accessToken이 필요합니다.
                 - request 파트: PlantarFootprintImageDTO JSON (Content-Type: application/json)
-                - plantarFootprintImage: 발 눌림 영역 세그먼테이션 결과 이미지 파일 (S3 업로드)
-                - 저장 API 응답은 저장된 이미지 링크를 반환합니다.
-                - 저장된 URL은 종합 발 분석 결과 조회 응답의 plantarFootprintImageUrl로 반환됩니다.
+                - leftPlantarFootprintImage: 왼발 발 눌림 영역 세그먼테이션 결과 이미지 파일 (S3 업로드)
+                - rightPlantarFootprintImage: 오른발 발 눌림 영역 세그먼테이션 결과 이미지 파일 (S3 업로드)
+                - 저장 API 응답은 저장된 좌우 이미지 링크와 분석 텍스트를 반환합니다.
+                - 저장된 값은 종합 발 분석 결과 조회 응답의 leftPlantarFootprintImageUrl, rightPlantarFootprintImageUrl, plantarFootprintAnalysisText로 반환됩니다.
                 """,
             requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     required = true,
@@ -681,11 +682,12 @@ public class ReportController {
     })
     public ApiResponse<ReportResponseDTO.PlantarFootprintImageResultDTO> savePlantarFootprintImage(
             @RequestPart("request") String requestJson,
-            @RequestPart("plantarFootprintImage") MultipartFile plantarFootprintImage) {
+            @RequestPart("leftPlantarFootprintImage") MultipartFile leftPlantarFootprintImage,
+            @RequestPart("rightPlantarFootprintImage") MultipartFile rightPlantarFootprintImage) {
         Long userId = findLoginUser.getCurrentUserId();
         ReportRequestDTO.PlantarFootprintImageDTO request = parsePlantarFootprintImageRequest(requestJson);
         return ApiResponse.onSuccess(reportCommandService.savePlantarFootprintImage(
-                userId, request, plantarFootprintImage));
+                userId, request, leftPlantarFootprintImage, rightPlantarFootprintImage));
     }
 
     private ReportRequestDTO.PlantarFootprintImageDTO parsePlantarFootprintImageRequest(String requestJson) {
@@ -1186,6 +1188,9 @@ public class ReportController {
                 "plantarFootprintImageUrl": "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/plantar-footprint/df4b3137-2432-4a85-a47d-1bb39a8dbf80.png",
                 "leftPressureHeatmapImageUrl": "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/pressure-heatmap-left/df4b3137-2432-4a85-a47d-1bb39a8dbf80.png",
                 "rightPressureHeatmapImageUrl": "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/pressure-heatmap-right/e245c3c1-930c-41c1-8423-e60268fe3f17.png",
+                "leftPlantarFootprintImageUrl": "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/plantar-footprint-left/7ac068ed-a203-4b95-a280-257a37ce3053.png",
+                "rightPlantarFootprintImageUrl": "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/plantar-footprint-right/e245c3c1-930c-41c1-8423-e60268fe3f17.png",
+                "plantarFootprintAnalysisText": "왼발 뒤꿈치와 오른발 앞꿈치에 압력이 집중되어 있습니다.",
                 "userFootSize": 250,
                 "measuredLeftFootSizeMm": 253.0,
                 "measuredRightFootSizeMm": 248.0,
@@ -1233,8 +1238,10 @@ public class ReportController {
                 "result": {
                   "id": 1,
                   "measurementSessionId": 34,
-                  "plantarFootprintImageUrl": "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/plantar-footprint/df4b3137-2432-4a85-a47d-1bb39a8dbf80.png",
-                  "recordedAt": "2026-08-17T18:20:00"
+                  "leftPlantarFootprintImageUrl": "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/plantar-footprint-left/df4b3137-2432-4a85-a47d-1bb39a8dbf80.png",
+                  "rightPlantarFootprintImageUrl": "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/plantar-footprint-right/e245c3c1-930c-41c1-8423-e60268fe3f17.png",
+                  "plantarFootprintAnalysisText": "왼발 뒤꿈치와 오른발 앞꿈치에 압력이 집중되어 있습니다.",
+                  "updatedAt": "2026-08-17T18:20:00"
                 }
             }
             """;

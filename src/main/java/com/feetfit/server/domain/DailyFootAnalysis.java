@@ -59,6 +59,15 @@ public class DailyFootAnalysis extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String rightPressureHeatmapImageUrl;
 
+    @Column(columnDefinition = "TEXT")
+    private String leftPlantarFootprintImageUrl;
+
+    @Column(columnDefinition = "TEXT")
+    private String rightPlantarFootprintImageUrl;
+
+    @Column(columnDefinition = "TEXT")
+    private String plantarFootprintAnalysisText;
+
     // 발 수치
     @Column
     private Float measuredLeftFootSizeMm;
@@ -127,6 +136,14 @@ public class DailyFootAnalysis extends BaseEntity {
     public void updatePressureHeatmapImages(String leftPressureHeatmapImageUrl, String rightPressureHeatmapImageUrl) {
         this.leftPressureHeatmapImageUrl = leftPressureHeatmapImageUrl;
         this.rightPressureHeatmapImageUrl = rightPressureHeatmapImageUrl;
+    }
+
+    public void updatePlantarFootprint(String leftPlantarFootprintImageUrl,
+                                       String rightPlantarFootprintImageUrl,
+                                       String plantarFootprintAnalysisText) {
+        this.leftPlantarFootprintImageUrl = leftPlantarFootprintImageUrl;
+        this.rightPlantarFootprintImageUrl = rightPlantarFootprintImageUrl;
+        this.plantarFootprintAnalysisText = plantarFootprintAnalysisText;
     }
 
     public void updateMetrics(Float measuredLeftFootSizeMm, Float measuredRightFootSizeMm,
