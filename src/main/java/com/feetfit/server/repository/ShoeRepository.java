@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface ShoeRepository extends JpaRepository<Shoe, Long> {
 
@@ -39,4 +40,13 @@ public interface ShoeRepository extends JpaRepository<Shoe, Long> {
             "WHERE r.user.id = :userId " +
             "ORDER BY r.fitScore DESC, s.id ASC")
     List<Shoe> findTop3ByFitScoreDesc(@Param("userId") Long userId, Pageable pageable);
+
+    Optional<Shoe> findByMusinsaGoodsNo(String musinsaGoodsNo);
+
+    List<Shoe> findByMusinsaUrl(String musinsaUrl);
+
+    List<Shoe> findByModelCodeIgnoreCase(String modelCode);
+
+    List<Shoe> findByBrandNameIgnoreCase(String brandName);
+
 }

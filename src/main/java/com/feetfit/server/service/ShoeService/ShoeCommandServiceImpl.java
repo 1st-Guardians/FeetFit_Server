@@ -2,14 +2,20 @@ package com.feetfit.server.service.ShoeService;
 
 import com.feetfit.server.apiPayload.code.status.ErrorStatus;
 import com.feetfit.server.apiPayload.exception.handler.ShoeHandler;
+import com.feetfit.server.apiPayload.exception.handler.MeasurementHandler;
 import com.feetfit.server.apiPayload.exception.handler.UserHandler;
 import com.feetfit.server.converter.ShoeConverter;
 import com.feetfit.server.domain.Shoe;
+import com.feetfit.server.domain.MeasurementSession;
 import com.feetfit.server.domain.ShoeClickHistory;
 import com.feetfit.server.domain.ShoeRecommendation;
 import com.feetfit.server.domain.ShoeRecommendationReason;
 import com.feetfit.server.domain.ShoeReview;
 import com.feetfit.server.domain.User;
+import com.feetfit.server.domain.enums.MeasurementStatus;
+import com.feetfit.server.domain.enums.ReasonType;
+import com.feetfit.server.domain.enums.ShoeReviewSource;
+import com.feetfit.server.repository.MeasurementSessionRepository;
 import com.feetfit.server.repository.ShoeClickHistoryRepository;
 import com.feetfit.server.repository.ShoeRecommendationReasonRepository;
 import com.feetfit.server.repository.ShoeRecommendationReasonReviewRepository;
@@ -26,8 +32,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -43,6 +52,7 @@ public class ShoeCommandServiceImpl implements ShoeCommandService {
     private final ShoeRecommendationReasonRepository shoeRecommendationReasonRepository;
     private final ShoeRecommendationReasonReviewRepository shoeRecommendationReasonReviewRepository;
     private final ShoeReviewRepository shoeReviewRepository;
+    private final MeasurementSessionRepository measurementSessionRepository;
 
     @Override
     public ShoeResponseDTO.ShoeClickResultDTO clickShoe(Long userId, Long shoeId) {
@@ -75,6 +85,18 @@ public class ShoeCommandServiceImpl implements ShoeCommandService {
     @Override
     public ShoeResponseDTO.SaveShoeRecommendationResultDTO saveShoeRecommendations(
             Long userId, ShoeRequestDTO.SaveShoeRecommendationDTO request) {
+
+        validateRecommendationRequest(request);
+
+        MeasurementSession measurementSession = measurementSessionRepository
+                .findById(request.getMeasurementSessionId())
+                .orElseThrow(() -> new MeasurementHandler(ErrorStatus.MEASUREMENT_NOT_FOUND));
+        if (!measurementSession.getUser().getId().equals(userId)) {
+            throw new MeasurementHandler(ErrorStatus.MEASUREMENT_FORBIDDEN);
+        }
+        if (measurementSession.getStatus() != MeasurementStatus.COMPLETED) {
+            throw new MeasurementHandler(ErrorStatus.MEASUREMENT_NOT_COMPLETED);
+        }
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserHandler(ErrorStatus.USER_NOT_FOUND));
@@ -109,11 +131,13 @@ public class ShoeCommandServiceImpl implements ShoeCommandService {
             ShoeRecommendation recommendation = shoeRecommendationRepository
                     .findByUserIdAndShoeId(user.getId(), shoe.getId())
                     .map(existing -> {
-                        existing.updateShoeRecommendation(item.getFitScore(), item.getPointSummary(), analyzedAt);
+                        existing.updateShoeRecommendation(
+                                item.getFitScore(), item.getPointSummary(), analyzedAt, measurementSession);
                         return existing;
                     })
                     .orElseGet(() -> shoeRecommendationRepository.save(
-                            ShoeConverter.toNewShoeRecommendation(user, shoe, item, analyzedAt)));
+                            ShoeConverter.toNewShoeRecommendation(
+                                    user, shoe, item, analyzedAt, measurementSession)));
 
             // 아래에서 reasonReview/reason을 @Modifying 벌크 쿼리로 바로 지우기 때문에,
             // 위 upsert(특히 기존 엔티티의 updateShoeRecommendation)가 아직 flush 안 된 상태로 남아있으면
@@ -158,6 +182,89 @@ public class ShoeCommandServiceImpl implements ShoeCommandService {
                 request.getRecommendations().size(), processedCount, skippedShoeIds, invalidReviewShoeIds);
     }
 
+    @Override
+    public void saveShoeSummaries(
+            Long userId, Long shoeId, ShoeRequestDTO.SaveShoeSummariesDTO request) {
+        validateSummaryRequest(request);
+        ShoeRecommendation recommendation = shoeRecommendationRepository
+                .findByUserIdAndShoeId(userId, shoeId)
+                .orElseThrow(() -> new ShoeHandler(ErrorStatus.SHOE_RECOMMENDATION_NOT_FOUND));
+
+        recommendation.updatePointSummary(request.getPointSummary());
+        for (ShoeRequestDTO.ShoeReasonSummaryDTO summary : request.getReasons()) {
+            ShoeRecommendationReason reason = shoeRecommendationReasonRepository
+                    .findByShoeRecommendationIdAndReasonType(
+                            recommendation.getId(), summary.getReasonType())
+                    .orElseThrow(() -> new ShoeHandler(
+                            ErrorStatus.SHOE_RECOMMENDATION_NOT_FOUND,
+                            "저장된 추천에 " + summary.getReasonType() + " 근거가 없습니다."));
+            reason.updateReviewSummary(summary.getReviewSummary());
+        }
+    }
+
+    private void validateRecommendationRequest(ShoeRequestDTO.SaveShoeRecommendationDTO request) {
+        if (request == null || request.getMeasurementSessionId() == null
+                || request.getRecommendations() == null || request.getRecommendations().isEmpty()) {
+            throw invalidRecommendationRequest("measurementSessionId와 recommendations는 필수입니다.");
+        }
+        for (ShoeRequestDTO.ShoeRecommendationItemDTO item : request.getRecommendations()) {
+            if (item == null || item.getShoeId() == null || item.getFitScore() == null
+                    || !Float.isFinite(item.getFitScore())
+                    || item.getFitScore() < 0.0f || item.getFitScore() > 100.0f) {
+                throw invalidRecommendationRequest("shoeId와 0~100 범위의 fitScore가 필요합니다.");
+            }
+            validateReasons(item.getReasons());
+            for (ShoeRequestDTO.ShoeRecommendationReasonDTO reason : item.getReasons()) {
+                if (reason.getReviewIds() == null || reason.getReviewIds().size() > 3
+                        || reason.getReviewIds().stream().anyMatch(java.util.Objects::isNull)
+                        || new HashSet<>(reason.getReviewIds()).size() != reason.getReviewIds().size()) {
+                    throw invalidRecommendationRequest(
+                            "각 reason의 reviewIds는 중복 없이 최대 3개여야 합니다.");
+                }
+            }
+        }
+    }
+
+    private void validateSummaryRequest(ShoeRequestDTO.SaveShoeSummariesDTO request) {
+        if (request == null || request.getPointSummary() == null
+                || request.getPointSummary().isBlank() || request.getReasons() == null) {
+            throw invalidRecommendationRequest("pointSummary와 reasons는 필수입니다.");
+        }
+        if (request.getReasons().size() != 3) {
+            throw invalidRecommendationRequest("요약 reasons는 정확히 3개여야 합니다.");
+        }
+        Set<ReasonType> types = EnumSet.noneOf(ReasonType.class);
+        for (ShoeRequestDTO.ShoeReasonSummaryDTO reason : request.getReasons()) {
+            if (reason == null || reason.getReasonType() == null
+                    || reason.getReviewSummary() == null || reason.getReviewSummary().isBlank()
+                    || !types.add(reason.getReasonType())) {
+                throw invalidRecommendationRequest("요약 reasonType은 중복 없이 모두 존재해야 합니다.");
+            }
+        }
+        if (!types.equals(EnumSet.allOf(ReasonType.class))) {
+            throw invalidRecommendationRequest("FOREFOOT/HEEL/INSOLE 요약이 모두 필요합니다.");
+        }
+    }
+
+    private void validateReasons(List<ShoeRequestDTO.ShoeRecommendationReasonDTO> reasons) {
+        if (reasons == null || reasons.size() != 3) {
+            throw invalidRecommendationRequest("reasons는 정확히 3개여야 합니다.");
+        }
+        Set<ReasonType> types = EnumSet.noneOf(ReasonType.class);
+        for (ShoeRequestDTO.ShoeRecommendationReasonDTO reason : reasons) {
+            if (reason == null || reason.getReasonType() == null || !types.add(reason.getReasonType())) {
+                throw invalidRecommendationRequest("reasonType은 중복 없이 모두 존재해야 합니다.");
+            }
+        }
+        if (!types.equals(EnumSet.allOf(ReasonType.class))) {
+            throw invalidRecommendationRequest("FOREFOOT/HEEL/INSOLE reason이 모두 필요합니다.");
+        }
+    }
+
+    private ShoeHandler invalidRecommendationRequest(String message) {
+        return new ShoeHandler(ErrorStatus._BAD_REQUEST, message);
+    }
+
     // reviewIds가 모두 해당 shoe에 속한 리뷰인지 검증하고, id -> ShoeReview 맵으로 반환.
     // 존재하지 않거나 다른 신발의 리뷰가 섞여 있으면 예외 발생 (호출부에서 캐치해 해당 신발만 skip 처리)
     private Map<Long, ShoeReview> findReviewsBelongingToShoe(Shoe shoe, List<Long> reviewIds) {
@@ -167,7 +274,9 @@ public class ShoeCommandServiceImpl implements ShoeCommandService {
         List<Long> invalidReviewIds = reviewIds.stream()
                 .filter(reviewId -> {
                     ShoeReview review = reviewsById.get(reviewId);
-                    return review == null || !review.getShoe().getId().equals(shoe.getId());
+                    return review == null
+                            || !review.getShoe().getId().equals(shoe.getId())
+                            || review.getSource() != ShoeReviewSource.MUSINSA;
                 })
                 .collect(Collectors.toList());
 

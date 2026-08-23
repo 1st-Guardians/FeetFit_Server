@@ -21,12 +21,17 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 
+    // Explicit, versioned database migrations. Hibernate update remains configurable
+    // during the migration transition; Phase A shoe schema changes are owned by Flyway.
+    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.flywaydb:flyway-mysql'
+
     // MySQL
     runtimeOnly 'com.mysql:mysql-connector-j'
 
     // Lombok
-    compileOnly 'org.projectlombok:lombok:1.18.34'
-    annotationProcessor 'org.projectlombok:lombok:1.18.34'
+    compileOnly 'org.projectlombok:lombok:1.18.42'
+    annotationProcessor 'org.projectlombok:lombok:1.18.42'
 
     // Validation
     implementation 'org.springframework.boot:spring-boot-starter-validation'
@@ -38,6 +43,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-security'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
+    testRuntimeOnly 'com.h2database:h2'
 
     // JWT
     implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
@@ -63,6 +69,9 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+    // Local IntelliJ 2026 runtime is JDK 25 while the project targets Java 17.
+    // Allow Spring Boot 3.3's Byte Buddy version to instrument tests on that newer VM.
+    jvmArgs '-Dnet.bytebuddy.experimental=true'
 }
 
 jar { enabled = false }

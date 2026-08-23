@@ -8,6 +8,10 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -71,10 +75,11 @@ public class ShoeRequestDTO {
 
         @Schema(description = "측정 세션 ID", example = "12")
         @NotNull(message = "측정 세션 ID는 필수입니다.")
+        @Positive(message = "측정 세션 ID는 양수여야 합니다.")
         private Long measurementSessionId;
 
         @Schema(description = "신발별 발 적합도 목록")
-        @NotNull(message = "recommendations는 필수입니다.")
+        @NotEmpty(message = "recommendations는 비어 있을 수 없습니다.")
         @Valid
         private List<ShoeRecommendationItemDTO> recommendations;
     }
@@ -90,15 +95,17 @@ public class ShoeRequestDTO {
 
         @Schema(description = "종합 발 적합도 점수 (0~100)", example = "87.0")
         @NotNull(message = "발 적합도 점수는 필수입니다.")
+        @DecimalMin(value = "0.0", message = "fitScore는 0 이상이어야 합니다.")
+        @DecimalMax(value = "100.0", message = "fitScore는 100 이하여야 합니다.")
         private Float fitScore;
 
         @Schema(description = "착용 포인트 종합 설명", example = "발볼이 슬림하게 나온 편이라...")
-        @NotBlank(message = "pointSummary는 필수입니다.")
         private String pointSummary;
 
         @Schema(description = "부위별(발볼/뒤꿈치/깔창) 근거 목록. FOREFOOT/HEEL/INSOLE을 배열에 함께 담아 한 번에 보낼 수 있습니다. "
                 + "최소 1개 이상이어야 하며, 갱신 시 기존 근거를 통째로 교체하므로 3개를 모두 유지하려면 매번 3개를 모두 보내야 합니다.")
         @NotEmpty(message = "reasons는 최소 1개 이상이어야 합니다.")
+        @Size(min = 3, max = 3, message = "reasons는 FOREFOOT/HEEL/INSOLE 3개여야 합니다.")
         @Valid
         private List<ShoeRecommendationReasonDTO> reasons;
     }
@@ -121,11 +128,36 @@ public class ShoeRequestDTO {
         private RiskLevel riskLevel;
 
         @Schema(description = "리뷰 기반 요약 (2줄 내외)")
-        @NotBlank(message = "reviewSummary는 필수입니다.")
         private String reviewSummary;
 
         @Schema(description = "근거로 사용된 리뷰 ID 목록", example = "[101, 205, 300]")
         @NotNull(message = "reviewIds는 필수입니다.")
-        private List<Long> reviewIds;
+        @Size(max = 3, message = "각 reason에는 리뷰를 최대 3개까지 연결할 수 있습니다.")
+        private List<@NotNull Long> reviewIds;
+    }
+
+    @Getter
+    @NoArgsConstructor
+    @Schema(description = "AI가 생성한 추천 설명 저장 요청")
+    public static class SaveShoeSummariesDTO {
+
+        @NotBlank(message = "pointSummary는 필수입니다.")
+        private String pointSummary;
+
+        @NotEmpty(message = "reasons는 필수입니다.")
+        @Size(min = 3, max = 3, message = "reasons는 FOREFOOT/HEEL/INSOLE 3개여야 합니다.")
+        @Valid
+        private List<ShoeReasonSummaryDTO> reasons;
+    }
+
+    @Getter
+    @NoArgsConstructor
+    public static class ShoeReasonSummaryDTO {
+
+        @NotNull(message = "reasonType은 필수입니다.")
+        private ReasonType reasonType;
+
+        @NotBlank(message = "reviewSummary는 필수입니다.")
+        private String reviewSummary;
     }
 }

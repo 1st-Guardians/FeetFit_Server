@@ -10,10 +10,11 @@ public class FindLoginUser {
 
     public Long getCurrentUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
+        if (authentication == null
+                || !authentication.isAuthenticated()
+                || !(authentication.getPrincipal() instanceof User principal)) {
             return null;
         }
-        User principal = (User) authentication.getPrincipal();
         return Long.parseLong(principal.getUsername());
     }
 }

@@ -9,4 +9,6 @@ public interface ShoeCommandService {
     // 사용자-신발 발 적합도 배치 생성/갱신 (Feetfit_AI가 사용자의 accessToken을 그대로 포워딩해 호출)
     ShoeResponseDTO.SaveShoeRecommendationResultDTO saveShoeRecommendations(
             Long userId, ShoeRequestDTO.SaveShoeRecommendationDTO request);
+
+    void saveShoeSummaries(Long userId, Long shoeId, ShoeRequestDTO.SaveShoeSummariesDTO request);
 }
