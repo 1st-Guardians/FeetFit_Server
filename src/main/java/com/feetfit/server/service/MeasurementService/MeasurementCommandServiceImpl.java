@@ -131,6 +131,12 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
                 DELETE FROM foot_odor_analysis
                 WHERE measurement_session_id = :measurementSessionId
                 """, measurementSessionId);
+        int deletedPressureSensorValueCount = executeMeasurementDelete("""
+                DELETE FROM pressure_sensor_value
+                WHERE pressure_sensor_reading_id IN (
+                    SELECT id FROM pressure_sensor_reading WHERE measurement_session_id = :measurementSessionId
+                )
+                """, measurementSessionId);
         int deletedPressureSensorReadingCount = executeMeasurementDelete("""
                 DELETE FROM pressure_sensor_reading
                 WHERE measurement_session_id = :measurementSessionId
@@ -159,6 +165,7 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
                 .deletedStaticPressureAnalysisCount(deletedStaticPressureAnalysisCount)
                 .deletedFootEnvironmentAnalysisCount(deletedFootEnvironmentAnalysisCount)
                 .deletedFootOdorAnalysisCount(deletedFootOdorAnalysisCount)
+                .deletedPressureSensorValueCount(deletedPressureSensorValueCount)
                 .deletedPressureSensorReadingCount(deletedPressureSensorReadingCount)
                 .deletedFootEnvironmentReadingCount(deletedFootEnvironmentReadingCount)
                 .deletedFootOdorReadingCount(deletedFootOdorReadingCount)

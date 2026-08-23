@@ -572,12 +572,16 @@ public class ReportController {
     @Operation(
             summary = "종합 발 분석 - 좌우 발 압력 히트맵 이미지 저장 [은서]",
             description = """
-                AI 서버에서 생성한 왼발/오른발 압력 히트맵 이미지를 S3에 업로드하고 종합 발 분석 결과에 저장합니다.
+                AI 서버에서 생성한 왼발/오른발 압력 히트맵 이미지를 S3에 업로드하고, 히트맵 생성에 사용한 C0~C11 압력 센서 원시값을 함께 저장합니다.
                 Authorization 헤더에 Bearer accessToken이 필요합니다.
-                - request 파트: PressureHeatmapImageDTO JSON (Content-Type: application/json)
+                - request 파트: PressureHeatmapImageDTO JSON (Content-Type: application/json 또는 문자열 JSON)
+                - request.leftPressureValues: 왼발 C0~C11 순서의 압력 센서 값 12개
+                - request.rightPressureValues: 오른발 C0~C11 순서의 압력 센서 값 12개
                 - leftPressureHeatmapImage: 왼발 압력 히트맵 이미지 파일 (S3 업로드)
                 - rightPressureHeatmapImage: 오른발 압력 히트맵 이미지 파일 (S3 업로드)
-                - 저장 API 응답은 저장된 왼발/오른발 이미지 링크를 반환합니다.
+                - 저장 구조는 footSide별 pressure_sensor_reading 1건 + pressure_sensor_value 12건입니다.
+                - 같은 측정 세션의 같은 footSide 값이 다시 들어오면 기존 센서값 묶음을 삭제하고 새 값으로 교체합니다.
+                - 저장 API 응답은 저장된 왼발/오른발 이미지 링크와 압력 센서 측정 묶음 ID를 반환합니다.
                 - 저장된 URL은 종합 발 분석 결과 조회 응답의 leftPressureHeatmapImageUrl, rightPressureHeatmapImageUrl로 반환됩니다.
                 """,
             requestBody = @io.swagger.v3.oas.annotations.parameters.RequestBody(
@@ -1203,6 +1207,9 @@ public class ReportController {
                 "measurementSessionId": 34,
                 "leftPressureHeatmapImageUrl": "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/pressure-heatmap-left/df4b3137-2432-4a85-a47d-1bb39a8dbf80.png",
                 "rightPressureHeatmapImageUrl": "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/pressure-heatmap-right/e245c3c1-930c-41c1-8423-e60268fe3f17.png",
+                "leftPressureSensorReadingId": 11,
+                "rightPressureSensorReadingId": 12,
+                "pressureSensorValueCount": 24,
                 "updatedAt": "2026-08-23T18:20:00"
               }
             }

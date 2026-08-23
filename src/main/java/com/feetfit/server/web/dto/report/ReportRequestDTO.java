@@ -7,6 +7,7 @@ import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
@@ -210,6 +211,31 @@ public class ReportRequestDTO {
         @Schema(description = "측정 세션 ID", example = "1")
         @NotNull(message = "측정 세션 ID는 필수입니다.")
         private Long measurementSessionId;
+
+        @Schema(
+                description = "왼발 C0~C11 순서의 압력 센서 값 12개",
+                example = "[50.5, 0.0, 793.7, 157.6, 26.4, 7908.9, 3204.6, 56.7, 1859.7, 14810.9, 9935.6, 10556.9]"
+        )
+        @NotNull(message = "leftPressureValues(왼발 압력 센서 값 목록)는 필수입니다.")
+        @Size(min = 12, max = 12, message = "leftPressureValues는 C0~C11 순서의 12개 값이어야 합니다.")
+        private List<
+                @NotNull(message = "왼발 압력 센서 값에는 null이 들어갈 수 없습니다.")
+                @DecimalMin(value = "0.0", message = "왼발 압력 센서 값은 0 이상이어야 합니다.")
+                Float> leftPressureValues;
+
+        @Schema(
+                description = "오른발 C0~C11 순서의 압력 센서 값 12개",
+                example = "[48.5, 0.0, 812.3, 160.1, 30.0, 7800.2, 3100.5, 60.0, 1900.0, 14000.1, 9700.4, 10100.8]"
+        )
+        @NotNull(message = "rightPressureValues(오른발 압력 센서 값 목록)는 필수입니다.")
+        @Size(min = 12, max = 12, message = "rightPressureValues는 C0~C11 순서의 12개 값이어야 합니다.")
+        private List<
+                @NotNull(message = "오른발 압력 센서 값에는 null이 들어갈 수 없습니다.")
+                @DecimalMin(value = "0.0", message = "오른발 압력 센서 값은 0 이상이어야 합니다.")
+                Float> rightPressureValues;
+
+        @Schema(description = "압력 측정 기록 시각. 생략 시 서버 현재 시각으로 저장", example = "2026-08-24T10:30:00")
+        private LocalDateTime recordedAt;
     }
 
     @Getter
@@ -222,7 +248,9 @@ public class ReportRequestDTO {
                 type = "string",
                 example = """
                     {
-                      "measurementSessionId": 1
+                      "measurementSessionId": 1,
+                      "leftPressureValues": [50.5, 0.0, 793.7, 157.6, 26.4, 7908.9, 3204.6, 56.7, 1859.7, 14810.9, 9935.6, 10556.9],
+                      "rightPressureValues": [48.5, 0.0, 812.3, 160.1, 30.0, 7800.2, 3100.5, 60.0, 1900.0, 14000.1, 9700.4, 10100.8]
                     }
                     """
         )

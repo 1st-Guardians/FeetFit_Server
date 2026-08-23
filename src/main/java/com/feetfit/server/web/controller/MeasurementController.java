@@ -16,7 +16,6 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.web.bind.annotation.*;
@@ -237,6 +236,7 @@ public class MeasurementController {
                 "deletedStaticPressureAnalysisCount": 1,
                 "deletedFootEnvironmentAnalysisCount": 1,
                 "deletedFootOdorAnalysisCount": 1,
+                "deletedPressureSensorValueCount": 24,
                 "deletedPressureSensorReadingCount": 10,
                 "deletedFootEnvironmentReadingCount": 10,
                 "deletedFootOdorReadingCount": 10,
