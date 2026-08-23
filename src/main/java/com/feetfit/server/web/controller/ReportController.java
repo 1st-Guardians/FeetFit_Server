@@ -158,8 +158,10 @@ public class ReportController {
                     AI 분석 결과로 받은 무좀 분석 데이터와 실제 발 이미지를 저장합니다.
                     Authorization 헤더에 Bearer accessToken이 필요합니다.
                     - request 파트에는 무좀 분석 JSON 데이터를 문자열로 넣습니다.
-                    - suspiciousAreaMapImage 파트에는 의심 부위 표시 이미지를 넣습니다.
-                    - originalFootImage 파트에는 원본 발 이미지를 넣습니다.
+                    - suspiciousAreaMapImage 파트에는 발등 의심 부위 표시 이미지를 넣습니다.
+                    - originalFootImage 파트에는 발등 원본 이미지를 넣습니다.
+                    - soleSuspiciousAreaMapImage 파트에는 발바닥 의심 부위 표시 이미지를 넣습니다.
+                    - soleOriginalFootImage 파트에는 발바닥 원본 이미지를 넣습니다.
                     - recordedAt은 요청으로 받지 않고 서버 저장 시각으로 자동 기록합니다.
                     - 이미지는 EC2 서버에서 AWS CLI를 사용해 S3에 업로드하고, 업로드된 S3 URL을 DB에 저장합니다.
                     - safetyScore 값은 0 이상 100 이하만 허용합니다.
@@ -222,10 +224,14 @@ public class ReportController {
     public ApiResponse<ReportResponseDTO.TinaPedisAnalysisResultDTO> saveTinaPedisAnalysis(
             @Parameter(description = "무좀 분석 JSON 문자열 파트", required = true)
             @RequestPart("request") String requestJson,
-            @Parameter(description = "의심 부위 표시 이미지 파일", required = true)
+            @Parameter(description = "발등 의심 부위 표시 이미지 파일", required = true)
             @RequestPart("suspiciousAreaMapImage") MultipartFile suspiciousAreaMapImage,
-            @Parameter(description = "원본 발 이미지 파일", required = true)
-            @RequestPart("originalFootImage") MultipartFile originalFootImage
+            @Parameter(description = "발등 원본 이미지 파일", required = true)
+            @RequestPart("originalFootImage") MultipartFile originalFootImage,
+            @Parameter(description = "발바닥 의심 부위 표시 이미지 파일", required = true)
+            @RequestPart("soleSuspiciousAreaMapImage") MultipartFile soleSuspiciousAreaMapImage,
+            @Parameter(description = "발바닥 원본 이미지 파일", required = true)
+            @RequestPart("soleOriginalFootImage") MultipartFile soleOriginalFootImage
     ) {
         Long userId = findLoginUser.getCurrentUserId();
         ReportRequestDTO.SaveTinaPedisAnalysisDTO request = parseTinaPedisRequest(requestJson);
@@ -233,7 +239,9 @@ public class ReportController {
                 userId,
                 request,
                 suspiciousAreaMapImage,
-                originalFootImage
+                originalFootImage,
+                soleSuspiciousAreaMapImage,
+                soleOriginalFootImage
         ));
     }
 
@@ -305,6 +313,8 @@ public class ReportController {
                 "totalScoreDescription": "전반적으로 안전하지만 발 건조 관리가 필요합니다.",
                 "suspiciousAreaMapImageUrl": "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/tina-pedis-map/7f6a8f5e-8b9a-4b12-9f89-4ff7ad2e3a20.png",
                 "originalFootImageUrl": "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/tina-pedis-original/9d6c9a1f-5b54-41b8-a5dd-34b76dd77f11.png",
+                "soleSuspiciousAreaMapImageUrl": "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/tina-pedis-sole-map/2f6a8f5e-8b9a-4b12-9f89-4ff7ad2e3a20.png",
+                "soleOriginalFootImageUrl": "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/tina-pedis-sole-original/3f6a8f5e-8b9a-4b12-9f89-4ff7ad2e3a20.png",
                 "recordedAt": "2026-05-28T02:55:43",
                 "createdAt": "2026-05-20T09:00:00",
                 "updatedAt": "2026-05-20T09:00:00"

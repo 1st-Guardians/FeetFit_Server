@@ -103,7 +103,7 @@ class ReportCommandServiceImplTest {
                 .willReturn(Optional.empty());
 
         ReportResponseDTO.TinaPedisAnalysisResultDTO response =
-                reportCommandService.saveTinaPedisAnalysis(1L, tinaPedisRequest(), anyImage(), anyImage());
+                reportCommandService.saveTinaPedisAnalysis(1L, tinaPedisRequest(), anyImage(), anyImage(), anyImage(), anyImage());
 
         assertThat(response.getMeasurementSessionId()).isEqualTo(1L);
         assertThat(response.getFungalSuspicionSafetyScore()).isEqualTo(82);
@@ -112,6 +112,8 @@ class ReportCommandServiceImplTest {
         assertThat(response.getPreviousTotalScore()).isNull();
         assertThat(response.getTotalScoreDiff()).isNull();
         assertThat(response.getTotalScoreDescription()).isEqualTo("전반적으로 안전하지만 발 건조 관리가 필요합니다.");
+        assertThat(response.getSoleSuspiciousAreaMapImageUrl()).isEqualTo("https://example.com/tina-pedis/sole-map.png");
+        assertThat(response.getSoleOriginalFootImageUrl()).isEqualTo("https://example.com/tina-pedis/sole-original.png");
         assertThat(response.getRecordedAt()).isNotNull();
     }
 
@@ -127,6 +129,8 @@ class ReportCommandServiceImplTest {
                 .totalScoreDescription("기존 종합 설명")
                 .suspiciousAreaMapImageUrl("https://example.com/old-map.png")
                 .originalFootImageUrl("https://example.com/old-original.png")
+                .soleSuspiciousAreaMapImageUrl("https://example.com/old-sole-map.png")
+                .soleOriginalFootImageUrl("https://example.com/old-sole-original.png")
                 .recordedAt(LocalDateTime.of(2026, 5, 19, 9, 0))
                 .build();
 
@@ -141,7 +145,7 @@ class ReportCommandServiceImplTest {
                 .willReturn(Optional.empty());
 
         ReportResponseDTO.TinaPedisAnalysisResultDTO response =
-                reportCommandService.saveTinaPedisAnalysis(1L, tinaPedisRequest(93, 93), anyImage(), anyImage());
+                reportCommandService.saveTinaPedisAnalysis(1L, tinaPedisRequest(93, 93), anyImage(), anyImage(), anyImage(), anyImage());
 
         assertThat(response.getFungalSuspicionSafetyScore()).isEqualTo(93);
         assertThat(response.getSkinReactionSafetyScore()).isEqualTo(93);
@@ -150,6 +154,8 @@ class ReportCommandServiceImplTest {
         assertThat(response.getTotalScoreDiff()).isNull();
         assertThat(existingAnalysis.getFungalSuspicionSafetyScore()).isEqualTo(93);
         assertThat(existingAnalysis.getSkinReactionSafetyScore()).isEqualTo(93);
+        assertThat(existingAnalysis.getSoleSuspiciousAreaMapImageUrl()).isEqualTo("https://example.com/tina-pedis/sole-map.png");
+        assertThat(existingAnalysis.getSoleOriginalFootImageUrl()).isEqualTo("https://example.com/tina-pedis/sole-original.png");
         assertThat(existingAnalysis.getRecordedAt()).isNotEqualTo(LocalDateTime.of(2026, 5, 19, 9, 0));
     }
 
@@ -157,7 +163,7 @@ class ReportCommandServiceImplTest {
     void saveTinaPedisAnalysis_notCompletedMeasurement_throwsMeasurementHandler() {
         given(measurementSessionRepository.findById(1L)).willReturn(Optional.of(measurementSession(MeasurementStatus.PENDING)));
 
-        assertThatThrownBy(() -> reportCommandService.saveTinaPedisAnalysis(1L, tinaPedisRequest(), anyImage(), anyImage()))
+        assertThatThrownBy(() -> reportCommandService.saveTinaPedisAnalysis(1L, tinaPedisRequest(), anyImage(), anyImage(), anyImage(), anyImage()))
                 .isInstanceOf(MeasurementHandler.class);
     }
 
@@ -226,10 +232,10 @@ class ReportCommandServiceImplTest {
                 ))
                 .willReturn(Optional.empty());
 
-        reportCommandService.saveTinaPedisAnalysis(1L, tinaPedisRequest(), anyImage(), anyImage());
+        reportCommandService.saveTinaPedisAnalysis(1L, tinaPedisRequest(), anyImage(), anyImage(), anyImage(), anyImage());
 
-        assertThat(measurementSession.getStatus()).isEqualTo(MeasurementStatus.PROCESSING);
-        verify(measurementSocketService).sendMeasurementStatusChanged(measurementSession);
+        assertThat(measurementSession.getStatus()).isEqualTo(MeasurementStatus.TRANSFERRING);
+        verify(measurementSocketService, never()).sendMeasurementStatusChanged(measurementSession);
     }
 
     @Test
@@ -247,10 +253,10 @@ class ReportCommandServiceImplTest {
                 ))
                 .willReturn(Optional.empty());
 
-        reportCommandService.saveTinaPedisAnalysis(1L, tinaPedisRequest(), anyImage(), anyImage());
+        reportCommandService.saveTinaPedisAnalysis(1L, tinaPedisRequest(), anyImage(), anyImage(), anyImage(), anyImage());
 
-        assertThat(measurementSession.getStatus()).isEqualTo(MeasurementStatus.PROCESSING);
-        verify(measurementSocketService).sendMeasurementStatusChanged(measurementSession);
+        assertThat(measurementSession.getStatus()).isEqualTo(MeasurementStatus.MEASURING);
+        verify(measurementSocketService, never()).sendMeasurementStatusChanged(measurementSession);
     }
 
     private static ReportRequestDTO.SaveTinaPedisAnalysisDTO tinaPedisRequest() {
@@ -273,6 +279,10 @@ class ReportCommandServiceImplTest {
                 .willReturn(imageUploadResult("https://example.com/tina-pedis/map.png"));
         given(imageUploadService.upload(eq("tina-pedis-original"), any(MultipartFile.class)))
                 .willReturn(imageUploadResult("https://example.com/tina-pedis/original.png"));
+        given(imageUploadService.upload(eq("tina-pedis-sole-map"), any(MultipartFile.class)))
+                .willReturn(imageUploadResult("https://example.com/tina-pedis/sole-map.png"));
+        given(imageUploadService.upload(eq("tina-pedis-sole-original"), any(MultipartFile.class)))
+                .willReturn(imageUploadResult("https://example.com/tina-pedis/sole-original.png"));
     }
 
     private static MultipartFile anyImage() {

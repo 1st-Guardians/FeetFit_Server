@@ -56,7 +56,7 @@ class ReportControllerTest {
     @Test
     void saveTinaPedisAnalysis_success_returnsAnalysis() throws Exception {
         given(findLoginUser.getCurrentUserId()).willReturn(1L);
-        given(reportCommandService.saveTinaPedisAnalysis(eq(1L), any(), any(), any()))
+        given(reportCommandService.saveTinaPedisAnalysis(eq(1L), any(), any(), any(), any(), any()))
                 .willReturn(tinaPedisResponse());
 
         MockMultipartFile request = new MockMultipartFile(
@@ -86,11 +86,25 @@ class ReportControllerTest {
                 MediaType.IMAGE_PNG_VALUE,
                 "foot-image".getBytes()
         );
+        MockMultipartFile soleSuspiciousAreaMapImage = new MockMultipartFile(
+                "soleSuspiciousAreaMapImage",
+                "sole-map.png",
+                MediaType.IMAGE_PNG_VALUE,
+                "sole-map-image".getBytes()
+        );
+        MockMultipartFile soleOriginalFootImage = new MockMultipartFile(
+                "soleOriginalFootImage",
+                "sole-original.png",
+                MediaType.IMAGE_PNG_VALUE,
+                "sole-original-image".getBytes()
+        );
 
         mockMvc.perform(multipart("/api/reports/tina-pedis")
                         .file(request)
                         .file(suspiciousAreaMapImage)
-                        .file(originalFootImage))
+                        .file(originalFootImage)
+                        .file(soleSuspiciousAreaMapImage)
+                        .file(soleOriginalFootImage))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.isSuccess").value(true))
                 .andExpect(jsonPath("$.code").value("COMMON200"))
@@ -129,6 +143,8 @@ class ReportControllerTest {
                 .totalScoreDescription("전반적으로 안전하지만 발 건조 관리가 필요합니다.")
                 .suspiciousAreaMapImageUrl("https://example.com/tina-pedis/map.png")
                 .originalFootImageUrl("https://example.com/tina-pedis/original.png")
+                .soleSuspiciousAreaMapImageUrl("https://example.com/tina-pedis/sole-map.png")
+                .soleOriginalFootImageUrl("https://example.com/tina-pedis/sole-original.png")
                 .recordedAt(LocalDateTime.of(2026, 5, 20, 9, 0))
                 .createdAt(LocalDateTime.of(2026, 5, 20, 9, 0))
                 .updatedAt(LocalDateTime.of(2026, 5, 20, 9, 0))

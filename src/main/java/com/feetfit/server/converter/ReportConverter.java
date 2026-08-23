@@ -125,6 +125,8 @@ public class ReportConverter {
             ReportRequestDTO.SaveTinaPedisAnalysisDTO request,
             String suspiciousAreaMapImageUrl,
             String originalFootImageUrl,
+            String soleSuspiciousAreaMapImageUrl,
+            String soleOriginalFootImageUrl,
             LocalDateTime recordedAt
     ) {
         return TinaPedisAnalysis.builder()
@@ -136,6 +138,8 @@ public class ReportConverter {
                 .totalScoreDescription(request.getTotalScoreDescription())
                 .suspiciousAreaMapImageUrl(suspiciousAreaMapImageUrl)
                 .originalFootImageUrl(originalFootImageUrl)
+                .soleSuspiciousAreaMapImageUrl(soleSuspiciousAreaMapImageUrl)
+                .soleOriginalFootImageUrl(soleOriginalFootImageUrl)
                 .recordedAt(recordedAt)
                 .build();
     }
@@ -171,6 +175,8 @@ public class ReportConverter {
                 .totalScoreDescription(analysis.getTotalScoreDescription())
                 .suspiciousAreaMapImageUrl(analysis.getSuspiciousAreaMapImageUrl())
                 .originalFootImageUrl(analysis.getOriginalFootImageUrl())
+                .soleSuspiciousAreaMapImageUrl(analysis.getSoleSuspiciousAreaMapImageUrl())
+                .soleOriginalFootImageUrl(analysis.getSoleOriginalFootImageUrl())
                 .recordedAt(analysis.getRecordedAt())
                 .createdAt(analysis.getCreatedAt())
                 .updatedAt(analysis.getUpdatedAt())

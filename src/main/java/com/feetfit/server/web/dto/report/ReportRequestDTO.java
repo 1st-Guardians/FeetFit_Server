@@ -121,6 +121,12 @@ public class ReportRequestDTO {
 
         @Schema(description = "원본 발 이미지 파일", type = "string", format = "binary")
         private String originalFootImage;
+
+        @Schema(description = "발바닥 의심 부위 표시 이미지 파일", type = "string", format = "binary")
+        private String soleSuspiciousAreaMapImage;
+
+        @Schema(description = "발바닥 원본 이미지 파일", type = "string", format = "binary")
+        private String soleOriginalFootImage;
     }
 
     // ─── 파트별 저장 DTOs ──────────────────────────────────────────────────────

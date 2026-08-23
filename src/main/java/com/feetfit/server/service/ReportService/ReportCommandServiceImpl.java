@@ -98,7 +98,9 @@ public class ReportCommandServiceImpl implements ReportCommandService {
             Long userId,
             ReportRequestDTO.SaveTinaPedisAnalysisDTO request,
             MultipartFile suspiciousAreaMapImage,
-            MultipartFile originalFootImage
+            MultipartFile originalFootImage,
+            MultipartFile soleSuspiciousAreaMapImage,
+            MultipartFile soleOriginalFootImage
     ) {
         MeasurementSession measurementSession = getValidatedReportWritableMeasurementSession(
                 userId, request.getMeasurementSessionId());
@@ -108,6 +110,10 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                 imageUploadService.upload("tina-pedis-map", suspiciousAreaMapImage);
         ImageResponseDTO.UploadImageResultDTO originalFootUpload =
                 imageUploadService.upload("tina-pedis-original", originalFootImage);
+        ImageResponseDTO.UploadImageResultDTO soleSuspiciousAreaMapUpload =
+                imageUploadService.upload("tina-pedis-sole-map", soleSuspiciousAreaMapImage);
+        ImageResponseDTO.UploadImageResultDTO soleOriginalFootUpload =
+                imageUploadService.upload("tina-pedis-sole-original", soleOriginalFootImage);
 
         TinaPedisAnalysis saved = tinaPedisAnalysisRepository.findByMeasurementSessionId(measurementSession.getId())
                 .map(existing -> {
@@ -119,6 +125,8 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                             request.getTotalScoreDescription(),
                             suspiciousAreaMapUpload.getImageUrl(),
                             originalFootUpload.getImageUrl(),
+                            soleSuspiciousAreaMapUpload.getImageUrl(),
+                            soleOriginalFootUpload.getImageUrl(),
                             recordedAt
                     );
                     return existing;
@@ -129,6 +137,8 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                                 request,
                                 suspiciousAreaMapUpload.getImageUrl(),
                                 originalFootUpload.getImageUrl(),
+                                soleSuspiciousAreaMapUpload.getImageUrl(),
+                                soleOriginalFootUpload.getImageUrl(),
                                 recordedAt
                         )
                 ));
