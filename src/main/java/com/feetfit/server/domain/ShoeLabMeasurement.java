@@ -9,12 +9,17 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 // RunRepeat에서 수집한 신발 실측 정보
 @Entity
@@ -45,6 +50,25 @@ public class ShoeLabMeasurement extends BaseEntity {
     @Column
     private String testedSize;
 
+    // Source-side identity is retained even after deterministic matching.
+    @Column(name = "source_brand_name")
+    private String sourceBrandName;
+
+    @Column(name = "source_shoe_name")
+    private String sourceShoeName;
+
+    @Column(name = "source_model_code")
+    private String sourceModelCode;
+
+    @Column(name = "captured_at")
+    private LocalDateTime capturedAt;
+
+    @Column(name = "parser_version")
+    private String parserVersion;
+
+    @Column(name = "snapshot_key", length = 64, unique = true)
+    private String snapshotKey;
+
     // 신발 내부의 실제 길이(mm)
     @Column
     private Float internalLengthMm;
@@ -74,6 +98,44 @@ public class ShoeLabMeasurement extends BaseEntity {
     private Float forefootStackMm;
 
     // RunRepeat 원본 데이터 페이지 URL
-    @Column(nullable = false)
+    @Column(nullable = false, length = 2048)
     private String sourceUrl;
+
+    @OneToMany(mappedBy = "labMeasurement", cascade = jakarta.persistence.CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<ShoeLabMetric> rawMetrics = new ArrayList<>();
+
+    public void updateSnapshot(
+            String testedSize,
+            String sourceBrandName,
+            String sourceShoeName,
+            String sourceModelCode,
+            LocalDateTime capturedAt,
+            String parserVersion,
+            Float internalLengthMm,
+            Float widthMm,
+            Float toeboxWidthMm,
+            Float toeboxHeightMm,
+            Float insoleThicknessMm,
+            Float heelStackMm,
+            Float forefootStackMm) {
+        this.testedSize = testedSize;
+        this.sourceBrandName = sourceBrandName;
+        this.sourceShoeName = sourceShoeName;
+        this.sourceModelCode = sourceModelCode;
+        this.capturedAt = capturedAt;
+        this.parserVersion = parserVersion;
+        this.internalLengthMm = internalLengthMm;
+        this.widthMm = widthMm;
+        this.toeboxWidthMm = toeboxWidthMm;
+        this.toeboxHeightMm = toeboxHeightMm;
+        this.insoleThicknessMm = insoleThicknessMm;
+        this.heelStackMm = heelStackMm;
+        this.forefootStackMm = forefootStackMm;
+    }
+
+    public void replaceRawMetrics(List<ShoeLabMetric> metrics) {
+        this.rawMetrics.clear();
+        this.rawMetrics.addAll(metrics);
+    }
 }

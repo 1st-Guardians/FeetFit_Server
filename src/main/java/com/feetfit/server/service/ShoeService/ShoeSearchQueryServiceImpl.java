@@ -105,6 +105,10 @@ public class ShoeSearchQueryServiceImpl implements ShoeSearchQueryService {
         Shoe shoe = shoeRepository.findById(shoeId)
                 .orElseThrow(() -> new ShoeHandler(ErrorStatus.SHOE_NOT_FOUND));
 
+        if (userId == null) {
+            return ShoeConverter.toShoeDetailResultDTO(shoe, null, List.of());
+        }
+
         ShoeRecommendation recommendation = shoeRecommendationRepository
                 .findByUserIdAndShoeId(userId, shoeId)
                 .orElse(null);

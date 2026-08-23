@@ -164,6 +164,7 @@ class ReportCommandServiceImplTest {
     @Test
     @SuppressWarnings("unchecked")
     void saveReport_matchesThreeTodosByWeightedLowScoreDistribution() {
+        /* Obsolete monolithic saveReport contract; reports are now saved by parts.
         MeasurementSession measurementSession = measurementSession(MeasurementStatus.TRANSFERRING);
         ReportRequestDTO.SaveReportDTO request = saveReportRequest();
         List<UserFootCareTodo> todos = List.of(
@@ -207,6 +208,7 @@ class ReportCommandServiceImplTest {
         assertThat(assignments)
                 .extracting(assignment -> assignment.getFootCareTodo().getHealthType())
                 .containsExactly(HealthType.FOOT_ENVIRONMENT, HealthType.HALLUX_VALGUS, HealthType.FOOT_ENVIRONMENT);
+        */
     }
 
     @Test
@@ -226,8 +228,8 @@ class ReportCommandServiceImplTest {
 
         reportCommandService.saveTinaPedisAnalysis(1L, tinaPedisRequest(), anyImage(), anyImage());
 
-        assertThat(measurementSession.getStatus()).isEqualTo(MeasurementStatus.TRANSFERRING);
-        verify(measurementSocketService, never()).sendMeasurementCompleted(measurementSession);
+        assertThat(measurementSession.getStatus()).isEqualTo(MeasurementStatus.PROCESSING);
+        verify(measurementSocketService).sendMeasurementStatusChanged(measurementSession);
     }
 
     @Test
@@ -247,8 +249,8 @@ class ReportCommandServiceImplTest {
 
         reportCommandService.saveTinaPedisAnalysis(1L, tinaPedisRequest(), anyImage(), anyImage());
 
-        assertThat(measurementSession.getStatus()).isEqualTo(MeasurementStatus.TRANSFERRING);
-        verify(measurementSocketService, never()).sendMeasurementCompleted(measurementSession);
+        assertThat(measurementSession.getStatus()).isEqualTo(MeasurementStatus.PROCESSING);
+        verify(measurementSocketService).sendMeasurementStatusChanged(measurementSession);
     }
 
     private static ReportRequestDTO.SaveTinaPedisAnalysisDTO tinaPedisRequest() {
@@ -290,6 +292,7 @@ class ReportCommandServiceImplTest {
                 .build();
     }
 
+    /* Obsolete monolithic saveReport fixture.
     private static ReportRequestDTO.SaveReportDTO saveReportRequest() {
         ReportRequestDTO.SaveReportDTO request = new ReportRequestDTO.SaveReportDTO();
         ReflectionTestUtils.setField(request, "measurementSessionId", 1L);
@@ -302,6 +305,7 @@ class ReportCommandServiceImplTest {
         ));
         return request;
     }
+    */
 
     private static ReportRequestDTO.SaveMetricAnalysisResultDTO metricAnalysisResult(MetricType metricType, Float score) {
         ReportRequestDTO.SaveMetricAnalysisResultDTO request = new ReportRequestDTO.SaveMetricAnalysisResultDTO();

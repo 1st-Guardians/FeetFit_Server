@@ -30,6 +30,9 @@ public class Shoe extends BaseEntity {
     @Column(nullable = false)
     private String modelCode;
 
+    @Column(name = "musinsa_goods_no", unique = true)
+    private String musinsaGoodsNo;
+
     @Column(nullable = false)
     private String musinsaUrl;
 
@@ -61,4 +64,33 @@ public class Shoe extends BaseEntity {
     @OneToMany(mappedBy = "shoe", cascade = CascadeType.ALL)
     @Builder.Default
     private List<ShoeLabMeasurement> labMeasurements = new ArrayList<>();
+
+    public void updateCrawlerData(
+            String brandName,
+            String shoeName,
+            String modelCode,
+            String musinsaGoodsNo,
+            String musinsaUrl,
+            Integer price,
+            String imageUrl,
+            Float overallRating,
+            Integer reviewCount) {
+        this.brandName = brandName;
+        this.shoeName = shoeName;
+        this.modelCode = modelCode;
+        this.musinsaGoodsNo = musinsaGoodsNo;
+        this.musinsaUrl = musinsaUrl;
+        if (price != null) {
+            this.price = price;
+        }
+        if (imageUrl != null) {
+            this.imageUrl = imageUrl;
+        }
+        if (overallRating != null) {
+            this.overallRating = overallRating;
+        }
+        if (reviewCount != null) {
+            this.reviewCount = reviewCount;
+        }
+    }
 }

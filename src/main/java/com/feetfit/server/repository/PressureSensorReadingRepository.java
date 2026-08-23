@@ -8,4 +8,5 @@ import java.util.List;
 
 public interface PressureSensorReadingRepository extends JpaRepository<PressureSensorReading, Long> {
     List<PressureSensorReading> findByMeasurementSessionIdAndFootSide(Long measurementSessionId, FootSide footSide);
+    List<PressureSensorReading> findByMeasurementSessionIdOrderByFootSideAscSensorIndexAsc(Long measurementSessionId);
 }

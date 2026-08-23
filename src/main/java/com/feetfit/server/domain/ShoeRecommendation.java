@@ -28,10 +28,14 @@ public class ShoeRecommendation extends BaseEntity {
     @JoinColumn(name = "shoe_id", nullable = false)
     private Shoe shoe;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "measurement_session_id")
+    private MeasurementSession measurementSession;
+
     @Column(nullable = false)
     private Float fitScore;
 
-    @Column(nullable = false, columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT")
     private String pointSummary;
 
     @Column(nullable = false)
@@ -41,9 +45,18 @@ public class ShoeRecommendation extends BaseEntity {
     @Builder.Default
     private List<ShoeRecommendationReason> reasons = new ArrayList<>();
 
-    public void updateShoeRecommendation(Float fitScore, String pointSummary, LocalDateTime analyzedAt) {
+    public void updateShoeRecommendation(
+            Float fitScore,
+            String pointSummary,
+            LocalDateTime analyzedAt,
+            MeasurementSession measurementSession) {
         this.fitScore = fitScore;
         this.pointSummary = pointSummary;
         this.analyzedAt = analyzedAt;
+        this.measurementSession = measurementSession;
+    }
+
+    public void updatePointSummary(String pointSummary) {
+        this.pointSummary = pointSummary;
     }
 }
