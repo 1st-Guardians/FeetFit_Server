@@ -8,4 +8,6 @@ public interface MeasurementCommandService {
 
     MeasurementResponseDTO.UpdateMeasurementStatusResultDTO updateMeasurementStatus(
             Long userId, Long measurementSessionId, MeasurementRequestDTO.UpdateMeasurementStatusDTO request);
+
+    MeasurementResponseDTO.DeleteMeasurementRecordsResultDTO deleteMeasurementRecords(Long measurementSessionId);
 }
