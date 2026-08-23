@@ -7,6 +7,7 @@ import com.feetfit.server.converter.ReportConverter;
 import com.feetfit.server.domain.*;
 import com.feetfit.server.domain.enums.GaugeStatus;
 import com.feetfit.server.domain.enums.HealthType;
+import com.feetfit.server.domain.enums.FootSide;
 import com.feetfit.server.domain.enums.MeasurementStatus;
 import com.feetfit.server.domain.enums.MetricType;
 import com.feetfit.server.repository.*;
@@ -50,6 +51,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     private final HealthArticleRepository healthArticleRepository;
     private final UserHealthArticleRepository userHealthArticleRepository;
     private final PlantarFootprintRepository plantarFootprintRepository;
+    private final PressureSensorReadingRepository pressureSensorReadingRepository;
     private final ImageUploadService imageUploadService;
 
     @Override
@@ -197,12 +199,28 @@ public class ReportCommandServiceImpl implements ReportCommandService {
 
         DailyFootAnalysis analysis = findOrCreate(session);
         analysis.updatePressureHeatmapImages(leftUpload.getImageUrl(), rightUpload.getImageUrl());
+        LocalDateTime recordedAt = resolveRecordedAt(request.getRecordedAt());
+        PressureSensorReading leftReading = replacePressureSensorReading(
+                session,
+                FootSide.LEFT,
+                request.getLeftPressureValues(),
+                recordedAt
+        );
+        PressureSensorReading rightReading = replacePressureSensorReading(
+                session,
+                FootSide.RIGHT,
+                request.getRightPressureValues(),
+                recordedAt
+        );
 
         return ReportResponseDTO.PressureHeatmapImageResultDTO.builder()
                 .id(analysis.getId())
                 .measurementSessionId(session.getId())
                 .leftPressureHeatmapImageUrl(analysis.getLeftPressureHeatmapImageUrl())
                 .rightPressureHeatmapImageUrl(analysis.getRightPressureHeatmapImageUrl())
+                .leftPressureSensorReadingId(leftReading.getId())
+                .rightPressureSensorReadingId(rightReading.getId())
+                .pressureSensorValueCount(leftReading.getSensorValues().size() + rightReading.getSensorValues().size())
                 .updatedAt(analysis.getUpdatedAt())
                 .build();
     }
@@ -266,6 +284,33 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                 .orElseGet(() -> dailyFootAnalysisRepository.save(
                         DailyFootAnalysis.builder().measurementSession(session).build()
                 ));
+    }
+
+    private PressureSensorReading replacePressureSensorReading(
+            MeasurementSession session,
+            FootSide footSide,
+            List<Float> pressureValues,
+            LocalDateTime recordedAt) {
+        List<PressureSensorReading> existingReadings =
+                pressureSensorReadingRepository.findByMeasurementSessionIdAndFootSide(session.getId(), footSide);
+        pressureSensorReadingRepository.deleteAll(existingReadings);
+        pressureSensorReadingRepository.flush();
+
+        PressureSensorReading reading = PressureSensorReading.builder()
+                .measurementSession(session)
+                .footSide(footSide)
+                .recordedAt(recordedAt)
+                .build();
+
+        for (int i = 0; i < pressureValues.size(); i++) {
+            reading.addSensorValue(i, pressureValues.get(i));
+        }
+
+        return pressureSensorReadingRepository.save(reading);
+    }
+
+    private LocalDateTime resolveRecordedAt(LocalDateTime recordedAt) {
+        return recordedAt != null ? recordedAt : LocalDateTime.now(ZoneId.of("Asia/Seoul"));
     }
 
     private ReportResponseDTO.DailyFootAnalysisResultDTO buildDailyFootAnalysisResult(

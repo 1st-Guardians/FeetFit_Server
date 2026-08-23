@@ -2,11 +2,12 @@ package com.feetfit.server.domain;
 
 import com.feetfit.server.domain.common.BaseEntity;
 import com.feetfit.server.domain.enums.FootSide;
-import com.feetfit.server.domain.enums.FootRegion;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "pressure_sensor_reading")
@@ -28,19 +29,18 @@ public class PressureSensorReading extends BaseEntity {
     @Column(nullable = false)
     private FootSide footSide;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private FootRegion footRegion;
-
-    @Column
-    private Integer sensorIndex;
-
-    @Column
-    private Float pressureValue;
-
-    @Column
-    private Float pressureUnit;
-
     @Column
     private LocalDateTime recordedAt;
+
+    @OneToMany(mappedBy = "pressureSensorReading", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<PressureSensorValue> sensorValues = new ArrayList<>();
+
+    public void addSensorValue(Integer sensorIndex, Float pressureValue) {
+        sensorValues.add(PressureSensorValue.builder()
+                .pressureSensorReading(this)
+                .sensorIndex(sensorIndex)
+                .pressureValue(pressureValue)
+                .build());
+    }
 }

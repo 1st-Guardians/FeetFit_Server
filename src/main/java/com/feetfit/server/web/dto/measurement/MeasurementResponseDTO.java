@@ -103,6 +103,9 @@ public class MeasurementResponseDTO {
         @Schema(description = "foot_odor_analysis 삭제 건수", example = "1")
         private int deletedFootOdorAnalysisCount;
 
+        @Schema(description = "pressure_sensor_value 삭제 건수", example = "24")
+        private int deletedPressureSensorValueCount;
+
         @Schema(description = "pressure_sensor_reading 삭제 건수", example = "10")
         private int deletedPressureSensorReadingCount;
 

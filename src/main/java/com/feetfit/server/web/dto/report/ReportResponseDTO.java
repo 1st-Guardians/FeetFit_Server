@@ -308,6 +308,15 @@ public class ReportResponseDTO {
         @Schema(description = "오른발 압력 히트맵 이미지 URL", example = "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/pressure-heatmap-right/e245c3c1-930c-41c1-8423-e60268fe3f17.png")
         private String rightPressureHeatmapImageUrl;
 
+        @Schema(description = "왼발 압력 센서 측정 묶음 ID", example = "11")
+        private Long leftPressureSensorReadingId;
+
+        @Schema(description = "오른발 압력 센서 측정 묶음 ID", example = "12")
+        private Long rightPressureSensorReadingId;
+
+        @Schema(description = "저장된 압력 센서 개별 값 개수. 왼발 12개 + 오른발 12개", example = "24")
+        private Integer pressureSensorValueCount;
+
         @Schema(description = "수정 시각", example = "2026-08-23T18:20:00")
         private LocalDateTime updatedAt;
     }

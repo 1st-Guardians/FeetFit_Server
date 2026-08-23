@@ -11,9 +11,7 @@ import com.feetfit.server.domain.User;
 import com.feetfit.server.domain.enums.ConnectionStatus;
 import com.feetfit.server.domain.enums.MeasurementFailureReason;
 import com.feetfit.server.domain.enums.MeasurementStatus;
-import com.feetfit.server.repository.HalluxValgusAnalysisRepository;
 import com.feetfit.server.repository.MeasurementSessionRepository;
-import com.feetfit.server.repository.TinaPedisAnalysisRepository;
 import com.feetfit.server.repository.UserRepository;
 import com.feetfit.server.web.dto.measurement.MeasurementRequestDTO;
 import com.feetfit.server.web.dto.measurement.MeasurementResponseDTO;
@@ -34,8 +32,6 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
     private final UserRepository userRepository;
     private final MeasurementSocketService measurementSocketService;
     private final MeasurementHardwareClient measurementHardwareClient;
-    private final TinaPedisAnalysisRepository tinaPedisAnalysisRepository;
-    private final HalluxValgusAnalysisRepository halluxValgusAnalysisRepository;
     private final EntityManager entityManager;
 
     @Override
@@ -135,6 +131,12 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
                 DELETE FROM foot_odor_analysis
                 WHERE measurement_session_id = :measurementSessionId
                 """, measurementSessionId);
+        int deletedPressureSensorValueCount = executeMeasurementDelete("""
+                DELETE FROM pressure_sensor_value
+                WHERE pressure_sensor_reading_id IN (
+                    SELECT id FROM pressure_sensor_reading WHERE measurement_session_id = :measurementSessionId
+                )
+                """, measurementSessionId);
         int deletedPressureSensorReadingCount = executeMeasurementDelete("""
                 DELETE FROM pressure_sensor_reading
                 WHERE measurement_session_id = :measurementSessionId
@@ -163,6 +165,7 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
                 .deletedStaticPressureAnalysisCount(deletedStaticPressureAnalysisCount)
                 .deletedFootEnvironmentAnalysisCount(deletedFootEnvironmentAnalysisCount)
                 .deletedFootOdorAnalysisCount(deletedFootOdorAnalysisCount)
+                .deletedPressureSensorValueCount(deletedPressureSensorValueCount)
                 .deletedPressureSensorReadingCount(deletedPressureSensorReadingCount)
                 .deletedFootEnvironmentReadingCount(deletedFootEnvironmentReadingCount)
                 .deletedFootOdorReadingCount(deletedFootOdorReadingCount)
@@ -205,15 +208,6 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
     }
 
     private void completeMeasurement(MeasurementSession measurementSession, Integer measurementDurationSec) {
-        boolean hasHalluxValgus = halluxValgusAnalysisRepository
-                .existsByMeasurementSessionId(measurementSession.getId());
-        boolean hasTinaPedis = tinaPedisAnalysisRepository
-                .existsByMeasurementSessionId(measurementSession.getId());
-
-        if (!hasHalluxValgus || !hasTinaPedis) {
-            throw new MeasurementHandler(ErrorStatus.MEASUREMENT_ANALYSIS_NOT_READY);
-        }
-
         boolean wasCompleted = measurementSession.getStatus() == MeasurementStatus.COMPLETED;
         measurementSession.updateStatus(
                 MeasurementStatus.COMPLETED,
