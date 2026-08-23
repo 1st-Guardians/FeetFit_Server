@@ -16,7 +16,7 @@ public class MeasurementRequestDTO {
     @Schema(description = "측정 세션 상태 수정 요청")
     public static class UpdateMeasurementStatusDTO {
 
-        @Schema(description = "측정 상태", example = "READY_FOR_PHOTO", allowableValues = {"WAITING_FOR_PHOTO", "READY_FOR_PHOTO", "CAPTURING_PHOTO", "WAITING_FOR_PRESSURE", "READY_FOR_PRESSURE", "MEASURING_PRESSURE", "COMPLETED", "FAILED", "PENDING", "MEASURING", "TRANSFERRING"})
+        @Schema(description = "측정 상태", example = "READY_FOR_PHOTO", allowableValues = {"WAITING_FOR_PHOTO", "READY_FOR_PHOTO", "CAPTURING_PHOTO", "WAITING_FOR_PRESSURE", "READY_FOR_PRESSURE", "MEASURING_PRESSURE", "ANALYZING", "COMPLETED", "FAILED", "PENDING", "MEASURING", "TRANSFERRING"})
         @NotNull(message = "status(측정 상태)는 필수입니다.")
         private MeasurementStatus status;
 

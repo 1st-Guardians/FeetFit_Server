@@ -32,6 +32,7 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
     private final UserRepository userRepository;
     private final MeasurementSocketService measurementSocketService;
     private final MeasurementHardwareClient measurementHardwareClient;
+    private final MeasurementCompletionService measurementCompletionService;
     private final EntityManager entityManager;
 
     @Override
@@ -53,6 +54,7 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
                 MeasurementConverter.toMeasurementSession(user, device)
         );
         saved.updateStatus(MeasurementStatus.WAITING_FOR_PHOTO, null);
+        measurementCompletionService.initialize(saved);
 
         measurementSocketService.sendMeasurementStatusChanged(saved);
         measurementHardwareClient.requestMeasurementStart(saved.getId(), authorizationHeader);
@@ -67,7 +69,10 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
         MeasurementSession measurementSession = getOwnedMeasurementSession(userId, measurementSessionId);
 
         if (request.getStatus() == MeasurementStatus.COMPLETED) {
-            completeMeasurement(measurementSession, request.getMeasurementDurationSec());
+            measurementCompletionService.completeMeasurementIfReady(
+                    measurementSession,
+                    request.getMeasurementDurationSec()
+            );
             return MeasurementConverter.toUpdateMeasurementStatusResultDTO(measurementSession);
         }
 
@@ -83,7 +88,10 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
 
         measurementSession.updateStatus(request.getStatus(), request.getMeasurementDurationSec());
         measurementSession.clearFailure();
-        measurementSocketService.sendMeasurementStatusChanged(measurementSession);
+        measurementCompletionService.refreshCaptureCompletedByStatus(measurementSession, request.getStatus());
+        if (measurementSession.getStatus() != MeasurementStatus.COMPLETED) {
+            measurementSocketService.sendMeasurementStatusChanged(measurementSession);
+        }
         return MeasurementConverter.toUpdateMeasurementStatusResultDTO(measurementSession);
     }
 
@@ -149,6 +157,10 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
                 DELETE FROM foot_odor_reading
                 WHERE measurement_session_id = :measurementSessionId
                 """, measurementSessionId);
+        int deletedMeasurementAnalysisStatusCount = executeMeasurementDelete("""
+                DELETE FROM measurement_analysis_status
+                WHERE measurement_session_id = :measurementSessionId
+                """, measurementSessionId);
         int deletedMeasurementSessionCount = executeMeasurementDelete("""
                 DELETE FROM measurement_session
                 WHERE id = :measurementSessionId
@@ -169,6 +181,7 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
                 .deletedPressureSensorReadingCount(deletedPressureSensorReadingCount)
                 .deletedFootEnvironmentReadingCount(deletedFootEnvironmentReadingCount)
                 .deletedFootOdorReadingCount(deletedFootOdorReadingCount)
+                .deletedMeasurementAnalysisStatusCount(deletedMeasurementAnalysisStatusCount)
                 .deletedMeasurementSessionCount(deletedMeasurementSessionCount)
                 .build();
     }
@@ -205,19 +218,6 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
                 failureDetail
         );
         measurementSocketService.sendMeasurementStatusChanged(measurementSession);
-    }
-
-    private void completeMeasurement(MeasurementSession measurementSession, Integer measurementDurationSec) {
-        boolean wasCompleted = measurementSession.getStatus() == MeasurementStatus.COMPLETED;
-        measurementSession.updateStatus(
-                MeasurementStatus.COMPLETED,
-                resolveMeasurementDurationSec(measurementSession, measurementDurationSec)
-        );
-        measurementSession.clearFailure();
-
-        if (!wasCompleted) {
-            measurementSocketService.sendMeasurementStatusChanged(measurementSession);
-        }
     }
 
     private Integer resolveMeasurementDurationSec(MeasurementSession measurementSession, Integer requestedDurationSec) {

@@ -12,6 +12,7 @@ import com.feetfit.server.domain.enums.MeasurementStatus;
 import com.feetfit.server.domain.enums.MetricType;
 import com.feetfit.server.repository.*;
 import com.feetfit.server.service.ImageService.ImageUploadService;
+import com.feetfit.server.service.MeasurementService.MeasurementCompletionService;
 import com.feetfit.server.web.dto.image.ImageResponseDTO;
 import com.feetfit.server.web.dto.report.ReportRequestDTO;
 import com.feetfit.server.web.dto.report.ReportResponseDTO;
@@ -53,6 +54,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     private final PlantarFootprintRepository plantarFootprintRepository;
     private final PressureSensorReadingRepository pressureSensorReadingRepository;
     private final ImageUploadService imageUploadService;
+    private final MeasurementCompletionService measurementCompletionService;
 
     @Override
     public ReportResponseDTO.SaveHalluxValgusResultDTO saveHalluxValgusAnalysis(
@@ -90,6 +92,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                                 leftImageUpload.getImageUrl(), rightImageUpload.getImageUrl())
                 ));
 
+        measurementCompletionService.refreshPhotoAnalysisCompleted(measurementSession);
         return ReportConverter.toSaveHalluxValgusResultDTO(saved);
     }
 
@@ -152,6 +155,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                 )
                 .orElse(null);
 
+        measurementCompletionService.refreshPhotoAnalysisCompleted(measurementSession);
         return ReportConverter.toTinaPedisAnalysisResultDTO(saved, previousAnalysis);
     }
 
@@ -222,6 +226,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                 request.getRightPressureValues(),
                 recordedAt
         );
+        measurementCompletionService.refreshPressureAnalysisCompleted(session);
 
         return ReportResponseDTO.PressureHeatmapImageResultDTO.builder()
                 .id(analysis.getId())
@@ -254,6 +259,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                 rightUpload.getImageUrl(),
                 request.getPlantarFootprintAnalysisText()
         );
+        measurementCompletionService.refreshPressureAnalysisCompleted(session);
 
         return ReportResponseDTO.PlantarFootprintImageResultDTO.builder()
                 .id(analysis.getId())
@@ -281,6 +287,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
         MeasurementSession session = getValidatedReportWritableMeasurementSession(userId, request.getMeasurementSessionId());
         DailyFootAnalysis analysis = findOrCreate(session);
         analysis.updateEnvironment(request.getAvgTemperatureCelsius(), request.getAvgHumidityPercent());
+        measurementCompletionService.refreshEnvironmentAnalysisCompleted(session);
         return buildDailyFootAnalysisResult(userId, analysis);
     }
 
@@ -428,6 +435,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                             ArrayList::new
                     ));
             matchedArticleCount = matchedArticles.size();
+            measurementCompletionService.refreshMetricReportCompleted(measurementSession);
         }
 
         return ReportConverter.toSaveMetricResultResultDTO(
@@ -477,6 +485,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                 || status == MeasurementStatus.WAITING_FOR_PRESSURE
                 || status == MeasurementStatus.READY_FOR_PRESSURE
                 || status == MeasurementStatus.MEASURING_PRESSURE
+                || status == MeasurementStatus.ANALYZING
                 || status == MeasurementStatus.MEASURING
                 || status == MeasurementStatus.TRANSFERRING;
     }
@@ -741,6 +750,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                     appendTexts(context, analysis.getConditionComments());
                     appendText(context, analysis.getBalanceComment());
                     appendText(context, analysis.getFootOdourComment());
+                    appendText(context, analysis.getPlantarFootprintAnalysisText());
                     appendTexts(context, analysis.getCareTips());
                     appendText(context, analysis.getTypeText());
                 });

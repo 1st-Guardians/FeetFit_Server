@@ -13,4 +13,6 @@ public interface PressureSensorReadingRepository extends JpaRepository<PressureS
 
     @EntityGraph(attributePaths = "sensorValues")
     List<PressureSensorReading> findByMeasurementSessionIdOrderByFootSideAsc(Long measurementSessionId);
+
+    boolean existsByMeasurementSessionIdAndFootSide(Long measurementSessionId, FootSide footSide);
 }
