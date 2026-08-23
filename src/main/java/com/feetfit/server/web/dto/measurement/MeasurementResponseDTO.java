@@ -27,7 +27,7 @@ public class MeasurementResponseDTO {
         @Schema(description = "측정에 사용된 디바이스 ID", example = "1")
         private Long deviceId;
 
-        @Schema(description = "측정 상태", example = "WAITING_FOR_PHOTO", allowableValues = {"WAITING_FOR_PHOTO", "READY_FOR_PHOTO", "CAPTURING_PHOTO", "WAITING_FOR_PRESSURE", "READY_FOR_PRESSURE", "MEASURING_PRESSURE", "COMPLETED", "FAILED", "PENDING", "MEASURING", "TRANSFERRING"})
+        @Schema(description = "측정 상태", example = "WAITING_FOR_PHOTO", allowableValues = {"WAITING_FOR_PHOTO", "READY_FOR_PHOTO", "CAPTURING_PHOTO", "WAITING_FOR_PRESSURE", "READY_FOR_PRESSURE", "MEASURING_PRESSURE", "ANALYZING", "COMPLETED", "FAILED", "PENDING", "MEASURING", "TRANSFERRING"})
         private MeasurementStatus status;
 
         @Schema(description = "측정 시작 시각", example = "2026-05-20T09:00:00")
@@ -49,7 +49,7 @@ public class MeasurementResponseDTO {
         @Schema(description = "측정 세션 ID", example = "1")
         private Long id;
 
-        @Schema(description = "측정 상태", example = "COMPLETED", allowableValues = {"WAITING_FOR_PHOTO", "READY_FOR_PHOTO", "CAPTURING_PHOTO", "WAITING_FOR_PRESSURE", "READY_FOR_PRESSURE", "MEASURING_PRESSURE", "COMPLETED", "FAILED", "PENDING", "MEASURING", "TRANSFERRING"})
+        @Schema(description = "측정 상태", example = "COMPLETED", allowableValues = {"WAITING_FOR_PHOTO", "READY_FOR_PHOTO", "CAPTURING_PHOTO", "WAITING_FOR_PRESSURE", "READY_FOR_PRESSURE", "MEASURING_PRESSURE", "ANALYZING", "COMPLETED", "FAILED", "PENDING", "MEASURING", "TRANSFERRING"})
         private MeasurementStatus status;
 
         @Schema(description = "측정 소요 시간(초)", example = "180")
@@ -114,6 +114,9 @@ public class MeasurementResponseDTO {
 
         @Schema(description = "foot_odor_reading 삭제 건수", example = "10")
         private int deletedFootOdorReadingCount;
+
+        @Schema(description = "measurement_analysis_status 삭제 건수", example = "1")
+        private int deletedMeasurementAnalysisStatusCount;
 
         @Schema(description = "measurement_session 삭제 건수", example = "1")
         private int deletedMeasurementSessionCount;

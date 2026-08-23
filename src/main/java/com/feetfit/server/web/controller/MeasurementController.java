@@ -116,10 +116,11 @@ public class MeasurementController {
                 - WAITING_FOR_PRESSURE: 사진 촬영 완료 후 압력 측정 준비 대기. 사용자가 내려와 FSR 센서 판을 내리고 다시 올라와야 하는 상태입니다.
                 - READY_FOR_PRESSURE: 압력 측정 준비 완료. 프론트가 사용자의 준비 완료 버튼 입력 후 보내는 상태입니다.
                 - MEASURING_PRESSURE: FSR 압력 측정 중. 사용자가 움직이지 않아야 하는 상태입니다.
-                - COMPLETED: 측정 완료. 별도 분석 결과 저장 여부를 검사하지 않고 완료 처리합니다.
+                - ANALYZING: 모든 측정 수집 완료 후 분석 중인 상태입니다.
+                - COMPLETED: 완료 조건 검사 요청입니다. 백엔드가 내부 완료 플래그를 확인해 모두 완료된 경우에만 최종 완료 처리합니다.
                 - FAILED: 측정 실패. 측정 중 오류가 발생한 상태입니다.
                 - FAILED 요청 시 failureReason, failureDetail을 함께 보내면 측정 세션에 실패 원인을 저장하고 WebSocket으로 프론트에 전달합니다.
-                - 상태 업데이트 성공 시 WebSocket으로 상태 메시지를 발행합니다.
+                - 상태 업데이트 성공 시 WebSocket으로 상태 메시지를 발행합니다. 단, COMPLETED 요청은 모든 완료 조건이 충족된 경우에만 완료 WebSocket을 발행합니다.
                 - COMPLETED/FAILED 메시지의 shouldDisconnect=true를 받은 프론트는 측정 세션 topic 구독을 해제하거나 WebSocket 연결을 종료하면 됩니다.
                 - PENDING/MEASURING/TRANSFERRING은 기존 DB 데이터 호환용 상태입니다.
                 - 본인의 측정 세션 ID만 사용 가능합니다.
@@ -240,6 +241,7 @@ public class MeasurementController {
                 "deletedPressureSensorReadingCount": 10,
                 "deletedFootEnvironmentReadingCount": 10,
                 "deletedFootOdorReadingCount": 10,
+                "deletedMeasurementAnalysisStatusCount": 1,
                 "deletedMeasurementSessionCount": 1
               }
             }
