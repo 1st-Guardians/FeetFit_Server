@@ -66,7 +66,7 @@ class MeasurementCommandServiceImplTest {
         assertThat(measurementSession.getMeasurementDurationSec()).isEqualTo(180);
         assertThat(response.getStatus()).isEqualTo(MeasurementStatus.COMPLETED);
         assertThat(response.getMeasurementDurationSec()).isEqualTo(180);
-        verify(measurementSocketService).sendMeasurementCompleted(measurementSession);
+        verify(measurementSocketService).sendMeasurementStatusChanged(measurementSession);
     }
 
     @Test
@@ -80,7 +80,7 @@ class MeasurementCommandServiceImplTest {
                 .isInstanceOf(MeasurementHandler.class);
 
         assertThat(measurementSession.getStatus()).isEqualTo(MeasurementStatus.TRANSFERRING);
-        verify(measurementSocketService, never()).sendMeasurementCompleted(measurementSession);
+        verify(measurementSocketService, never()).sendMeasurementStatusChanged(measurementSession);
     }
 
     @Test
@@ -93,7 +93,7 @@ class MeasurementCommandServiceImplTest {
         measurementCommandService.updateMeasurementStatus(1L, 1L, completedRequest(180));
 
         assertThat(measurementSession.getStatus()).isEqualTo(MeasurementStatus.COMPLETED);
-        verify(measurementSocketService, never()).sendMeasurementCompleted(measurementSession);
+        verify(measurementSocketService, never()).sendMeasurementStatusChanged(measurementSession);
     }
 
     private static MeasurementSession measurementSession(MeasurementStatus status) {

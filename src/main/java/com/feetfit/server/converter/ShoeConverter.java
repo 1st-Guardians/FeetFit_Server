@@ -1,6 +1,7 @@
 package com.feetfit.server.converter;
 
 import com.feetfit.server.domain.Shoe;
+import com.feetfit.server.domain.MeasurementSession;
 import com.feetfit.server.domain.ShoeRecommendation;
 import com.feetfit.server.domain.ShoeRecommendationReason;
 import com.feetfit.server.domain.ShoeRecommendationReasonReview;
@@ -121,10 +122,12 @@ public class ShoeConverter {
             User user,
             Shoe shoe,
             ShoeRequestDTO.ShoeRecommendationItemDTO item,
-            LocalDateTime analyzedAt) {
+            LocalDateTime analyzedAt,
+            MeasurementSession measurementSession) {
         return ShoeRecommendation.builder()
                 .user(user)
                 .shoe(shoe)
+                .measurementSession(measurementSession)
                 .fitScore(item.getFitScore())
                 .pointSummary(item.getPointSummary())
                 .analyzedAt(analyzedAt)

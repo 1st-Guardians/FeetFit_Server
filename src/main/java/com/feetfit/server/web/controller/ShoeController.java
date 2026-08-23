@@ -85,8 +85,8 @@ public class ShoeController {
             summary = "신발 디테일 조회 [민지]",
             description = """
                     신발 상세 정보를 조회합니다.
-                    Authorization 헤더에 Bearer accessToken이 필요합니다.
-                    - 로그인한 유저의 fitScore를 함께 반환합니다.
+                    기본 상품정보는 로그인 없이 조회할 수 있습니다.
+                    - 유효한 Bearer accessToken이 있으면 로그인한 유저의 fitScore를 함께 반환합니다.
                     - 측정 이력이 없는 유저는 fitScore, pointSummary(착용 포인트)가 null로 반환됩니다.
                     - 부위별(발볼/뒤꿈치/깔창) AI가 선택한 리뷰 3개씩 반환합니다.
                     - 추천 데이터가 없는 유저는 reasons(발볼, 뒤꿈치, 깔창에 대한 내용)가 빈 배열로 반환됩니다.
@@ -100,7 +100,7 @@ public class ShoeController {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "401",
-                    description = "Authorization 헤더 누락 또는 유효하지 않은 토큰",
+                    description = "Authorization 헤더를 보낸 경우 토큰이 유효하지 않음",
                     content = @Content(examples = @ExampleObject(value = UNAUTHORIZED_RESPONSE))
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
@@ -207,6 +207,16 @@ public class ShoeController {
     ) {
         Long userId = findLoginUser.getCurrentUserId();
         return ApiResponse.onSuccess(shoeCommandService.saveShoeRecommendations(userId, request));
+    }
+
+    @PostMapping("/{shoeId}/summaries")
+    @Operation(summary = "AI가 생성한 신발 추천 설명 저장")
+    public ApiResponse<Void> saveShoeSummaries(
+            @PathVariable Long shoeId,
+            @RequestBody @Valid ShoeRequestDTO.SaveShoeSummariesDTO request) {
+        Long userId = findLoginUser.getCurrentUserId();
+        shoeCommandService.saveShoeSummaries(userId, shoeId, request);
+        return ApiResponse.onSuccess(null);
     }
 
     @GetMapping("/search")

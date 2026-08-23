@@ -40,7 +40,7 @@ class MeasurementSocketServiceTest {
                 .measuredAt(LocalDateTime.of(2026, 6, 1, 2, 30))
                 .build();
 
-        measurementSocketService.sendMeasurementCompleted(measurementSession);
+        measurementSocketService.sendMeasurementStatusChanged(measurementSession);
 
         ArgumentCaptor<MeasurementResponseDTO.MeasurementSocketMessageDTO> measurementTopicCaptor =
                 ArgumentCaptor.forClass(MeasurementResponseDTO.MeasurementSocketMessageDTO.class);
