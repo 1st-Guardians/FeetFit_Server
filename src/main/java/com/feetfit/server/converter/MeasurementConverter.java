@@ -35,6 +35,8 @@ public class MeasurementConverter {
                 .id(measurementSession.getId())
                 .status(measurementSession.getStatus())
                 .measurementDurationSec(measurementSession.getMeasurementDurationSec())
+                .failureReason(measurementSession.getFailureReason())
+                .failureDetail(measurementSession.getFailureDetail())
                 .updatedAt(measurementSession.getUpdatedAt())
                 .build();
     }

@@ -9,6 +9,7 @@ import com.feetfit.server.domain.Device;
 import com.feetfit.server.domain.MeasurementSession;
 import com.feetfit.server.domain.User;
 import com.feetfit.server.domain.enums.ConnectionStatus;
+import com.feetfit.server.domain.enums.MeasurementFailureReason;
 import com.feetfit.server.domain.enums.MeasurementStatus;
 import com.feetfit.server.repository.HalluxValgusAnalysisRepository;
 import com.feetfit.server.repository.MeasurementSessionRepository;
@@ -16,6 +17,7 @@ import com.feetfit.server.repository.TinaPedisAnalysisRepository;
 import com.feetfit.server.repository.UserRepository;
 import com.feetfit.server.web.dto.measurement.MeasurementRequestDTO;
 import com.feetfit.server.web.dto.measurement.MeasurementResponseDTO;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +36,7 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
     private final MeasurementHardwareClient measurementHardwareClient;
     private final TinaPedisAnalysisRepository tinaPedisAnalysisRepository;
     private final HalluxValgusAnalysisRepository halluxValgusAnalysisRepository;
+    private final EntityManager entityManager;
 
     @Override
     public MeasurementResponseDTO.CreateMeasurementSessionResultDTO createMeasurementSession(Long userId, String authorizationHeader) {
@@ -72,9 +75,105 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
             return MeasurementConverter.toUpdateMeasurementStatusResultDTO(measurementSession);
         }
 
+        if (request.getStatus() == MeasurementStatus.FAILED) {
+            failMeasurement(
+                    measurementSession,
+                    request.getMeasurementDurationSec(),
+                    request.getFailureReason(),
+                    request.getFailureDetail()
+            );
+            return MeasurementConverter.toUpdateMeasurementStatusResultDTO(measurementSession);
+        }
+
         measurementSession.updateStatus(request.getStatus(), request.getMeasurementDurationSec());
+        measurementSession.clearFailure();
         measurementSocketService.sendMeasurementStatusChanged(measurementSession);
         return MeasurementConverter.toUpdateMeasurementStatusResultDTO(measurementSession);
+    }
+
+    @Override
+    public MeasurementResponseDTO.DeleteMeasurementRecordsResultDTO deleteMeasurementRecords(Long measurementSessionId) {
+        if (!measurementSessionRepository.existsById(measurementSessionId)) {
+            throw new MeasurementHandler(ErrorStatus.MEASUREMENT_NOT_FOUND);
+        }
+
+        int deletedMetricAnalysisResultCount = executeMeasurementDelete("""
+                DELETE FROM metric_analysis_result
+                WHERE report_id IN (
+                    SELECT id FROM report WHERE measurement_session_id = :measurementSessionId
+                )
+                """, measurementSessionId);
+        int deletedReportCount = executeMeasurementDelete("""
+                DELETE FROM report
+                WHERE measurement_session_id = :measurementSessionId
+                """, measurementSessionId);
+        int deletedHalluxValgusAnalysisCount = executeMeasurementDelete("""
+                DELETE FROM hallux_valgus_analysis
+                WHERE measurement_session_id = :measurementSessionId
+                """, measurementSessionId);
+        int deletedTinaPedisAnalysisCount = executeMeasurementDelete("""
+                DELETE FROM tina_pedis_analyses
+                WHERE measurement_id = :measurementSessionId
+                """, measurementSessionId);
+        int deletedDailyFootAnalysisCount = executeMeasurementDelete("""
+                DELETE FROM daily_foot_analysis
+                WHERE measurement_id = :measurementSessionId
+                """, measurementSessionId);
+        int deletedPlantarFootprintCount = executeMeasurementDelete("""
+                DELETE FROM plantar_footprint
+                WHERE measurement_id = :measurementSessionId
+                """, measurementSessionId);
+        int deletedStaticPressureAnalysisCount = executeMeasurementDelete("""
+                DELETE FROM static_pressure_analysis
+                WHERE measurement_session_id = :measurementSessionId
+                """, measurementSessionId);
+        int deletedFootEnvironmentAnalysisCount = executeMeasurementDelete("""
+                DELETE FROM foot_environment_analysis
+                WHERE measurement_session_id = :measurementSessionId
+                """, measurementSessionId);
+        int deletedFootOdorAnalysisCount = executeMeasurementDelete("""
+                DELETE FROM foot_odor_analysis
+                WHERE measurement_session_id = :measurementSessionId
+                """, measurementSessionId);
+        int deletedPressureSensorReadingCount = executeMeasurementDelete("""
+                DELETE FROM pressure_sensor_reading
+                WHERE measurement_session_id = :measurementSessionId
+                """, measurementSessionId);
+        int deletedFootEnvironmentReadingCount = executeMeasurementDelete("""
+                DELETE FROM foot_environment_reading
+                WHERE measurement_session_id = :measurementSessionId
+                """, measurementSessionId);
+        int deletedFootOdorReadingCount = executeMeasurementDelete("""
+                DELETE FROM foot_odor_reading
+                WHERE measurement_session_id = :measurementSessionId
+                """, measurementSessionId);
+        int deletedMeasurementSessionCount = executeMeasurementDelete("""
+                DELETE FROM measurement_session
+                WHERE id = :measurementSessionId
+                """, measurementSessionId);
+
+        return MeasurementResponseDTO.DeleteMeasurementRecordsResultDTO.builder()
+                .measurementSessionId(measurementSessionId)
+                .deletedMetricAnalysisResultCount(deletedMetricAnalysisResultCount)
+                .deletedReportCount(deletedReportCount)
+                .deletedHalluxValgusAnalysisCount(deletedHalluxValgusAnalysisCount)
+                .deletedTinaPedisAnalysisCount(deletedTinaPedisAnalysisCount)
+                .deletedDailyFootAnalysisCount(deletedDailyFootAnalysisCount)
+                .deletedPlantarFootprintCount(deletedPlantarFootprintCount)
+                .deletedStaticPressureAnalysisCount(deletedStaticPressureAnalysisCount)
+                .deletedFootEnvironmentAnalysisCount(deletedFootEnvironmentAnalysisCount)
+                .deletedFootOdorAnalysisCount(deletedFootOdorAnalysisCount)
+                .deletedPressureSensorReadingCount(deletedPressureSensorReadingCount)
+                .deletedFootEnvironmentReadingCount(deletedFootEnvironmentReadingCount)
+                .deletedFootOdorReadingCount(deletedFootOdorReadingCount)
+                .deletedMeasurementSessionCount(deletedMeasurementSessionCount)
+                .build();
+    }
+
+    private int executeMeasurementDelete(String sql, Long measurementSessionId) {
+        return entityManager.createNativeQuery(sql)
+                .setParameter("measurementSessionId", measurementSessionId)
+                .executeUpdate();
     }
 
     private MeasurementSession getOwnedMeasurementSession(Long userId, Long measurementSessionId) {
@@ -87,6 +186,22 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
         }
 
         return measurementSession;
+    }
+
+    private void failMeasurement(
+            MeasurementSession measurementSession,
+            Integer measurementDurationSec,
+            MeasurementFailureReason failureReason,
+            String failureDetail) {
+        measurementSession.updateStatus(
+                MeasurementStatus.FAILED,
+                resolveMeasurementDurationSec(measurementSession, measurementDurationSec)
+        );
+        measurementSession.updateFailure(
+                failureReason != null ? failureReason : MeasurementFailureReason.UNKNOWN,
+                failureDetail
+        );
+        measurementSocketService.sendMeasurementStatusChanged(measurementSession);
     }
 
     private void completeMeasurement(MeasurementSession measurementSession, Integer measurementDurationSec) {
@@ -104,6 +219,7 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
                 MeasurementStatus.COMPLETED,
                 resolveMeasurementDurationSec(measurementSession, measurementDurationSec)
         );
+        measurementSession.clearFailure();
 
         if (!wasCompleted) {
             measurementSocketService.sendMeasurementStatusChanged(measurementSession);

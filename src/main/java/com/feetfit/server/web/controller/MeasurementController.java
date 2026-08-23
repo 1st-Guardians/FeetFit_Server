@@ -1,6 +1,7 @@
 package com.feetfit.server.web.controller;
 
 import com.feetfit.server.apiPayload.ApiResponse;
+import com.feetfit.server.domain.enums.MeasurementFailureReason;
 import com.feetfit.server.domain.enums.MeasurementStatus;
 import com.feetfit.server.jwt.FindLoginUser;
 import com.feetfit.server.service.MeasurementService.MeasurementCommandService;
@@ -116,9 +117,9 @@ public class MeasurementController {
                 - WAITING_FOR_PRESSURE: 사진 촬영 완료 후 압력 측정 준비 대기. 사용자가 내려와 FSR 센서 판을 내리고 다시 올라와야 하는 상태입니다.
                 - READY_FOR_PRESSURE: 압력 측정 준비 완료. 프론트가 사용자의 준비 완료 버튼 입력 후 보내는 상태입니다.
                 - MEASURING_PRESSURE: FSR 압력 측정 중. 사용자가 움직이지 않아야 하는 상태입니다.
-                - PROCESSING: 이미지/압력 데이터 전송 및 분석 처리 중. 이 상태에서 리포트 저장이 가능합니다.
                 - COMPLETED: 측정 완료. 무지외반, 무좀 분석 결과가 모두 저장된 경우에만 완료 처리가 가능합니다.
                 - FAILED: 측정 실패. 측정 중 오류가 발생한 상태입니다.
+                - FAILED 요청 시 failureReason, failureDetail을 함께 보내면 측정 세션에 실패 원인을 저장하고 WebSocket으로 프론트에 전달합니다.
                 - 상태 업데이트 성공 시 WebSocket으로 상태 메시지를 발행합니다.
                 - COMPLETED/FAILED 메시지의 shouldDisconnect=true를 받은 프론트는 측정 세션 topic 구독을 해제하거나 WebSocket 연결을 종료하면 됩니다.
                 - PENDING/MEASURING/TRANSFERRING은 기존 DB 데이터 호환용 상태입니다.
@@ -165,12 +166,53 @@ public class MeasurementController {
             @Parameter(description = "측정 세션 상태", example = "READY_FOR_PHOTO")
             @RequestParam MeasurementStatus status,
             @Parameter(description = "측정 소요 시간 (초). COMPLETED 시 생략하면 자동 계산", example = "180")
-            @RequestParam(required = false) Integer measurementDurationSec
+            @RequestParam(required = false) Integer measurementDurationSec,
+            @Parameter(description = "측정 실패 원인. status=FAILED일 때 사용", example = "CAMERA_ERROR")
+            @RequestParam(required = false) MeasurementFailureReason failureReason,
+            @Parameter(description = "측정 실패 상세 설명. status=FAILED일 때 사용", example = "Camera timeout")
+            @RequestParam(required = false) String failureDetail
     ) {
         Long userId = findLoginUser.getCurrentUserId();
         MeasurementRequestDTO.UpdateMeasurementStatusDTO request =
-                new MeasurementRequestDTO.UpdateMeasurementStatusDTO(status, measurementDurationSec);
+                new MeasurementRequestDTO.UpdateMeasurementStatusDTO(
+                        status,
+                        measurementDurationSec,
+                        failureReason,
+                        failureDetail
+                );
         return ApiResponse.onSuccess(measurementCommandService.updateMeasurementStatus(userId, measurementSessionId, request));
+    }
+
+    @DeleteMapping("/{measurementSessionId}/records")
+    @Operation(
+            summary = "측정 세션 및 연관 기록 삭제 [은서]",
+            description = """
+                개발/테스트용 API입니다.
+                Authorization 헤더 없이 호출 가능합니다.
+                measurementSessionId에 연결된 분석 결과, 센서 기록, 리포트, 측정 세션을 자식 테이블부터 순서대로 삭제합니다.
+                """
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "측정 세션 및 연관 기록 삭제 성공",
+                    content = @Content(examples = @ExampleObject(value = DELETE_MEASUREMENT_RECORDS_SUCCESS_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "404",
+                    description = "측정 세션을 찾을 수 없음",
+                    content = @Content(examples = @ExampleObject(value = MEASUREMENT_NOT_FOUND_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "500",
+                    description = "서버 내부 오류",
+                    content = @Content(examples = @ExampleObject(value = INTERNAL_SERVER_ERROR_RESPONSE))
+            )
+    })
+    public ApiResponse<MeasurementResponseDTO.DeleteMeasurementRecordsResultDTO> deleteMeasurementRecords(
+            @PathVariable Long measurementSessionId
+    ) {
+        return ApiResponse.onSuccess(measurementCommandService.deleteMeasurementRecords(measurementSessionId));
     }
 
     private static final String MEASUREMENT_ANALYSIS_NOT_READY_RESPONSE = """
@@ -188,6 +230,30 @@ public class MeasurementController {
               "code": "COMMON400",
               "message": "잘못된 요청입니다.",
               "result": null
+            }
+            """;
+
+    private static final String DELETE_MEASUREMENT_RECORDS_SUCCESS_RESPONSE = """
+            {
+              "isSuccess": true,
+              "code": "COMMON200",
+              "message": "성공입니다.",
+              "result": {
+                "measurementSessionId": 2,
+                "deletedMetricAnalysisResultCount": 5,
+                "deletedReportCount": 1,
+                "deletedHalluxValgusAnalysisCount": 1,
+                "deletedTinaPedisAnalysisCount": 1,
+                "deletedDailyFootAnalysisCount": 1,
+                "deletedPlantarFootprintCount": 1,
+                "deletedStaticPressureAnalysisCount": 1,
+                "deletedFootEnvironmentAnalysisCount": 1,
+                "deletedFootOdorAnalysisCount": 1,
+                "deletedPressureSensorReadingCount": 10,
+                "deletedFootEnvironmentReadingCount": 10,
+                "deletedFootOdorReadingCount": 10,
+                "deletedMeasurementSessionCount": 1
+              }
             }
             """;
 
