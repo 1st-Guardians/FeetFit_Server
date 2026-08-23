@@ -7,6 +7,7 @@ import com.feetfit.server.domain.DailyFootAnalysis;
 import com.feetfit.server.domain.HalluxValgusAnalysis;
 import com.feetfit.server.domain.MeasurementSession;
 import com.feetfit.server.domain.PressureSensorReading;
+import com.feetfit.server.domain.PressureSensorValue;
 import com.feetfit.server.domain.Shoe;
 import com.feetfit.server.domain.ShoeLabMeasurement;
 import com.feetfit.server.domain.ShoeLabMetric;
@@ -15,6 +16,7 @@ import com.feetfit.server.domain.ShoeRecommendationReason;
 import com.feetfit.server.domain.ShoeReview;
 import com.feetfit.server.domain.StaticPressureAnalysis;
 import com.feetfit.server.domain.TinaPedisAnalysis;
+import com.feetfit.server.domain.enums.FootRegion;
 import com.feetfit.server.domain.enums.MeasurementStatus;
 import com.feetfit.server.domain.enums.ShoeReviewSource;
 import com.feetfit.server.repository.DailyFootAnalysisRepository;
@@ -81,8 +83,12 @@ public class ShoeAnalysisQueryServiceImpl implements ShoeAnalysisQueryService {
                         .stream().map(this::toStaticPressure).toList();
         List<ShoeAnalysisResponseDTO.PressureSensorReadingItem> sensorReadings =
                 pressureSensorReadingRepository
-                        .findByMeasurementSessionIdOrderByFootSideAscSensorIndexAsc(measurementSessionId)
-                        .stream().map(this::toPressureReading).toList();
+                        .findByMeasurementSessionIdOrderByFootSideAsc(measurementSessionId)
+                        .stream()
+                        .flatMap(reading -> reading.getSensorValues().stream()
+                                .sorted(Comparator.comparing(PressureSensorValue::getSensorIndex))
+                                .map(sensorValue -> toPressureReading(reading, sensorValue)))
+                        .toList();
 
         List<Long> shoeIds = shoePage.getContent().stream().map(Shoe::getId).toList();
         Map<Long, List<ShoeReview>> reviewsByShoe = shoeIds.isEmpty()
@@ -300,16 +306,25 @@ public class ShoeAnalysisQueryServiceImpl implements ShoeAnalysisQueryService {
                 .build();
     }
 
-    private ShoeAnalysisResponseDTO.PressureSensorReadingItem toPressureReading(PressureSensorReading value) {
+    private ShoeAnalysisResponseDTO.PressureSensorReadingItem toPressureReading(
+            PressureSensorReading reading,
+            PressureSensorValue value) {
         return ShoeAnalysisResponseDTO.PressureSensorReadingItem.builder()
-                .readingId(value.getId())
-                .footSide(value.getFootSide())
-                .footRegion(value.getFootRegion())
+                .readingId(reading.getId())
+                .footSide(reading.getFootSide())
+                .footRegion(toFootRegion(value.getSensorIndex()))
                 .sensorIndex(value.getSensorIndex())
                 .pressureValue(value.getPressureValue())
-                .pressureUnit(value.getPressureUnit())
-                .recordedAt(value.getRecordedAt())
+                .pressureUnit(null)
+                .recordedAt(reading.getRecordedAt())
                 .build();
+    }
+
+    private FootRegion toFootRegion(Integer sensorIndex) {
+        if (sensorIndex == null || sensorIndex < 0 || sensorIndex >= FootRegion.values().length) {
+            return null;
+        }
+        return FootRegion.values()[sensorIndex];
     }
 
     private ShoeAnalysisResponseDTO.SavedReasonItem toSavedReason(ShoeRecommendationReason reason) {
