@@ -117,7 +117,7 @@ public class MeasurementController {
                 - WAITING_FOR_PRESSURE: 사진 촬영 완료 후 압력 측정 준비 대기. 사용자가 내려와 FSR 센서 판을 내리고 다시 올라와야 하는 상태입니다.
                 - READY_FOR_PRESSURE: 압력 측정 준비 완료. 프론트가 사용자의 준비 완료 버튼 입력 후 보내는 상태입니다.
                 - MEASURING_PRESSURE: FSR 압력 측정 중. 사용자가 움직이지 않아야 하는 상태입니다.
-                - COMPLETED: 측정 완료. 무지외반, 무좀 분석 결과가 모두 저장된 경우에만 완료 처리가 가능합니다.
+                - COMPLETED: 측정 완료. 별도 분석 결과 저장 여부를 검사하지 않고 완료 처리합니다.
                 - FAILED: 측정 실패. 측정 중 오류가 발생한 상태입니다.
                 - FAILED 요청 시 failureReason, failureDetail을 함께 보내면 측정 세션에 실패 원인을 저장하고 WebSocket으로 프론트에 전달합니다.
                 - 상태 업데이트 성공 시 WebSocket으로 상태 메시지를 발행합니다.
@@ -134,11 +134,8 @@ public class MeasurementController {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "400",
-                    description = "요청 파라미터 오류 또는 무지외반&무좀 분석 결과 미저장",
-                    content = @Content(examples = {
-                            @ExampleObject(name = "분석 결과 미저장", value = MEASUREMENT_ANALYSIS_NOT_READY_RESPONSE),
-                            @ExampleObject(name = "COMPLETED 요청 파라미터 오류", value = MEASUREMENT_BAD_REQUEST_RESPONSE)
-                    })
+                    description = "요청 파라미터 오류",
+                    content = @Content(examples = @ExampleObject(value = MEASUREMENT_BAD_REQUEST_RESPONSE))
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "401",
@@ -214,15 +211,6 @@ public class MeasurementController {
     ) {
         return ApiResponse.onSuccess(measurementCommandService.deleteMeasurementRecords(measurementSessionId));
     }
-
-    private static final String MEASUREMENT_ANALYSIS_NOT_READY_RESPONSE = """
-            {
-              "isSuccess": false,
-              "code": "MEASUREMENT4005",
-              "message": "무지외반 또는 무좀 분석 결과가 아직 저장되지 않았습니다.",
-              "result": null
-            }
-            """;
 
     private static final String MEASUREMENT_BAD_REQUEST_RESPONSE = """
             {
