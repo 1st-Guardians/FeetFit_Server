@@ -183,6 +183,31 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     }
 
     @Override
+    public ReportResponseDTO.PressureHeatmapImageResultDTO savePressureHeatmapImage(
+            Long userId,
+            ReportRequestDTO.PressureHeatmapImageDTO request,
+            MultipartFile leftPressureHeatmapImage,
+            MultipartFile rightPressureHeatmapImage) {
+        MeasurementSession session = getValidatedReportWritableMeasurementSession(userId, request.getMeasurementSessionId());
+
+        ImageResponseDTO.UploadImageResultDTO leftUpload =
+                imageUploadService.upload("pressure-heatmap-left", leftPressureHeatmapImage);
+        ImageResponseDTO.UploadImageResultDTO rightUpload =
+                imageUploadService.upload("pressure-heatmap-right", rightPressureHeatmapImage);
+
+        DailyFootAnalysis analysis = findOrCreate(session);
+        analysis.updatePressureHeatmapImages(leftUpload.getImageUrl(), rightUpload.getImageUrl());
+
+        return ReportResponseDTO.PressureHeatmapImageResultDTO.builder()
+                .id(analysis.getId())
+                .measurementSessionId(session.getId())
+                .leftPressureHeatmapImageUrl(analysis.getLeftPressureHeatmapImageUrl())
+                .rightPressureHeatmapImageUrl(analysis.getRightPressureHeatmapImageUrl())
+                .updatedAt(analysis.getUpdatedAt())
+                .build();
+    }
+
+    @Override
     public ReportResponseDTO.PlantarFootprintImageResultDTO savePlantarFootprintImage(
             Long userId,
             ReportRequestDTO.PlantarFootprintImageDTO request,

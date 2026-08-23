@@ -223,6 +223,8 @@ public class ReportConverter {
                 .leftPressureImageUrl(analysis.getLeftPressureImageUrl())
                 .rightPressureImageUrl(analysis.getRightPressureImageUrl())
                 .plantarFootprintImageUrl(plantarFootprintImageUrl)
+                .leftPressureHeatmapImageUrl(analysis.getLeftPressureHeatmapImageUrl())
+                .rightPressureHeatmapImageUrl(analysis.getRightPressureHeatmapImageUrl())
                 .userFootSize(userFootSize)
                 .measuredLeftFootSizeMm(analysis.getMeasuredLeftFootSizeMm())
                 .measuredRightFootSizeMm(analysis.getMeasuredRightFootSizeMm())
