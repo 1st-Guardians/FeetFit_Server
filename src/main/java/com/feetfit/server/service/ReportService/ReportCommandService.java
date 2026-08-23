@@ -19,7 +19,9 @@ public interface ReportCommandService {
             Long userId,
             ReportRequestDTO.SaveTinaPedisAnalysisDTO request,
             MultipartFile suspiciousAreaMapImage,
-            MultipartFile originalFootImage
+            MultipartFile originalFootImage,
+            MultipartFile soleSuspiciousAreaMapImage,
+            MultipartFile soleOriginalFootImage
     );
 
     // 종합 발 분석 — 파트별 저장

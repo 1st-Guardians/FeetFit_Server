@@ -56,6 +56,12 @@ public class TinaPedisAnalysis extends BaseEntity {
     @Column(nullable = false)
     private String originalFootImageUrl;
 
+    @Column
+    private String soleSuspiciousAreaMapImageUrl;
+
+    @Column
+    private String soleOriginalFootImageUrl;
+
     @Column(nullable = false)
     private LocalDateTime recordedAt;
 
@@ -67,6 +73,8 @@ public class TinaPedisAnalysis extends BaseEntity {
             String totalScoreDescription,
             String suspiciousAreaMapImageUrl,
             String originalFootImageUrl,
+            String soleSuspiciousAreaMapImageUrl,
+            String soleOriginalFootImageUrl,
             LocalDateTime recordedAt
     ) {
         this.fungalSuspicionSafetyScore = fungalSuspicionSafetyScore;
@@ -76,6 +84,8 @@ public class TinaPedisAnalysis extends BaseEntity {
         this.totalScoreDescription = totalScoreDescription;
         this.suspiciousAreaMapImageUrl = suspiciousAreaMapImageUrl;
         this.originalFootImageUrl = originalFootImageUrl;
+        this.soleSuspiciousAreaMapImageUrl = soleSuspiciousAreaMapImageUrl;
+        this.soleOriginalFootImageUrl = soleOriginalFootImageUrl;
         this.recordedAt = recordedAt;
     }
 }

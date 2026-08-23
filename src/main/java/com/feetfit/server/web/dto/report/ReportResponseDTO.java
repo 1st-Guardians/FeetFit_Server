@@ -156,6 +156,12 @@ public class ReportResponseDTO {
         @Schema(description = "원본 발 이미지 URL", example = "https://example.com/tina-pedis/original.png")
         private String originalFootImageUrl;
 
+        @Schema(description = "발바닥 의심 부위 표시 이미지 URL", example = "https://example.com/tina-pedis/sole-map.png")
+        private String soleSuspiciousAreaMapImageUrl;
+
+        @Schema(description = "발바닥 원본 이미지 URL", example = "https://example.com/tina-pedis/sole-original.png")
+        private String soleOriginalFootImageUrl;
+
         @Schema(description = "분석 기록 시각", example = "2026-05-20T09:00:00")
         private LocalDateTime recordedAt;
 
