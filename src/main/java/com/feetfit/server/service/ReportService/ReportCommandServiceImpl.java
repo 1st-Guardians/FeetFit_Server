@@ -52,6 +52,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     private final UserHealthArticleRepository userHealthArticleRepository;
     private final PlantarFootprintRepository plantarFootprintRepository;
     private final PressureSensorReadingRepository pressureSensorReadingRepository;
+    private final MeasurementAnalysisStatusRepository measurementAnalysisStatusRepository;
     private final ImageUploadService imageUploadService;
     private final MeasurementCompletionService measurementCompletionService;
 
@@ -439,9 +440,14 @@ public class ReportCommandServiceImpl implements ReportCommandService {
             measurementCompletionService.refreshMetricReportCompleted(measurementSession);
         }
 
+        MeasurementAnalysisStatus completionStatus = measurementAnalysisStatusRepository
+                .findByMeasurementSessionId(measurementSession.getId())
+                .orElse(null);
+
         return ReportConverter.toSaveMetricResultResultDTO(
                 report, metricResult, allComplete, totalScore, missingMetrics,
-                matchedHealthTypes, matchedTodoCount, matchedArticleHealthTypes, matchedArticleCount);
+                matchedHealthTypes, matchedTodoCount, matchedArticleHealthTypes, matchedArticleCount,
+                completionStatus, measurementSession.getStatus());
     }
 
     // 단순 평균 totalScore 계산 (5개 지표 단순 평균)
