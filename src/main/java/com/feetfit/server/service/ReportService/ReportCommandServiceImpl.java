@@ -303,10 +303,16 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     }
 
     private DailyFootAnalysis findOrCreate(MeasurementSession session) {
-        return dailyFootAnalysisRepository.findByMeasurementSessionId(session.getId())
+        MeasurementSession lockedSession = lockMeasurementSession(session.getId());
+        return dailyFootAnalysisRepository.findByMeasurementSessionId(lockedSession.getId())
                 .orElseGet(() -> dailyFootAnalysisRepository.save(
-                        DailyFootAnalysis.builder().measurementSession(session).build()
+                        DailyFootAnalysis.builder().measurementSession(lockedSession).build()
                 ));
+    }
+
+    private MeasurementSession lockMeasurementSession(Long measurementSessionId) {
+        return measurementSessionRepository.findByIdForUpdate(measurementSessionId)
+                .orElseThrow(() -> new MeasurementHandler(ErrorStatus.MEASUREMENT_NOT_FOUND));
     }
 
     private PressureSensorReading replacePressureSensorReading(
@@ -361,16 +367,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
         MeasurementSession measurementSession = getValidatedReportWritableMeasurementSession(
                 userId, request.getMeasurementSessionId());
 
-        // 측정 세션에 대한 Report를 찾거나 생성
-        Report report = reportRepository.findByMeasurementSessionId(measurementSession.getId())
-                .orElseGet(() -> reportRepository.save(
-                        Report.builder()
-                                .measurementSession(measurementSession)
-                                .user(measurementSession.getUser())
-                                .reportDate(LocalDateTime.now())
-                                .totalScore(null)
-                                .build()
-                ));
+        Report report = findOrCreateReport(measurementSession);
 
         // 해당 metricType의 결과를 upsert
         GaugeStatus calculatedStatus = calculateGaugeStatus(request.getScore());
@@ -449,6 +446,19 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                 report, metricResult, allComplete, totalScore, missingMetrics,
                 matchedHealthTypes, matchedTodoCount, matchedArticleHealthTypes, matchedArticleCount,
                 allAnalysisResultsSaved);
+    }
+
+    private Report findOrCreateReport(MeasurementSession measurementSession) {
+        MeasurementSession lockedSession = lockMeasurementSession(measurementSession.getId());
+        return reportRepository.findByMeasurementSessionId(lockedSession.getId())
+                .orElseGet(() -> reportRepository.save(
+                        Report.builder()
+                                .measurementSession(lockedSession)
+                                .user(lockedSession.getUser())
+                                .reportDate(LocalDateTime.now())
+                                .totalScore(null)
+                                .build()
+                ));
     }
 
     // 단순 평균 totalScore 계산 (5개 지표 단순 평균)

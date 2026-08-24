@@ -114,10 +114,14 @@ public class MeasurementCompletionService {
     }
 
     private MeasurementAnalysisStatus findOrCreateForUpdate(MeasurementSession measurementSession) {
-        return measurementAnalysisStatusRepository.findByMeasurementSessionIdForUpdate(measurementSession.getId())
+        MeasurementSession lockedMeasurementSession = measurementSessionRepository
+                .findByIdForUpdate(measurementSession.getId())
+                .orElseThrow(() -> new MeasurementHandler(ErrorStatus.MEASUREMENT_NOT_FOUND));
+
+        return measurementAnalysisStatusRepository.findByMeasurementSessionIdForUpdate(lockedMeasurementSession.getId())
                 .orElseGet(() -> measurementAnalysisStatusRepository.saveAndFlush(
                         MeasurementAnalysisStatus.builder()
-                                .measurementSession(measurementSession)
+                                .measurementSession(lockedMeasurementSession)
                                 .build()
                 ));
     }
