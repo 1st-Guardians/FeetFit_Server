@@ -195,6 +195,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
         DailyFootAnalysis analysis = findOrCreate(session);
         analysis.updatePressure(request.getLeftPressurePercent(), request.getRightPressurePercent(),
                 leftUpload.getImageUrl(), rightUpload.getImageUrl());
+        measurementCompletionService.refreshPressureAnalysisCompleted(session);
         return buildDailyFootAnalysisResult(userId, analysis);
     }
 
@@ -259,7 +260,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                 rightUpload.getImageUrl(),
                 request.getPlantarFootprintAnalysisText()
         );
-        measurementCompletionService.refreshPressureAnalysisCompleted(session);
+        measurementCompletionService.refreshPhotoAnalysisCompleted(session);
 
         return ReportResponseDTO.PlantarFootprintImageResultDTO.builder()
                 .id(analysis.getId())
@@ -278,6 +279,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
         DailyFootAnalysis analysis = findOrCreate(session);
         analysis.updateMetrics(request.getMeasuredLeftFootSizeMm(), request.getMeasuredRightFootSizeMm(),
                 request.getLeftFootWidthMm(), request.getRightFootWidthMm());
+        measurementCompletionService.refreshPhotoAnalysisCompleted(session);
         return buildDailyFootAnalysisResult(userId, analysis);
     }
 
