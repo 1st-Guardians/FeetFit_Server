@@ -58,11 +58,11 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
         saved.updateStatus(MeasurementStatus.WAITING_FOR_PHOTO, null);
         measurementCompletionService.initialize(saved);
 
-        measurementSocketService.sendMeasurementStatusChanged(saved);
         measurementHardwareClient.requestInitialEnvironmentMeasurement(
                 saved.getId(),
                 authorizationHeader
         );
+        measurementSocketService.sendMeasurementStatusChanged(saved);
 
         return MeasurementConverter.toCreateMeasurementSessionResultDTO(saved);
     }
