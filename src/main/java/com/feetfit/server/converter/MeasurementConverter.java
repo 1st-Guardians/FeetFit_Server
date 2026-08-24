@@ -3,6 +3,7 @@ package com.feetfit.server.converter;
 import com.feetfit.server.domain.Device;
 import com.feetfit.server.domain.MeasurementSession;
 import com.feetfit.server.domain.User;
+import com.feetfit.server.service.MeasurementService.MeasurementFailureMessageResolver;
 import com.feetfit.server.web.dto.measurement.MeasurementResponseDTO;
 
 import java.time.LocalDateTime;
@@ -36,6 +37,7 @@ public class MeasurementConverter {
                 .status(measurementSession.getStatus())
                 .measurementDurationSec(measurementSession.getMeasurementDurationSec())
                 .failureReason(measurementSession.getFailureReason())
+                .failureMessage(MeasurementFailureMessageResolver.resolve(measurementSession.getFailureReason()))
                 .failureDetail(measurementSession.getFailureDetail())
                 .updatedAt(measurementSession.getUpdatedAt())
                 .build();

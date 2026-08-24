@@ -58,6 +58,7 @@ public class MeasurementSocketService {
                         .status(measurementSession.getStatus())
                         .statusMessage(resolveStatusMessage(measurementSession.getStatus()))
                         .failureReason(measurementSession.getFailureReason())
+                        .failureMessage(MeasurementFailureMessageResolver.resolve(measurementSession.getFailureReason()))
                         .failureDetail(measurementSession.getFailureDetail())
                         .shouldDisconnect(shouldDisconnect)
                         .sentAt(LocalDateTime.now())

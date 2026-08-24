@@ -126,7 +126,7 @@ public class MeasurementController {
                 - READY_FOR_PRESSURE 요청이 들어오면 백엔드는 트랜잭션 커밋 후 하드웨어 압력 및 온습도 측정 API를 호출합니다.
                 - ANALYZING 요청은 분석 중 상태만 갱신하며 하드웨어 API를 호출하지 않습니다.
                 - 같은 상태가 중복으로 들어오면 같은 하드웨어 작업 요청은 다시 보내지 않습니다.
-                - FAILED 요청 시 failureReason, failureDetail을 함께 보내면 측정 세션에 실패 원인을 저장하고 WebSocket으로 프론트에 전달합니다.
+                - FAILED 요청 시 failureReason, failureDetail을 함께 보내면 측정 세션에 실패 원인을 저장하고 failureMessage와 함께 WebSocket으로 프론트에 전달합니다.
                 - 상태 업데이트 성공 시 WebSocket으로 상태 메시지를 발행합니다. 단, COMPLETED 요청은 모든 완료 조건이 충족된 경우에만 완료 WebSocket을 발행합니다.
                 - COMPLETED/FAILED 메시지의 shouldDisconnect=true를 받은 프론트는 측정 세션 topic 구독을 해제하거나 WebSocket 연결을 종료하면 됩니다.
                 - PENDING/MEASURING/TRANSFERRING은 기존 DB 데이터 호환용 상태입니다.
