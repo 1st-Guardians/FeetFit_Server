@@ -17,6 +17,7 @@ import com.feetfit.server.web.dto.report.ReportRequestDTO;
 import com.feetfit.server.web.dto.report.ReportResponseDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -27,7 +28,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
-@Transactional
+@Transactional(isolation = Isolation.READ_COMMITTED)
 @RequiredArgsConstructor
 public class ReportCommandServiceImpl implements ReportCommandService {
 
@@ -76,8 +77,9 @@ public class ReportCommandServiceImpl implements ReportCommandService {
         float riskScore = ReportConverter.calculateHvaRiskScore(
                 request.getLeftToeAngleDegree(), request.getRightToeAngleDegree());
 
+        MeasurementSession lockedMeasurementSession = lockMeasurementSession(measurementSession.getId());
         HalluxValgusAnalysis saved = halluxValgusAnalysisRepository
-                .findByMeasurementSessionId(measurementSession.getId())
+                .findByMeasurementSessionId(lockedMeasurementSession.getId())
                 .map(existing -> {
                     existing.updateHalluxValgusAnalysis(
                             request.getLeftToeAngleDegree(), leftAnalysisText, leftImageUpload.getImageUrl(),
@@ -88,11 +90,11 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                 })
                 .orElseGet(() -> halluxValgusAnalysisRepository.save(
                         ReportConverter.toHalluxValgusAnalysis(
-                                measurementSession, request,
+                                lockedMeasurementSession, request,
                                 leftImageUpload.getImageUrl(), rightImageUpload.getImageUrl())
                 ));
 
-        measurementCompletionService.refreshPhotoAnalysisCompleted(measurementSession);
+        measurementCompletionService.refreshPhotoAnalysisCompleted(lockedMeasurementSession);
         return ReportConverter.toSaveHalluxValgusResultDTO(saved);
     }
 
@@ -118,7 +120,8 @@ public class ReportCommandServiceImpl implements ReportCommandService {
         ImageResponseDTO.UploadImageResultDTO soleOriginalFootUpload =
                 imageUploadService.upload("tina-pedis-sole-original", soleOriginalFootImage);
 
-        TinaPedisAnalysis saved = tinaPedisAnalysisRepository.findByMeasurementSessionId(measurementSession.getId())
+        MeasurementSession lockedMeasurementSession = lockMeasurementSession(measurementSession.getId());
+        TinaPedisAnalysis saved = tinaPedisAnalysisRepository.findByMeasurementSessionId(lockedMeasurementSession.getId())
                 .map(existing -> {
                     existing.updateTinaPedisAnalysis(
                             request.getFungalSuspicionSafetyScore(),
@@ -136,7 +139,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                 })
                 .orElseGet(() -> tinaPedisAnalysisRepository.save(
                         ReportConverter.toTinaPedisAnalysis(
-                                measurementSession,
+                                lockedMeasurementSession,
                                 request,
                                 suspiciousAreaMapUpload.getImageUrl(),
                                 originalFootUpload.getImageUrl(),
@@ -155,7 +158,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                 )
                 .orElse(null);
 
-        measurementCompletionService.refreshPhotoAnalysisCompleted(measurementSession);
+        measurementCompletionService.refreshPhotoAnalysisCompleted(lockedMeasurementSession);
         return ReportConverter.toTinaPedisAnalysisResultDTO(saved, previousAnalysis);
     }
 
@@ -483,9 +486,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     }
 
     private MeasurementSession getValidatedReportWritableMeasurementSession(Long userId, Long measurementSessionId) {
-        MeasurementSession measurementSession = measurementSessionRepository
-                .findById(measurementSessionId)
-                .orElseThrow(() -> new MeasurementHandler(ErrorStatus.MEASUREMENT_NOT_FOUND));
+        MeasurementSession measurementSession = lockMeasurementSession(measurementSessionId);
 
         if (!measurementSession.getUser().getId().equals(userId)) {
             throw new MeasurementHandler(ErrorStatus.MEASUREMENT_FORBIDDEN);
