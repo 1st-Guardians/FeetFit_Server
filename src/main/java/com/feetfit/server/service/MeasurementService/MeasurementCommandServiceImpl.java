@@ -19,6 +19,8 @@ import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -57,16 +59,19 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
         measurementCompletionService.initialize(saved);
 
         measurementSocketService.sendMeasurementStatusChanged(saved);
-        measurementHardwareClient.requestMeasurementStart(saved.getId(), authorizationHeader);
 
         return MeasurementConverter.toCreateMeasurementSessionResultDTO(saved);
     }
 
     @Override
     public MeasurementResponseDTO.UpdateMeasurementStatusResultDTO updateMeasurementStatus(
-            Long userId, Long measurementSessionId, MeasurementRequestDTO.UpdateMeasurementStatusDTO request) {
+            Long userId,
+            Long measurementSessionId,
+            MeasurementRequestDTO.UpdateMeasurementStatusDTO request,
+            String authorizationHeader) {
 
         MeasurementSession measurementSession = getOwnedMeasurementSession(userId, measurementSessionId);
+        MeasurementStatus previousStatus = measurementSession.getStatus();
 
         if (request.getStatus() == MeasurementStatus.COMPLETED) {
             measurementCompletionService.completeMeasurementIfReady(
@@ -92,7 +97,36 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
         if (measurementSession.getStatus() != MeasurementStatus.COMPLETED) {
             measurementSocketService.sendMeasurementStatusChanged(measurementSession);
         }
+        requestHardwareTaskIfNeeded(measurementSession, previousStatus, authorizationHeader);
         return MeasurementConverter.toUpdateMeasurementStatusResultDTO(measurementSession);
+    }
+
+    private void requestHardwareTaskIfNeeded(
+            MeasurementSession measurementSession,
+            MeasurementStatus previousStatus,
+            String authorizationHeader) {
+        MeasurementStatus currentStatus = measurementSession.getStatus();
+        if (previousStatus == currentStatus) {
+            return;
+        }
+
+        Runnable hardwareRequest = switch (currentStatus) {
+            case READY_FOR_PHOTO -> () -> measurementHardwareClient.requestPhotoCapture(
+                    measurementSession.getId(), authorizationHeader);
+            case READY_FOR_PRESSURE -> () -> measurementHardwareClient.requestPressureAndEnvironmentMeasurement(
+                    measurementSession.getId(), authorizationHeader);
+            default -> null;
+        };
+        if (hardwareRequest == null) {
+            return;
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                hardwareRequest.run();
+            }
+        });
     }
 
     @Override
