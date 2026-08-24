@@ -2,7 +2,6 @@ package com.feetfit.server.converter;
 
 import com.feetfit.server.domain.*;
 import com.feetfit.server.domain.enums.HealthType;
-import com.feetfit.server.domain.enums.MeasurementStatus;
 import com.feetfit.server.web.dto.report.ReportRequestDTO;
 import com.feetfit.server.web.dto.report.ReportResponseDTO;
 
@@ -313,8 +312,7 @@ public class ReportConverter {
             Integer matchedTodoCount,
             List<HealthType> matchedArticleHealthTypes,
             Integer matchedArticleCount,
-            MeasurementAnalysisStatus completionStatus,
-            MeasurementStatus measurementStatus
+            boolean allAnalysisResultsSaved
     ) {
         return ReportResponseDTO.SaveMetricResultResultDTO.builder()
                 .reportId(report.getId())
@@ -330,31 +328,9 @@ public class ReportConverter {
                 .matchedTodoCount(matchedTodoCount)
                 .matchedArticleHealthTypes(matchedArticleHealthTypes)
                 .matchedArticleCount(matchedArticleCount)
-                .measurementCompletionStatus(toMeasurementCompletionStatusDTO(completionStatus, measurementStatus))
+                .allAnalysisResultsSaved(allAnalysisResultsSaved)
                 .createdAt(saved.getCreatedAt())
                 .updatedAt(saved.getUpdatedAt())
-                .build();
-    }
-
-    public static ReportResponseDTO.MeasurementCompletionStatusDTO toMeasurementCompletionStatusDTO(
-            MeasurementAnalysisStatus completionStatus,
-            MeasurementStatus measurementStatus
-    ) {
-        if (completionStatus == null) {
-            return ReportResponseDTO.MeasurementCompletionStatusDTO.builder()
-                    .measurementStatus(measurementStatus)
-                    .build();
-        }
-
-        return ReportResponseDTO.MeasurementCompletionStatusDTO.builder()
-                .measurementStatus(measurementStatus)
-                .photoCaptureCompleted(completionStatus.isPhotoCaptureCompleted())
-                .photoAnalysisCompleted(completionStatus.isPhotoAnalysisCompleted())
-                .pressureCaptureCompleted(completionStatus.isPressureCaptureCompleted())
-                .pressureAnalysisCompleted(completionStatus.isPressureAnalysisCompleted())
-                .environmentAnalysisCompleted(completionStatus.isEnvironmentAnalysisCompleted())
-                .metricReportCompleted(completionStatus.isMetricReportCompleted())
-                .readyToComplete(completionStatus.isReadyToComplete())
                 .build();
     }
 

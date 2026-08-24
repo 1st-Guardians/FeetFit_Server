@@ -19,7 +19,7 @@ spring:
     show-sql: true
 
   flyway:
-    enabled: true
+    enabled: false
     baseline-on-migrate: true
     baseline-version: 0
     locations: classpath:db/migration
@@ -60,4 +60,4 @@ hardware:
     start-url: ${HARDWARE_MEASUREMENT_START_URL:https://bf29-2001-e60-3162-4147-da3a-ddff-fe82-9fa6.ngrok-free.app/api/reports/all}
 
 internal:
-  api-key: ${INTERNAL_API_KEY:}
+  api-key: feetfit-local-secret-2026
