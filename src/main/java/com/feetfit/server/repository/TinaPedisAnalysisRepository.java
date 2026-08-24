@@ -8,7 +8,11 @@ import java.util.Optional;
 
 public interface TinaPedisAnalysisRepository extends JpaRepository<TinaPedisAnalysis, Long> {
 
-    Optional<TinaPedisAnalysis> findByMeasurementSessionId(Long measurementSessionId);
+    Optional<TinaPedisAnalysis> findTopByMeasurementSessionIdOrderByUpdatedAtDescIdDesc(Long measurementSessionId);
+
+    default Optional<TinaPedisAnalysis> findByMeasurementSessionId(Long measurementSessionId) {
+        return findTopByMeasurementSessionIdOrderByUpdatedAtDescIdDesc(measurementSessionId);
+    }
 
     Optional<TinaPedisAnalysis> findTopByMeasurementSessionUserIdAndRecordedAtGreaterThanEqualAndRecordedAtLessThanOrderByRecordedAtDesc(
             Long userId,
