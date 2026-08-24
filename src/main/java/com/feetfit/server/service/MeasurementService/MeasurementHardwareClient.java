@@ -2,6 +2,7 @@ package com.feetfit.server.service.MeasurementService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -75,33 +76,37 @@ public class MeasurementHardwareClient {
             requestSpec.header(HttpHeaders.AUTHORIZATION, authorizationHeader);
         }
 
-        requestSpec
-                .bodyValue(Map.of("measurementSessionId", measurementSessionId))
-                .retrieve()
-                .toBodilessEntity()
-                .timeout(Duration.ofSeconds(10))
-                .doOnSuccess(response -> log.info(
-                        "Hardware task request accepted. taskName={}, url={}, measurementSessionId={}, status={}",
-                        taskName,
-                        requestUrl,
-                        measurementSessionId,
-                        response.getStatusCode()
-                ))
-                .doOnError(WebClientResponseException.class, e -> log.error(
-                        "Hardware task request failed. taskName={}, url={}, measurementSessionId={}, status={}, responseBody={}",
-                        taskName,
-                        requestUrl,
-                        measurementSessionId,
-                        e.getStatusCode(),
-                        e.getResponseBodyAsString()
-                ))
-                .doOnError(e -> !(e instanceof WebClientResponseException), e -> log.error(
-                        "Hardware task request failed. taskName={}, url={}, measurementSessionId={}",
-                        taskName,
-                        requestUrl,
-                        measurementSessionId,
-                        e
-                ))
-                .subscribe();
+        try {
+            ResponseEntity<Void> response = requestSpec
+                    .bodyValue(Map.of("measurementSessionId", measurementSessionId))
+                    .retrieve()
+                    .toBodilessEntity()
+                    .block(Duration.ofSeconds(10));
+
+            log.info(
+                    "Hardware task request accepted. taskName={}, url={}, measurementSessionId={}, status={}",
+                    taskName,
+                    requestUrl,
+                    measurementSessionId,
+                    response != null ? response.getStatusCode() : null
+            );
+        } catch (WebClientResponseException e) {
+            log.error(
+                    "Hardware task request failed. taskName={}, url={}, measurementSessionId={}, status={}, responseBody={}",
+                    taskName,
+                    requestUrl,
+                    measurementSessionId,
+                    e.getStatusCode(),
+                    e.getResponseBodyAsString()
+            );
+        } catch (Exception e) {
+            log.error(
+                    "Hardware task request failed. taskName={}, url={}, measurementSessionId={}",
+                    taskName,
+                    requestUrl,
+                    measurementSessionId,
+                    e
+            );
+        }
     }
 }
