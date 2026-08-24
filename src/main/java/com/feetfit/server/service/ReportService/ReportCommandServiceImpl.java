@@ -443,11 +443,12 @@ public class ReportCommandServiceImpl implements ReportCommandService {
         MeasurementAnalysisStatus completionStatus = measurementAnalysisStatusRepository
                 .findByMeasurementSessionId(measurementSession.getId())
                 .orElse(null);
+        boolean allAnalysisResultsSaved = completionStatus != null && completionStatus.isReadyToComplete();
 
         return ReportConverter.toSaveMetricResultResultDTO(
                 report, metricResult, allComplete, totalScore, missingMetrics,
                 matchedHealthTypes, matchedTodoCount, matchedArticleHealthTypes, matchedArticleCount,
-                completionStatus, measurementSession.getStatus());
+                allAnalysisResultsSaved);
     }
 
     // 단순 평균 totalScore 계산 (5개 지표 단순 평균)
