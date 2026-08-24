@@ -51,6 +51,12 @@ public class MeasurementHardwareClient {
     }
 
     private void requestHardwareTask(String taskName, String requestUrl, Long measurementSessionId, String authorizationHeader) {
+        log.info("Hardware task request sending. taskName={}, url={}, measurementSessionId={}",
+                taskName,
+                requestUrl,
+                measurementSessionId
+        );
+
         webClient.post()
                 .uri(requestUrl)
                 .header(HttpHeaders.AUTHORIZATION, authorizationHeader)
