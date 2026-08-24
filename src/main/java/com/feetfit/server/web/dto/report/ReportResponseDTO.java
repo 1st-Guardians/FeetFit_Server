@@ -2,6 +2,7 @@ package com.feetfit.server.web.dto.report;
 
 import com.feetfit.server.domain.enums.GaugeStatus;
 import com.feetfit.server.domain.enums.HealthType;
+import com.feetfit.server.domain.enums.MeasurementStatus;
 import com.feetfit.server.domain.enums.MetricType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
@@ -416,6 +417,38 @@ public class ReportResponseDTO {
     @Getter
     @NoArgsConstructor
     @AllArgsConstructor
+    @Schema(description = "측정 완료 조건 플래그 응답")
+    public static class MeasurementCompletionStatusDTO {
+
+        @Schema(description = "현재 측정 세션 상태", example = "ANALYZING")
+        private MeasurementStatus measurementStatus;
+
+        @Schema(description = "사진 촬영 결과 저장 완료 여부", example = "true")
+        private boolean photoCaptureCompleted;
+
+        @Schema(description = "사진 분석 결과 저장 완료 여부", example = "true")
+        private boolean photoAnalysisCompleted;
+
+        @Schema(description = "압력 센서 원본값 저장 완료 여부", example = "true")
+        private boolean pressureCaptureCompleted;
+
+        @Schema(description = "압력 분석 결과 저장 완료 여부", example = "true")
+        private boolean pressureAnalysisCompleted;
+
+        @Schema(description = "발 환경 분석 결과 저장 완료 여부", example = "true")
+        private boolean environmentAnalysisCompleted;
+
+        @Schema(description = "5개 요약 지표 저장 완료 여부", example = "true")
+        private boolean metricReportCompleted;
+
+        @Schema(description = "6개 완료 조건이 모두 충족되었는지 여부", example = "true")
+        private boolean readyToComplete;
+    }
+
+    @Builder
+    @Getter
+    @NoArgsConstructor
+    @AllArgsConstructor
     @Schema(description = "지표별 리포트 저장 응답")
     public static class SaveMetricResultResultDTO {
 
@@ -457,6 +490,9 @@ public class ReportResponseDTO {
 
         @Schema(description = "새로 매칭된 건강 뉴스 개수. 미완성 시 null", example = "4", nullable = true)
         private Integer matchedArticleCount;
+
+        @Schema(description = "측정 완료 조건 6개 플래그 상태")
+        private MeasurementCompletionStatusDTO measurementCompletionStatus;
 
         @Schema(description = "생성 시각", example = "2026-05-20T09:00:00")
         private LocalDateTime createdAt;
