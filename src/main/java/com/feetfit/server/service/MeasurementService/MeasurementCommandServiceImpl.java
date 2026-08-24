@@ -59,6 +59,10 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
         measurementCompletionService.initialize(saved);
 
         measurementSocketService.sendMeasurementStatusChanged(saved);
+        requestHardwareTaskAfterCommit(() -> measurementHardwareClient.requestInitialEnvironmentMeasurement(
+                saved.getId(),
+                authorizationHeader
+        ));
 
         return MeasurementConverter.toCreateMeasurementSessionResultDTO(saved);
     }
@@ -121,6 +125,10 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
             return;
         }
 
+        requestHardwareTaskAfterCommit(hardwareRequest);
+    }
+
+    private void requestHardwareTaskAfterCommit(Runnable hardwareRequest) {
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {

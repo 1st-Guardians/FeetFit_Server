@@ -60,6 +60,10 @@ public class MeasurementResponseDTO {
         private MeasurementFailureReason failureReason;
 
         @JsonInclude(JsonInclude.Include.NON_NULL)
+        @Schema(description = "측정 실패 시 프론트 표시용 안내 문구. status=FAILED일 때 반환", example = "사진 촬영 중 문제가 발생했습니다. 다시 촬영해 주세요.")
+        private String failureMessage;
+
+        @JsonInclude(JsonInclude.Include.NON_NULL)
         @Schema(description = "측정 실패 상세 설명. status=FAILED일 때 반환", example = "Camera timeout")
         private String failureDetail;
 
@@ -206,6 +210,10 @@ public class MeasurementResponseDTO {
         @JsonInclude(JsonInclude.Include.NON_NULL)
         @Schema(description = "측정 실패 원인. eventType=MEASUREMENT_FAILED일 때 반환", example = "CAMERA_ERROR")
         private MeasurementFailureReason failureReason;
+
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        @Schema(description = "측정 실패 시 프론트 표시용 안내 문구. eventType=MEASUREMENT_FAILED일 때 반환", example = "사진 촬영 중 문제가 발생했습니다. 다시 촬영해 주세요.")
+        private String failureMessage;
 
         @JsonInclude(JsonInclude.Include.NON_NULL)
         @Schema(description = "측정 실패 상세 설명. eventType=MEASUREMENT_FAILED일 때 반환", example = "Camera timeout")
