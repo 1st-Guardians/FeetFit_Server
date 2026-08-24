@@ -42,6 +42,7 @@ public class MeasurementCompletionService {
     private final PressureSensorReadingRepository pressureSensorReadingRepository;
     private final ReportRepository reportRepository;
     private final MetricAnalysisResultRepository metricAnalysisResultRepository;
+    private final MeasurementSessionRepository measurementSessionRepository;
     private final MeasurementSocketService measurementSocketService;
 
     public void initialize(MeasurementSession measurementSession) {
@@ -49,45 +50,42 @@ public class MeasurementCompletionService {
     }
 
     public void refreshCaptureCompletedByStatus(MeasurementSession measurementSession, MeasurementStatus status) {
-        MeasurementAnalysisStatus analysisStatus = findOrCreate(measurementSession);
+        MeasurementAnalysisStatus analysisStatus = findOrCreateForUpdate(measurementSession);
 
         if (status == MeasurementStatus.WAITING_FOR_PRESSURE
                 || status == MeasurementStatus.READY_FOR_PRESSURE
                 || status == MeasurementStatus.MEASURING_PRESSURE
                 || status == MeasurementStatus.ANALYZING) {
-            analysisStatus.completePhotoCapture();
+            refreshPhotoCaptureCompleted(measurementSession, analysisStatus);
         }
 
         if (status == MeasurementStatus.ANALYZING) {
-            analysisStatus.completePressureCapture();
+            refreshPressureCaptureCompleted(measurementSession, analysisStatus);
         }
 
         completeMeasurementIfReady(measurementSession, analysisStatus, null);
     }
 
     public void refreshPhotoAnalysisCompleted(MeasurementSession measurementSession) {
-        MeasurementAnalysisStatus analysisStatus = findOrCreate(measurementSession);
-        if (halluxValgusAnalysisRepository.existsByMeasurementSessionId(measurementSession.getId())
-                && tinaPedisAnalysisRepository.existsByMeasurementSessionId(measurementSession.getId())) {
-            analysisStatus.completePhotoCapture();
+        MeasurementAnalysisStatus analysisStatus = findOrCreateForUpdate(measurementSession);
+        refreshPhotoCaptureCompleted(measurementSession, analysisStatus);
+        if (hasRequiredPhotoAnalysis(measurementSession.getId())) {
             analysisStatus.completePhotoAnalysis();
         }
         completeMeasurementIfReady(measurementSession, analysisStatus, null);
     }
 
     public void refreshPressureAnalysisCompleted(MeasurementSession measurementSession) {
-        MeasurementAnalysisStatus analysisStatus = findOrCreate(measurementSession);
+        MeasurementAnalysisStatus analysisStatus = findOrCreateForUpdate(measurementSession);
+        refreshPressureCaptureCompleted(measurementSession, analysisStatus);
         dailyFootAnalysisRepository.findByMeasurementSessionId(measurementSession.getId())
                 .filter(this::hasRequiredPressureAnalysis)
-                .ifPresent(ignored -> {
-                    analysisStatus.completePressureCapture();
-                    analysisStatus.completePressureAnalysis();
-                });
+                .ifPresent(ignored -> analysisStatus.completePressureAnalysis());
         completeMeasurementIfReady(measurementSession, analysisStatus, null);
     }
 
     public void refreshEnvironmentAnalysisCompleted(MeasurementSession measurementSession) {
-        MeasurementAnalysisStatus analysisStatus = findOrCreate(measurementSession);
+        MeasurementAnalysisStatus analysisStatus = findOrCreateForUpdate(measurementSession);
         dailyFootAnalysisRepository.findByMeasurementSessionId(measurementSession.getId())
                 .filter(this::hasRequiredEnvironmentAnalysis)
                 .ifPresent(ignored -> analysisStatus.completeEnvironmentAnalysis());
@@ -95,7 +93,7 @@ public class MeasurementCompletionService {
     }
 
     public void refreshMetricReportCompleted(MeasurementSession measurementSession) {
-        MeasurementAnalysisStatus analysisStatus = findOrCreate(measurementSession);
+        MeasurementAnalysisStatus analysisStatus = findOrCreateForUpdate(measurementSession);
         reportRepository.findByMeasurementSessionId(measurementSession.getId())
                 .filter(this::hasRequiredMetricResults)
                 .ifPresent(ignored -> analysisStatus.completeMetricReport());
@@ -103,7 +101,7 @@ public class MeasurementCompletionService {
     }
 
     public void completeMeasurementIfReady(MeasurementSession measurementSession, Integer measurementDurationSec) {
-        completeMeasurementIfReady(measurementSession, findOrCreate(measurementSession), measurementDurationSec);
+        completeMeasurementIfReady(measurementSession, findOrCreateForUpdate(measurementSession), measurementDurationSec);
     }
 
     private MeasurementAnalysisStatus findOrCreate(MeasurementSession measurementSession) {
@@ -115,17 +113,84 @@ public class MeasurementCompletionService {
                 ));
     }
 
-    private boolean hasRequiredPressureAnalysis(DailyFootAnalysis analysis) {
-        Long measurementSessionId = analysis.getMeasurementSession().getId();
-        return hasText(analysis.getLeftPressureHeatmapImageUrl())
-                && hasText(analysis.getRightPressureHeatmapImageUrl())
-                && hasText(analysis.getLeftPlantarFootprintImageUrl())
+    private MeasurementAnalysisStatus findOrCreateForUpdate(MeasurementSession measurementSession) {
+        return measurementAnalysisStatusRepository.findByMeasurementSessionIdForUpdate(measurementSession.getId())
+                .orElseGet(() -> measurementAnalysisStatusRepository.saveAndFlush(
+                        MeasurementAnalysisStatus.builder()
+                                .measurementSession(measurementSession)
+                                .build()
+                ));
+    }
+
+    private void refreshPhotoCaptureCompleted(
+            MeasurementSession measurementSession,
+            MeasurementAnalysisStatus analysisStatus) {
+        if (hasRequiredPhotoCapture(measurementSession.getId())) {
+            analysisStatus.completePhotoCapture();
+        }
+    }
+
+    private void refreshPressureCaptureCompleted(
+            MeasurementSession measurementSession,
+            MeasurementAnalysisStatus analysisStatus) {
+        if (hasRequiredPressureCapture(measurementSession.getId())) {
+            analysisStatus.completePressureCapture();
+        }
+    }
+
+    private boolean hasRequiredPhotoCapture(Long measurementSessionId) {
+        boolean hasFootTopImage = tinaPedisAnalysisRepository.findByMeasurementSessionId(measurementSessionId)
+                .map(analysis -> hasText(analysis.getOriginalFootImageUrl()))
+                .orElse(false);
+        boolean hasSoleImages = dailyFootAnalysisRepository.findByMeasurementSessionId(measurementSessionId)
+                .map(analysis -> hasText(analysis.getLeftPlantarFootprintImageUrl())
+                        && hasText(analysis.getRightPlantarFootprintImageUrl()))
+                .orElse(false);
+        return hasFootTopImage && hasSoleImages;
+    }
+
+    private boolean hasRequiredPhotoAnalysis(Long measurementSessionId) {
+        return halluxValgusAnalysisRepository.existsByMeasurementSessionId(measurementSessionId)
+                && tinaPedisAnalysisRepository.existsByMeasurementSessionId(measurementSessionId)
+                && dailyFootAnalysisRepository.findByMeasurementSessionId(measurementSessionId)
+                .filter(this::hasRequiredFootSizeAnalysis)
+                .filter(this::hasRequiredPlantarFootprintAnalysis)
+                .isPresent();
+    }
+
+    private boolean hasRequiredFootSizeAnalysis(DailyFootAnalysis analysis) {
+        return analysis.getMeasuredLeftFootSizeMm() != null
+                && analysis.getMeasuredRightFootSizeMm() != null
+                && analysis.getLeftFootWidthMm() != null
+                && analysis.getRightFootWidthMm() != null;
+    }
+
+    private boolean hasRequiredPlantarFootprintAnalysis(DailyFootAnalysis analysis) {
+        return hasText(analysis.getLeftPlantarFootprintImageUrl())
                 && hasText(analysis.getRightPlantarFootprintImageUrl())
-                && hasText(analysis.getPlantarFootprintAnalysisText())
-                && pressureSensorReadingRepository.existsByMeasurementSessionIdAndFootSide(
-                        measurementSessionId, FootSide.LEFT)
-                && pressureSensorReadingRepository.existsByMeasurementSessionIdAndFootSide(
-                        measurementSessionId, FootSide.RIGHT);
+                && hasText(analysis.getPlantarFootprintAnalysisText());
+    }
+
+    private boolean hasRequiredPressureCapture(Long measurementSessionId) {
+        return hasTwelvePressureSensorValues(measurementSessionId, FootSide.LEFT)
+                && hasTwelvePressureSensorValues(measurementSessionId, FootSide.RIGHT);
+    }
+
+    private boolean hasTwelvePressureSensorValues(Long measurementSessionId, FootSide footSide) {
+        return pressureSensorReadingRepository
+                .findByMeasurementSessionIdAndFootSide(measurementSessionId, footSide)
+                .stream()
+                .anyMatch(reading -> reading.getSensorValues().size() == 12);
+    }
+
+    private boolean hasRequiredPressureAnalysis(DailyFootAnalysis analysis) {
+        return analysis.getLeftPressurePercent() != null
+                && analysis.getRightPressurePercent() != null
+                && hasText(analysis.getLeftPressureImageUrl())
+                && hasText(analysis.getRightPressureImageUrl())
+                && hasText(analysis.getLeftPressureHeatmapImageUrl())
+                && hasText(analysis.getRightPressureHeatmapImageUrl())
+                && hasRequiredPressureCapture(analysis.getMeasurementSession().getId());
     }
 
     private boolean hasRequiredEnvironmentAnalysis(DailyFootAnalysis analysis) {
@@ -151,12 +216,20 @@ public class MeasurementCompletionService {
             return;
         }
 
-        measurementSession.updateStatus(
+        MeasurementSession lockedMeasurementSession = measurementSessionRepository
+                .findByIdForUpdate(measurementSession.getId())
+                .orElseThrow(() -> new MeasurementHandler(ErrorStatus.MEASUREMENT_NOT_FOUND));
+        if (lockedMeasurementSession.getStatus() == MeasurementStatus.COMPLETED
+                || lockedMeasurementSession.getStatus() == MeasurementStatus.FAILED) {
+            return;
+        }
+
+        lockedMeasurementSession.updateStatus(
                 MeasurementStatus.COMPLETED,
-                resolveMeasurementDurationSec(measurementSession, measurementDurationSec)
+                resolveMeasurementDurationSec(lockedMeasurementSession, measurementDurationSec)
         );
-        measurementSession.clearFailure();
-        measurementSocketService.sendMeasurementStatusChanged(measurementSession);
+        lockedMeasurementSession.clearFailure();
+        measurementSocketService.sendMeasurementStatusChanged(lockedMeasurementSession);
     }
 
     private Integer resolveMeasurementDurationSec(MeasurementSession measurementSession, Integer requestedDurationSec) {
