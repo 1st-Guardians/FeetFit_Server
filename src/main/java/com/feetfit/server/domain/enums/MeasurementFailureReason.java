@@ -7,5 +7,6 @@ public enum MeasurementFailureReason {
     HARDWARE_TIMEOUT,
     NETWORK_ERROR,
     USER_CANCELLED,
+    REPORT_SAVE_ERROR,
     UNKNOWN
 }

@@ -23,7 +23,7 @@ public class MeasurementRequestDTO {
         @Schema(description = "측정 소요 시간(초)", example = "180")
         private Integer measurementDurationSec;
 
-        @Schema(description = "측정 실패 원인. status=FAILED일 때 사용", example = "CAMERA_ERROR", allowableValues = {"CAMERA_ERROR", "PRESSURE_SENSOR_ERROR", "AI_SERVER_ERROR", "HARDWARE_TIMEOUT", "NETWORK_ERROR", "USER_CANCELLED", "UNKNOWN"})
+        @Schema(description = "측정 실패 원인. status=FAILED일 때 사용", example = "CAMERA_ERROR", allowableValues = {"CAMERA_ERROR", "PRESSURE_SENSOR_ERROR", "AI_SERVER_ERROR", "HARDWARE_TIMEOUT", "NETWORK_ERROR", "USER_CANCELLED", "REPORT_SAVE_ERROR", "UNKNOWN"})
         private MeasurementFailureReason failureReason;
 
         @Schema(description = "측정 실패 상세 설명. status=FAILED일 때 사용", example = "Camera timeout")
