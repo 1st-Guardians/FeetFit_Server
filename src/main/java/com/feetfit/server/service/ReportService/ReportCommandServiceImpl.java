@@ -8,10 +8,12 @@ import com.feetfit.server.domain.*;
 import com.feetfit.server.domain.enums.GaugeStatus;
 import com.feetfit.server.domain.enums.HealthType;
 import com.feetfit.server.domain.enums.FootSide;
+import com.feetfit.server.domain.enums.MeasurementStatus;
 import com.feetfit.server.domain.enums.MetricType;
 import com.feetfit.server.repository.*;
 import com.feetfit.server.service.ImageService.ImageUploadService;
 import com.feetfit.server.service.MeasurementService.MeasurementCompletionService;
+import com.feetfit.server.service.MeasurementService.MeasurementSocketService;
 import com.feetfit.server.web.dto.image.ImageResponseDTO;
 import com.feetfit.server.web.dto.report.ReportRequestDTO;
 import com.feetfit.server.web.dto.report.ReportResponseDTO;
@@ -56,6 +58,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     private final MeasurementAnalysisStatusRepository measurementAnalysisStatusRepository;
     private final ImageUploadService imageUploadService;
     private final MeasurementCompletionService measurementCompletionService;
+    private final MeasurementSocketService measurementSocketService;
 
     @Override
     public ReportResponseDTO.SaveHalluxValgusResultDTO saveHalluxValgusAnalysis(
@@ -490,6 +493,10 @@ public class ReportCommandServiceImpl implements ReportCommandService {
 
         if (!measurementSession.getUser().getId().equals(userId)) {
             throw new MeasurementHandler(ErrorStatus.MEASUREMENT_FORBIDDEN);
+        }
+        if (measurementSession.getStatus() == MeasurementStatus.FAILED) {
+            measurementSocketService.sendMeasurementStatusChanged(measurementSession);
+            throw new MeasurementHandler(ErrorStatus.MEASUREMENT_ALREADY_FAILED);
         }
 
         return measurementSession;
