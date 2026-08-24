@@ -475,7 +475,7 @@ public class ReportController {
                 오늘의 발 상태 레벨과 코멘트를 저장합니다.
                 Authorization 헤더에 Bearer accessToken이 필요합니다.
                 - 같은 측정 세션 ID에 이미 저장된 데이터가 있으면 해당 파트만 덮어씁니다 (upsert).
-                - 측정 세션의 status가 분석 결과 저장 가능한 진행 상태여야 합니다.
+                - 측정 세션의 status와 무관하게 저장할 수 있습니다.
                 """
     )
     @ApiResponses({
@@ -869,7 +869,7 @@ public class ReportController {
                 Authorization 헤더에 Bearer accessToken이 필요합니다.
                 - 지표 타입: PRESSURE_BALANCE, HALLUX_VALGUS, ATHLETES_FOOT, SKIN_IRRITATION, FOOT_ENVIRONMENT
                 - 같은 측정 세션 + 같은 지표 타입이 이미 저장되어 있으면 덮어씁니다 (upsert).
-                - 측정 세션의 status가 분석 결과 저장 가능한 진행 상태여야 합니다.
+                - 측정 세션의 status와 무관하게 저장할 수 있습니다.
                 - 본인의 측정 세션 ID만 사용 가능합니다.
                 - advice는 정확히 2개여야 합니다.
                 - 5개 지표가 모두 저장 완료되면 totalScore(단순 평균)를 계산하고 발 관리 투두를 매칭합니다.

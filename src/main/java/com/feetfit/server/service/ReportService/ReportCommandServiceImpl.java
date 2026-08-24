@@ -8,7 +8,6 @@ import com.feetfit.server.domain.*;
 import com.feetfit.server.domain.enums.GaugeStatus;
 import com.feetfit.server.domain.enums.HealthType;
 import com.feetfit.server.domain.enums.FootSide;
-import com.feetfit.server.domain.enums.MeasurementStatus;
 import com.feetfit.server.domain.enums.MetricType;
 import com.feetfit.server.repository.*;
 import com.feetfit.server.service.ImageService.ImageUploadService;
@@ -475,21 +474,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
             throw new MeasurementHandler(ErrorStatus.MEASUREMENT_FORBIDDEN);
         }
 
-        if (!canSaveReportResult(measurementSession.getStatus())) {
-            throw new MeasurementHandler(ErrorStatus.MEASUREMENT_NOT_TRANSFERRING);
-        }
-
         return measurementSession;
-    }
-
-    private boolean canSaveReportResult(MeasurementStatus status) {
-        return status == MeasurementStatus.CAPTURING_PHOTO
-                || status == MeasurementStatus.WAITING_FOR_PRESSURE
-                || status == MeasurementStatus.READY_FOR_PRESSURE
-                || status == MeasurementStatus.MEASURING_PRESSURE
-                || status == MeasurementStatus.ANALYZING
-                || status == MeasurementStatus.MEASURING
-                || status == MeasurementStatus.TRANSFERRING;
     }
 
     private List<UserFootCareTodo> replaceTodayTodoAssignments(
