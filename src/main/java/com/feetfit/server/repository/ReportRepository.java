@@ -31,5 +31,9 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
             @Param("startDate") LocalDateTime startDate,
             @Param("endDate") LocalDateTime endDate);
 
-    Optional<Report> findByMeasurementSessionId(Long measurementSessionId);
+    Optional<Report> findTopByMeasurementSessionIdOrderByReportDateDescIdDesc(Long measurementSessionId);
+
+    default Optional<Report> findByMeasurementSessionId(Long measurementSessionId) {
+        return findTopByMeasurementSessionIdOrderByReportDateDescIdDesc(measurementSessionId);
+    }
 }
