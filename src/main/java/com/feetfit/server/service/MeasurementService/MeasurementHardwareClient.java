@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
@@ -51,17 +52,30 @@ public class MeasurementHardwareClient {
     }
 
     private void requestHardwareTask(String taskName, String requestUrl, Long measurementSessionId, String authorizationHeader) {
-        log.info("Hardware task request sending. taskName={}, url={}, measurementSessionId={}",
+        boolean hasAuthorization = StringUtils.hasText(authorizationHeader);
+        String authorizationPreview = hasAuthorization
+                ? authorizationHeader.substring(0, Math.min(authorizationHeader.length(), 12))
+                : null;
+
+        log.info("Hardware task request sending. taskName={}, url={}, measurementSessionId={}, hasAuthorization={}, authorizationPreview={}, body={}",
                 taskName,
                 requestUrl,
-                measurementSessionId
+                measurementSessionId,
+                hasAuthorization,
+                authorizationPreview,
+                Map.of("measurementSessionId", measurementSessionId)
         );
 
-        webClient.post()
+        WebClient.RequestBodySpec requestSpec = webClient.post()
                 .uri(requestUrl)
-                .header(HttpHeaders.AUTHORIZATION, authorizationHeader)
                 .contentType(MediaType.APPLICATION_JSON)
-                .accept(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON);
+
+        if (hasAuthorization) {
+            requestSpec.header(HttpHeaders.AUTHORIZATION, authorizationHeader);
+        }
+
+        requestSpec
                 .bodyValue(Map.of("measurementSessionId", measurementSessionId))
                 .retrieve()
                 .toBodilessEntity()
