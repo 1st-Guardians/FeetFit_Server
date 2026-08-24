@@ -45,8 +45,8 @@ public class MeasurementController {
                     - 사용자 단위 측정 상태 구독 topic: /topic/users/{userId}/measurements
                     - 응답의 webSocketTopic은 측정 세션별 구독 방 이름입니다.
                     - 세션 생성 후 프론트가 구독 중인 WebSocket topic으로 WAITING_FOR_PHOTO 상태 메시지를 발행합니다.
-                    - 세션 생성 직후에는 하드웨어 작업 요청을 보내지 않습니다.
-                    - 하드웨어 작업 요청은 상태 업데이트 시점에 단계별 API로 전달합니다.
+                    - 세션 생성 직후 WAITING_FOR_PHOTO 상태에서 하드웨어 압력 및 온습도 측정 API로 촬영 전 온습도 측정 요청을 보냅니다.
+                    - 이후 하드웨어 작업 요청은 상태 업데이트 시점에 단계별 API로 전달합니다.
                     - READY_FOR_PHOTO: 하드웨어 사진 촬영 API 호출
                     - READY_FOR_PRESSURE: 하드웨어 압력 및 온습도 측정 API 호출
                     - 하드웨어 요청에는 프론트가 보낸 Authorization 헤더 값을 그대로 전달합니다.
@@ -113,7 +113,7 @@ public class MeasurementController {
             description = """
                 측정 세션의 상태를 업데이트합니다.
                 Authorization 헤더에 Bearer accessToken이 필요합니다.
-                - WAITING_FOR_PHOTO: 사진 촬영 준비 대기. FSR 센서 판을 올리고 유리판 위에 올라와야 하는 상태입니다.
+                - WAITING_FOR_PHOTO: 사진 촬영 준비 대기. 세션 생성 직후 촬영 전 온습도 측정 요청이 함께 나가는 상태입니다.
                 - READY_FOR_PHOTO: 사진 촬영 준비 완료. 프론트가 사용자의 준비 완료 버튼 입력 후 보내는 상태입니다.
                 - CAPTURING_PHOTO: 발 사진 촬영 중. 사용자가 움직이지 않아야 하는 상태입니다.
                 - WAITING_FOR_PRESSURE: 사진 촬영 완료 후 압력 측정 준비 대기. 사용자가 내려와 FSR 센서 판을 내리고 다시 올라와야 하는 상태입니다.

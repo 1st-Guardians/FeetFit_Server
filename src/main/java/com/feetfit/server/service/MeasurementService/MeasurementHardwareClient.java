@@ -19,6 +19,9 @@ public class MeasurementHardwareClient {
 
     private final WebClient webClient;
 
+    @Value("${hardware.measurement.start-url}")
+    private String measurementStartUrl;
+
     @Value("${hardware.measurement.photo-capture-url}")
     private String photoCaptureUrl;
 
@@ -27,6 +30,15 @@ public class MeasurementHardwareClient {
 
     public void requestPhotoCapture(Long measurementSessionId, String authorizationHeader) {
         requestHardwareTask("photo-capture", photoCaptureUrl, measurementSessionId, authorizationHeader);
+    }
+
+    public void requestInitialEnvironmentMeasurement(Long measurementSessionId, String authorizationHeader) {
+        requestHardwareTask(
+                "measurement-start",
+                measurementStartUrl,
+                measurementSessionId,
+                authorizationHeader
+        );
     }
 
     public void requestPressureAndEnvironmentMeasurement(Long measurementSessionId, String authorizationHeader) {

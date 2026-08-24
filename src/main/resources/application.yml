@@ -57,9 +57,9 @@ file:
 
 hardware:
   measurement:
-    start-url: ${HARDWARE_MEASUREMENT_START_URL:https://bf29-2001-e60-3162-4147-da3a-ddff-fe82-9fa6.ngrok-free.app/api/reports/all}
-    photo-capture-url: ${HARDWARE_PHOTO_CAPTURE_URL:${HARDWARE_MEASUREMENT_START_URL:https://bf29-2001-e60-3162-4147-da3a-ddff-fe82-9fa6.ngrok-free.app/api/reports/all}}
-    pressure-environment-measurement-url: ${HARDWARE_PRESSURE_ENVIRONMENT_MEASUREMENT_URL:${HARDWARE_PRESSURE_MEASUREMENT_URL:${HARDWARE_MEASUREMENT_START_URL:https://bf29-2001-e60-3162-4147-da3a-ddff-fe82-9fa6.ngrok-free.app/api/reports/all}}}
+    start-url: ${HARDWARE_MEASUREMENT_START_URL:https://98a3-2001-e60-217e-e32c-da3a-ddff-fee8-b506.ngrok-free.app/measurement/start}
+    photo-capture-url: ${HARDWARE_PHOTO_CAPTURE_URL:https://98a3-2001-e60-217e-e32c-da3a-ddff-fee8-b506.ngrok-free.app/measurement/photo/start}
+    pressure-environment-measurement-url: ${HARDWARE_PRESSURE_ENVIRONMENT_MEASUREMENT_URL:https://98a3-2001-e60-217e-e32c-da3a-ddff-fee8-b506.ngrok-free.app/measurement/sensor/start}
 
 internal:
   api-key: feetfit-local-secret-2026
