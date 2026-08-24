@@ -19,12 +19,28 @@ public class MeasurementHardwareClient {
 
     private final WebClient webClient;
 
-    @Value("${hardware.measurement.start-url}")
-    private String measurementStartUrl;
+    @Value("${hardware.measurement.photo-capture-url}")
+    private String photoCaptureUrl;
 
-    public void requestMeasurementStart(Long measurementSessionId, String authorizationHeader) {
+    @Value("${hardware.measurement.pressure-environment-measurement-url}")
+    private String pressureEnvironmentMeasurementUrl;
+
+    public void requestPhotoCapture(Long measurementSessionId, String authorizationHeader) {
+        requestHardwareTask("photo-capture", photoCaptureUrl, measurementSessionId, authorizationHeader);
+    }
+
+    public void requestPressureAndEnvironmentMeasurement(Long measurementSessionId, String authorizationHeader) {
+        requestHardwareTask(
+                "pressure-environment-measurement",
+                pressureEnvironmentMeasurementUrl,
+                measurementSessionId,
+                authorizationHeader
+        );
+    }
+
+    private void requestHardwareTask(String taskName, String requestUrl, Long measurementSessionId, String authorizationHeader) {
         webClient.post()
-                .uri(measurementStartUrl)
+                .uri(requestUrl)
                 .header(HttpHeaders.AUTHORIZATION, authorizationHeader)
                 .contentType(MediaType.APPLICATION_JSON)
                 .accept(MediaType.APPLICATION_JSON)
@@ -33,21 +49,24 @@ public class MeasurementHardwareClient {
                 .toBodilessEntity()
                 .timeout(Duration.ofSeconds(10))
                 .doOnSuccess(response -> log.info(
-                        "Hardware measurement request accepted. url={}, measurementSessionId={}, status={}",
-                        measurementStartUrl,
+                        "Hardware task request accepted. taskName={}, url={}, measurementSessionId={}, status={}",
+                        taskName,
+                        requestUrl,
                         measurementSessionId,
                         response.getStatusCode()
                 ))
                 .doOnError(WebClientResponseException.class, e -> log.error(
-                        "Hardware measurement request failed. url={}, measurementSessionId={}, status={}, responseBody={}",
-                        measurementStartUrl,
+                        "Hardware task request failed. taskName={}, url={}, measurementSessionId={}, status={}, responseBody={}",
+                        taskName,
+                        requestUrl,
                         measurementSessionId,
                         e.getStatusCode(),
                         e.getResponseBodyAsString()
                 ))
                 .doOnError(e -> !(e instanceof WebClientResponseException), e -> log.error(
-                        "Hardware measurement request failed. url={}, measurementSessionId={}",
-                        measurementStartUrl,
+                        "Hardware task request failed. taskName={}, url={}, measurementSessionId={}",
+                        taskName,
+                        requestUrl,
                         measurementSessionId,
                         e
                 ))
