@@ -77,6 +77,14 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
         MeasurementSession measurementSession = getOwnedMeasurementSession(userId, measurementSessionId);
         MeasurementStatus previousStatus = measurementSession.getStatus();
 
+        if (previousStatus == MeasurementStatus.FAILED) {
+            measurementSocketService.sendMeasurementStatusChanged(measurementSession);
+            if (request.getStatus() == MeasurementStatus.FAILED) {
+                return MeasurementConverter.toUpdateMeasurementStatusResultDTO(measurementSession);
+            }
+            throw new MeasurementHandler(ErrorStatus.MEASUREMENT_ALREADY_FAILED);
+        }
+
         if (request.getStatus() == MeasurementStatus.COMPLETED) {
             measurementCompletionService.completeMeasurementIfReady(
                     measurementSession,
@@ -236,7 +244,7 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
 
     private MeasurementSession getOwnedMeasurementSession(Long userId, Long measurementSessionId) {
         MeasurementSession measurementSession = measurementSessionRepository
-                .findById(measurementSessionId)
+                .findByIdForUpdate(measurementSessionId)
                 .orElseThrow(() -> new MeasurementHandler(ErrorStatus.MEASUREMENT_NOT_FOUND));
 
         if (!measurementSession.getUser().getId().equals(userId)) {
