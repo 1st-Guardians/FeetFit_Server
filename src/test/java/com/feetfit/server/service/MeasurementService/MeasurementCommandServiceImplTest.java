@@ -52,7 +52,7 @@ class MeasurementCommandServiceImplTest {
     @Test
     void updateMeasurementStatus_toCompleted_delegatesPolicyAndReturnsUpdatedState() {
         MeasurementSession measurementSession = measurementSession(MeasurementStatus.TRANSFERRING);
-        given(measurementSessionRepository.findById(1L)).willReturn(Optional.of(measurementSession));
+        given(measurementSessionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(measurementSession));
         willAnswer(invocation -> {
             measurementSession.updateStatus(MeasurementStatus.COMPLETED, 180);
             return null;
@@ -60,7 +60,8 @@ class MeasurementCommandServiceImplTest {
                 .completeMeasurementIfReady(measurementSession, 180);
 
         MeasurementResponseDTO.UpdateMeasurementStatusResultDTO response =
-                measurementCommandService.updateMeasurementStatus(1L, 1L, completedRequest(180));
+                measurementCommandService.updateMeasurementStatus(
+                        1L, 1L, completedRequest(180), "Bearer test-token");
 
         assertThat(measurementSession.getStatus()).isEqualTo(MeasurementStatus.COMPLETED);
         assertThat(measurementSession.getMeasurementDurationSec()).isEqualTo(180);
@@ -74,13 +75,14 @@ class MeasurementCommandServiceImplTest {
     @Test
     void updateMeasurementStatus_toCompleted_whenAnalysisMissing_throwsMeasurementHandlerAndDoesNotSendSocket() {
         MeasurementSession measurementSession = measurementSession(MeasurementStatus.TRANSFERRING);
-        given(measurementSessionRepository.findById(1L)).willReturn(Optional.of(measurementSession));
+        given(measurementSessionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(measurementSession));
         willThrow(new MeasurementHandler(
                 com.feetfit.server.apiPayload.code.status.ErrorStatus._BAD_REQUEST))
                 .given(measurementCompletionService)
                 .completeMeasurementIfReady(measurementSession, 180);
 
-        assertThatThrownBy(() -> measurementCommandService.updateMeasurementStatus(1L, 1L, completedRequest(180)))
+        assertThatThrownBy(() -> measurementCommandService.updateMeasurementStatus(
+                1L, 1L, completedRequest(180), "Bearer test-token"))
                 .isInstanceOf(MeasurementHandler.class);
 
         assertThat(measurementSession.getStatus()).isEqualTo(MeasurementStatus.TRANSFERRING);
@@ -90,9 +92,10 @@ class MeasurementCommandServiceImplTest {
     @Test
     void updateMeasurementStatus_toCompleted_whenAlreadyCompleted_doesNotSendDuplicateSocket() {
         MeasurementSession measurementSession = measurementSession(MeasurementStatus.COMPLETED);
-        given(measurementSessionRepository.findById(1L)).willReturn(Optional.of(measurementSession));
+        given(measurementSessionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(measurementSession));
 
-        measurementCommandService.updateMeasurementStatus(1L, 1L, completedRequest(180));
+        measurementCommandService.updateMeasurementStatus(
+                1L, 1L, completedRequest(180), "Bearer test-token");
 
         assertThat(measurementSession.getStatus()).isEqualTo(MeasurementStatus.COMPLETED);
         verify(measurementCompletionService)

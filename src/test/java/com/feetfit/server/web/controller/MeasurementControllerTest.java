@@ -17,6 +17,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.jpa.mapping.JpaMetamodelMappingContext;
+import org.springframework.http.HttpHeaders;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
@@ -79,11 +80,13 @@ class MeasurementControllerTest {
                 org.mockito.ArgumentMatchers.argThat(request ->
                         request.getStatus() == MeasurementStatus.COMPLETED
                                 && request.getMeasurementDurationSec().equals(180)
-                )
+                ),
+                eq("Bearer test-token")
         ))
                 .willReturn(updateMeasurementStatusResponse());
 
         mockMvc.perform(patch("/api/measurement-sessions/{measurementSessionId}/status", 9L)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer test-token")
                         .param("status", "COMPLETED")
                         .param("measurementDurationSec", "180"))
                 .andExpect(status().isOk())
