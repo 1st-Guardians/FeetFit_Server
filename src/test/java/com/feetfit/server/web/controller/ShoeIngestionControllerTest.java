@@ -21,6 +21,7 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -79,5 +80,39 @@ class ShoeIngestionControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.result.requestedCount").value(1))
                 .andExpect(jsonPath("$.result.processedCount").value(1));
+    }
+
+    @Test
+    void routesReviewedRunRepeatContractToTargetedServiceMethod() throws Exception {
+        when(shoeIngestionService.importRunRepeatTargeted(any())).thenReturn(
+                ShoeIngestionResponseDTO.ImportResult.builder()
+                        .requestedCount(1)
+                        .processedCount(1)
+                        .items(List.of())
+                        .build());
+
+        mockMvc.perform(post("/internal/shoes/imports/runrepeat/targeted")
+                        .header(InternalApiKeyInterceptor.INTERNAL_API_KEY_HEADER, "test-service-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "source":"RUNREPEAT",
+                                  "items":[{
+                                    "externalKey":"100",
+                                    "targetGoodsNo":"100",
+                                    "brandName":"RunRepeat Brand",
+                                    "shoeName":"RunRepeat Shoe",
+                                    "sourceUrl":"https://runrepeat.com/example",
+                                    "capturedAt":"2026-08-23T12:05:00",
+                                    "parserVersion":"runrepeat-html-v1",
+                                    "rawMetrics":[]
+                                  }]
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result.requestedCount").value(1))
+                .andExpect(jsonPath("$.result.processedCount").value(1));
+
+        verify(shoeIngestionService).importRunRepeatTargeted(any());
     }
 }

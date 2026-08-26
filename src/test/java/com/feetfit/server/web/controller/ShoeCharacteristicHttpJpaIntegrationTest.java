@@ -64,6 +64,8 @@ class ShoeCharacteristicHttpJpaIntegrationTest {
                 .andExpect(jsonPath("$.result.id").value(target.getId()))
                 .andExpect(jsonPath("$.result.brandName").value("Test Brand"))
                 .andExpect(jsonPath("$.result.shoeName").value("Width Target"))
+                .andExpect(jsonPath("$.result.imageUrl")
+                        .value("https://image.musinsa.com/width-target.jpg"))
                 .andExpect(jsonPath("$.result.overallRating").value(4.8))
                 .andExpect(jsonPath("$.result.price").value(120000))
                 .andExpect(jsonPath("$.result.fitScore").value(nullValue()))
@@ -126,7 +128,7 @@ class ShoeCharacteristicHttpJpaIntegrationTest {
                                       "modelCode":"WIDTH-TARGET",
                                       "musinsaUrl":"https://www.musinsa.com/products/width-target",
                                       "price":120000,
-                                      "imageUrl":null,
+                                      "imageUrl":"https://image.musinsa.com/width-target.jpg",
                                       "overallRating":4.8,
                                       "reviewCount":0,
                                       "reviews":[]

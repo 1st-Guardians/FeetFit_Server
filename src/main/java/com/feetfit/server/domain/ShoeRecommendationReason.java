@@ -10,7 +10,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "shoe_recommendation_reason")
+@Table(
+        name = "shoe_recommendation_reason",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uq_shoe_recommendation_reason_type",
+                columnNames = {"shoe_recommendation_id", "reason_type"}
+        )
+)
 @Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

@@ -35,13 +35,14 @@ public class ShoeConverter {
     }
 
     public static ShoeResponseDTO.ShoeListResultDTO toShoeListResultDTO(
-            Page<Shoe> shoePage, Map<Long, Float> fitScoreMap) {
+            Page<Shoe> shoePage, Map<Long, Float> fitScoreMap, Long measurementSessionId) {
 
         List<ShoeResponseDTO.ShoeItemDTO> shoes = shoePage.getContent().stream()
                 .map(shoe -> toShoeItemDTO(shoe, fitScoreMap.get(shoe.getId())))
                 .collect(Collectors.toList());
 
         return ShoeResponseDTO.ShoeListResultDTO.builder()
+                .measurementSessionId(measurementSessionId)
                 .shoes(shoes)
                 .currentPage(shoePage.getNumber())
                 .totalPages(shoePage.getTotalPages())
@@ -73,8 +74,9 @@ public class ShoeConverter {
     }
 
     public static ShoeResponseDTO.ShoeRecommendTop3ResultDTO toShoeRecommendTop3ResultDTO(
-            List<Shoe> shoes, Map<Long, Float> fitScoreMap) {
+            List<Shoe> shoes, Map<Long, Float> fitScoreMap, Long measurementSessionId) {
         return ShoeResponseDTO.ShoeRecommendTop3ResultDTO.builder()
+                .measurementSessionId(measurementSessionId)
                 .shoes(shoes.stream()
                         .map(shoe -> toShoeRecommendTop3ItemDTO(shoe, fitScoreMap.get(shoe.getId())))
                         .collect(Collectors.toList()))
@@ -100,8 +102,10 @@ public class ShoeConverter {
     public static ShoeResponseDTO.ShoeDetailResultDTO toShoeDetailResultDTO(
             Shoe shoe,
             ShoeRecommendation recommendation,
-            List<ShoeResponseDTO.ReasonResultDTO> reasons) {
+            List<ShoeResponseDTO.ReasonResultDTO> reasons,
+            Long measurementSessionId) {
         return ShoeResponseDTO.ShoeDetailResultDTO.builder()
+                .measurementSessionId(measurementSessionId)
                 .id(shoe.getId())
                 .brandName(shoe.getBrandName())
                 .shoeName(shoe.getShoeName())
@@ -156,11 +160,13 @@ public class ShoeConverter {
     }
 
     public static ShoeResponseDTO.SaveShoeRecommendationResultDTO toSaveShoeRecommendationResultDTO(
+            Long measurementSessionId,
             int requestedCount,
             int processedCount,
             List<Long> skippedShoeIds,
             List<Long> invalidReviewShoeIds) {
         return ShoeResponseDTO.SaveShoeRecommendationResultDTO.builder()
+                .measurementSessionId(measurementSessionId)
                 .requestedCount(requestedCount)
                 .processedCount(processedCount)
                 .skippedShoeIds(skippedShoeIds)

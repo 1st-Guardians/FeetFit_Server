@@ -5,6 +5,7 @@ import com.feetfit.server.domain.Shoe;
 import com.feetfit.server.domain.enums.ShoeLabCharacteristic;
 import com.feetfit.server.repository.ShoeLabMeasurementRepository;
 import com.feetfit.server.repository.ShoeLabMetricRepository;
+import com.feetfit.server.repository.ShoeImportAuditRepository;
 import com.feetfit.server.repository.ShoeRepository;
 import com.feetfit.server.repository.ShoeReviewRepository;
 import org.junit.jupiter.api.Test;
@@ -42,6 +43,7 @@ class ShoeIngestionHttpJpaIntegrationTest {
     @Autowired ShoeReviewRepository shoeReviewRepository;
     @Autowired ShoeLabMeasurementRepository labMeasurementRepository;
     @Autowired ShoeLabMetricRepository labMetricRepository;
+    @Autowired ShoeImportAuditRepository auditRepository;
 
     @Test
     void crawlerContractsTravelThroughHttpAndPersistMusinsaThenRunRepeat() throws Exception {
@@ -88,17 +90,18 @@ class ShoeIngestionHttpJpaIntegrationTest {
                             .isEqualTo("발볼이 편하고\n오래 신어도 괜찮았어요.");
                 });
 
-        mockMvc.perform(post("/internal/shoes/imports/runrepeat")
+        mockMvc.perform(post("/internal/shoes/imports/runrepeat/targeted")
                         .header(InternalApiKeyInterceptor.INTERNAL_API_KEY_HEADER, "test-service-key")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
                                   "source":"RUNREPEAT",
                                   "items":[{
-                                    "externalKey":"shoe-http",
+                                    "externalKey":"6371095",
+                                    "targetGoodsNo":"6371095",
                                     "brandName":"RunRepeat Brand",
                                     "shoeName":"RunRepeat Shoe",
-                                    "modelCode":"KI3032",
+                                    "modelCode":"RR-KI3032-SOURCE",
                                     "sourceUrl":"https://runrepeat.com/shoe-http",
                                     "capturedAt":"2026-08-23T17:05:00",
                                     "parserVersion":"runrepeat-html-v1",
@@ -130,7 +133,10 @@ class ShoeIngestionHttpJpaIntegrationTest {
         var snapshots = labMeasurementRepository.findByShoeIdAndSourceOrderByCapturedAtDescIdDesc(
                 shoe.getId(), "RUNREPEAT");
         assertThat(snapshots).singleElement()
-                .satisfies(snapshot -> assertThat(snapshot.getTestedSize()).isEqualTo("US 9"));
+                .satisfies(snapshot -> {
+                    assertThat(snapshot.getTestedSize()).isEqualTo("US 9");
+                    assertThat(snapshot.getSourceModelCode()).isEqualTo("RR-KI3032-SOURCE");
+                });
         assertThat(labMetricRepository.findByLabMeasurementIdInOrderByIdAsc(
                 snapshots.stream().map(snapshot -> snapshot.getId()).toList()))
                 .singleElement()
@@ -140,5 +146,55 @@ class ShoeIngestionHttpJpaIntegrationTest {
                     assertThat(metric.getValue()).isEqualByComparingTo("93.400000");
                     assertThat(metric.getAverageValue()).isEqualByComparingTo("95.200000");
                 });
+    }
+
+    @Test
+    void runRepeatEndpointsRejectWrongTargetShapeBeforeAuditingOrPersisting() throws Exception {
+        long auditsBefore = auditRepository.count();
+        long snapshotsBefore = labMeasurementRepository.count();
+
+        mockMvc.perform(post("/internal/shoes/imports/runrepeat")
+                        .header(InternalApiKeyInterceptor.INTERNAL_API_KEY_HEADER, "test-service-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "source":"RUNREPEAT",
+                                  "items":[{
+                                    "externalKey":"100",
+                                    "targetGoodsNo":"100",
+                                    "brandName":"Brand",
+                                    "shoeName":"Shoe",
+                                    "sourceUrl":"https://runrepeat.com/wrong-legacy-shape",
+                                    "capturedAt":"2026-08-23T18:00:00",
+                                    "parserVersion":"runrepeat-html-v1",
+                                    "rawMetrics":[]
+                                  }]
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON400"));
+
+        mockMvc.perform(post("/internal/shoes/imports/runrepeat/targeted")
+                        .header(InternalApiKeyInterceptor.INTERNAL_API_KEY_HEADER, "test-service-key")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "source":"RUNREPEAT",
+                                  "items":[{
+                                    "externalKey":"100",
+                                    "brandName":"Brand",
+                                    "shoeName":"Shoe",
+                                    "sourceUrl":"https://runrepeat.com/missing-target",
+                                    "capturedAt":"2026-08-23T18:00:00",
+                                    "parserVersion":"runrepeat-html-v1",
+                                    "rawMetrics":[]
+                                  }]
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COMMON400"));
+
+        assertThat(auditRepository.count()).isEqualTo(auditsBefore);
+        assertThat(labMeasurementRepository.count()).isEqualTo(snapshotsBefore);
     }
 }

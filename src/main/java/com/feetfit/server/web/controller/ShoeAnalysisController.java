@@ -35,9 +35,11 @@ public class ShoeAnalysisController {
 
     @GetMapping("/shoes/{shoeId}/recommendation-summary-context")
     public ApiResponse<ShoeAnalysisResponseDTO.RecommendationSummaryContext> getRecommendationSummaryContext(
-            @PathVariable @Min(1) Long shoeId) {
+            @PathVariable @Min(1) Long shoeId,
+            @RequestParam @Min(1) Long measurementSessionId) {
         Long userId = findLoginUser.getCurrentUserId();
         return ApiResponse.onSuccess(
-                shoeAnalysisQueryService.getRecommendationSummaryContext(userId, shoeId));
+                shoeAnalysisQueryService.getRecommendationSummaryContext(
+                        userId, measurementSessionId, shoeId));
     }
 }

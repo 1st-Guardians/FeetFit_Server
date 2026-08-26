@@ -19,12 +19,13 @@ public interface ShoeRepository extends JpaRepository<Shoe, Long> {
     // 관심도순
     Page<Shoe> findAllByOrderByClickCountDesc(Pageable pageable);
 
-    // 발 적합도순 (해당 유저의 fitScore 기준)
+    // 발 적합도순 (하나의 완료된 측정 세션 기준)
     @Query("SELECT s FROM Shoe s " +
             "JOIN ShoeRecommendation r ON r.shoe.id = s.id " +
-            "WHERE r.user.id = :userId " +
-            "ORDER BY r.fitScore DESC")
-    Page<Shoe> findAllByFitScoreDesc(@Param("userId") Long userId, Pageable pageable);
+            "WHERE r.measurementSession.id = :measurementSessionId " +
+            "ORDER BY r.fitScore DESC, s.id ASC")
+    Page<Shoe> findAllByFitScoreDesc(
+            @Param("measurementSessionId") Long measurementSessionId, Pageable pageable);
 
     // 신발 클릭 수 증가
     @Modifying(clearAutomatically = true)
@@ -37,9 +38,10 @@ public interface ShoeRepository extends JpaRepository<Shoe, Long> {
     // 추천 신발 3종
     @Query("SELECT s FROM Shoe s " +
             "JOIN ShoeRecommendation r ON r.shoe.id = s.id " +
-            "WHERE r.user.id = :userId " +
+            "WHERE r.measurementSession.id = :measurementSessionId " +
             "ORDER BY r.fitScore DESC, s.id ASC")
-    List<Shoe> findTop3ByFitScoreDesc(@Param("userId") Long userId, Pageable pageable);
+    List<Shoe> findTop3ByFitScoreDesc(
+            @Param("measurementSessionId") Long measurementSessionId, Pageable pageable);
 
     Optional<Shoe> findByMusinsaGoodsNo(String musinsaGoodsNo);
 

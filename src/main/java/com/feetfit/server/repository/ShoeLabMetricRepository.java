@@ -14,8 +14,12 @@ public interface ShoeLabMetricRepository extends JpaRepository<ShoeLabMetric, Lo
     List<ShoeLabMetric> findByLabMeasurementIdOrderByIdAsc(Long measurementId);
 
     /**
-     * Reads only one compatible cohort from each shoe's latest RunRepeat
-     * snapshot. Final source-name and duplicate checks remain in the service.
+     * Reads candidates from each shoe's latest source snapshot.
+     *
+     * String-shape compatibility is intentionally evaluated in Java. Applying
+     * lower/trim/coalesce to columns and comparing those expressions with JDBC
+     * string parameters is not portable across MySQL schemas whose historical
+     * columns use different utf8mb4 collations.
      */
     @Query("""
             select metric
@@ -23,14 +27,6 @@ public interface ShoeLabMetricRepository extends JpaRepository<ShoeLabMetric, Lo
             join fetch metric.labMeasurement measurement
             where measurement.source = :source
               and metric.canonicalCharacteristic = :characteristic
-              and lower(trim(coalesce(metric.unit, ''))) = :unit
-              and lower(trim(coalesce(metric.methodName, ''))) = :methodName
-              and lower(trim(coalesce(metric.methodVersion, ''))) = :methodVersion
-              and lower(trim(coalesce(metric.location, ''))) = :location
-              and lower(trim(coalesce(metric.variant, ''))) = :variant
-              and lower(trim(metric.comparisonCohort)) = :comparisonCohort
-              and (:testedSize = '' or
-                   lower(trim(coalesce(metric.testedSize, measurement.testedSize, ''))) = :testedSize)
               and not exists (
                 select newer.id
                 from ShoeLabMeasurement newer
@@ -48,14 +44,7 @@ public interface ShoeLabMetricRepository extends JpaRepository<ShoeLabMetric, Lo
               )
             order by measurement.id asc, metric.id asc
             """)
-    List<ShoeLabMetric> findLatestCompatibleMetrics(
+    List<ShoeLabMetric> findLatestMetricsBySourceAndCharacteristic(
             @Param("source") String source,
-            @Param("characteristic") ShoeLabCharacteristic characteristic,
-            @Param("unit") String unit,
-            @Param("methodName") String methodName,
-            @Param("methodVersion") String methodVersion,
-            @Param("location") String location,
-            @Param("variant") String variant,
-            @Param("comparisonCohort") String comparisonCohort,
-            @Param("testedSize") String testedSize);
+            @Param("characteristic") ShoeLabCharacteristic characteristic);
 }

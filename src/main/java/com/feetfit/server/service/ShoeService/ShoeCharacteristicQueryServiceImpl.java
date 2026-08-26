@@ -112,19 +112,10 @@ public class ShoeCharacteristicQueryServiceImpl implements ShoeCharacteristicQue
             return List.of();
         }
 
-        String testedSize = requiresEqualTestedSize(target.getCanonicalCharacteristic())
-                ? normalize(effectiveTestedSize(target))
-                : "";
-        List<ShoeLabMetric> cohortRows = metricRepository.findLatestCompatibleMetrics(
-                RUNREPEAT,
-                target.getCanonicalCharacteristic(),
-                normalizedOrEmpty(target.getUnit()),
-                normalizedOrEmpty(target.getMethodName()),
-                normalizedOrEmpty(target.getMethodVersion()),
-                normalizedOrEmpty(target.getLocation()),
-                normalizedOrEmpty(target.getVariant()),
-                normalize(target.getComparisonCohort()),
-                testedSize == null ? "" : testedSize);
+        List<ShoeLabMetric> cohortRows =
+                metricRepository.findLatestMetricsBySourceAndCharacteristic(
+                        RUNREPEAT,
+                        target.getCanonicalCharacteristic());
 
         Map<Long, List<ShoeLabMetric>> rowsBySnapshot = cohortRows.stream()
                 .filter(metric -> metric.getValue() != null)
@@ -229,11 +220,6 @@ public class ShoeCharacteristicQueryServiceImpl implements ShoeCharacteristicQue
             return null;
         }
         return value.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
-    }
-
-    private String normalizedOrEmpty(String value) {
-        String normalized = normalize(value);
-        return normalized == null ? "" : normalized;
     }
 
     private String firstNonBlank(String first, String second) {

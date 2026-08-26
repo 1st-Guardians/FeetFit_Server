@@ -7,9 +7,7 @@ import com.feetfit.server.domain.User;
 import com.feetfit.server.domain.enums.MeasurementStatus;
 import com.feetfit.server.domain.enums.SocialType;
 import com.feetfit.server.domain.enums.UserStatus;
-import com.feetfit.server.repository.HalluxValgusAnalysisRepository;
 import com.feetfit.server.repository.MeasurementSessionRepository;
-import com.feetfit.server.repository.TinaPedisAnalysisRepository;
 import com.feetfit.server.repository.UserRepository;
 import com.feetfit.server.web.dto.measurement.MeasurementRequestDTO;
 import com.feetfit.server.web.dto.measurement.MeasurementResponseDTO;
@@ -25,6 +23,8 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willAnswer;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -44,39 +44,45 @@ class MeasurementCommandServiceImplTest {
     private MeasurementHardwareClient measurementHardwareClient;
 
     @Mock
-    private TinaPedisAnalysisRepository tinaPedisAnalysisRepository;
-
-    @Mock
-    private HalluxValgusAnalysisRepository halluxValgusAnalysisRepository;
+    private MeasurementCompletionService measurementCompletionService;
 
     @InjectMocks
     private MeasurementCommandServiceImpl measurementCommandService;
 
     @Test
-    void updateMeasurementStatus_toCompleted_whenAnalysesReady_marksCompletedAndSendsSocket() {
+    void updateMeasurementStatus_toCompleted_delegatesPolicyAndReturnsUpdatedState() {
         MeasurementSession measurementSession = measurementSession(MeasurementStatus.TRANSFERRING);
-        given(measurementSessionRepository.findById(1L)).willReturn(Optional.of(measurementSession));
-        given(halluxValgusAnalysisRepository.existsByMeasurementSessionId(1L)).willReturn(true);
-        given(tinaPedisAnalysisRepository.existsByMeasurementSessionId(1L)).willReturn(true);
+        given(measurementSessionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(measurementSession));
+        willAnswer(invocation -> {
+            measurementSession.updateStatus(MeasurementStatus.COMPLETED, 180);
+            return null;
+        }).given(measurementCompletionService)
+                .completeMeasurementIfReady(measurementSession, 180);
 
         MeasurementResponseDTO.UpdateMeasurementStatusResultDTO response =
-                measurementCommandService.updateMeasurementStatus(1L, 1L, completedRequest(180));
+                measurementCommandService.updateMeasurementStatus(
+                        1L, 1L, completedRequest(180), "Bearer test-token");
 
         assertThat(measurementSession.getStatus()).isEqualTo(MeasurementStatus.COMPLETED);
         assertThat(measurementSession.getMeasurementDurationSec()).isEqualTo(180);
         assertThat(response.getStatus()).isEqualTo(MeasurementStatus.COMPLETED);
         assertThat(response.getMeasurementDurationSec()).isEqualTo(180);
-        verify(measurementSocketService).sendMeasurementStatusChanged(measurementSession);
+        verify(measurementCompletionService)
+                .completeMeasurementIfReady(measurementSession, 180);
+        verify(measurementSocketService, never()).sendMeasurementStatusChanged(measurementSession);
     }
 
     @Test
     void updateMeasurementStatus_toCompleted_whenAnalysisMissing_throwsMeasurementHandlerAndDoesNotSendSocket() {
         MeasurementSession measurementSession = measurementSession(MeasurementStatus.TRANSFERRING);
-        given(measurementSessionRepository.findById(1L)).willReturn(Optional.of(measurementSession));
-        given(halluxValgusAnalysisRepository.existsByMeasurementSessionId(1L)).willReturn(true);
-        given(tinaPedisAnalysisRepository.existsByMeasurementSessionId(1L)).willReturn(false);
+        given(measurementSessionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(measurementSession));
+        willThrow(new MeasurementHandler(
+                com.feetfit.server.apiPayload.code.status.ErrorStatus._BAD_REQUEST))
+                .given(measurementCompletionService)
+                .completeMeasurementIfReady(measurementSession, 180);
 
-        assertThatThrownBy(() -> measurementCommandService.updateMeasurementStatus(1L, 1L, completedRequest(180)))
+        assertThatThrownBy(() -> measurementCommandService.updateMeasurementStatus(
+                1L, 1L, completedRequest(180), "Bearer test-token"))
                 .isInstanceOf(MeasurementHandler.class);
 
         assertThat(measurementSession.getStatus()).isEqualTo(MeasurementStatus.TRANSFERRING);
@@ -86,13 +92,14 @@ class MeasurementCommandServiceImplTest {
     @Test
     void updateMeasurementStatus_toCompleted_whenAlreadyCompleted_doesNotSendDuplicateSocket() {
         MeasurementSession measurementSession = measurementSession(MeasurementStatus.COMPLETED);
-        given(measurementSessionRepository.findById(1L)).willReturn(Optional.of(measurementSession));
-        given(halluxValgusAnalysisRepository.existsByMeasurementSessionId(1L)).willReturn(true);
-        given(tinaPedisAnalysisRepository.existsByMeasurementSessionId(1L)).willReturn(true);
+        given(measurementSessionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(measurementSession));
 
-        measurementCommandService.updateMeasurementStatus(1L, 1L, completedRequest(180));
+        measurementCommandService.updateMeasurementStatus(
+                1L, 1L, completedRequest(180), "Bearer test-token");
 
         assertThat(measurementSession.getStatus()).isEqualTo(MeasurementStatus.COMPLETED);
+        verify(measurementCompletionService)
+                .completeMeasurementIfReady(measurementSession, 180);
         verify(measurementSocketService, never()).sendMeasurementStatusChanged(measurementSession);
     }
 

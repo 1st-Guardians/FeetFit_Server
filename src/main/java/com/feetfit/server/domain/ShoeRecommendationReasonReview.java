@@ -6,7 +6,9 @@ import lombok.*;
 
 @Entity
 @Table(name = "shoe_recommendation_reason_review",
-        uniqueConstraints = @UniqueConstraint(columnNames = {"reason_id", "review_id"}))  // ← 추가
+        uniqueConstraints = @UniqueConstraint(
+                name = "uq_reason_review",
+                columnNames = {"reason_id", "review_id"}))
 @Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

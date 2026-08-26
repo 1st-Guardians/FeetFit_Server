@@ -123,6 +123,106 @@ class ShoeIngestionJpaIntegrationTest {
         });
     }
 
+    @Test
+    void musinsaTreatsSharedModelCodeAsDistinctColourSkusAndRemainsIdempotent() {
+        service.importMusinsa(musinsaProduct(
+                "goods-colour-a", "MODEL-SHARED", "https://musinsa/goods-colour-a"));
+        var created = service.importMusinsa(musinsaProduct(
+                "goods-colour-b", "MODEL-SHARED", "https://musinsa/goods-colour-b"));
+        var updated = service.importMusinsa(musinsaProduct(
+                "goods-colour-b", "MODEL-SHARED", "https://musinsa/goods-colour-b"));
+
+        assertThat(shoeRepository.findAll()).hasSize(2);
+        assertThat(shoeRepository.findByMusinsaGoodsNo("goods-colour-a")).isPresent();
+        assertThat(shoeRepository.findByMusinsaGoodsNo("goods-colour-b")).isPresent();
+        assertThat(created.getItems()).singleElement()
+                .extracting("operation")
+                .isEqualTo(ShoeImportOperation.CREATED);
+        assertThat(updated.getItems()).singleElement()
+                .extracting("operation")
+                .isEqualTo(ShoeImportOperation.UPDATED);
+    }
+
+    @Test
+    void musinsaStagesUrlOwnedByAnotherGoodsNoInsteadOfReassigningIdentity() {
+        service.importMusinsa(musinsaProduct(
+                "goods-owner", "MODEL-OWNER", "https://musinsa/shared-url"));
+
+        var result = service.importMusinsa(musinsaProduct(
+                "goods-intruder", "MODEL-INTRUDER", "https://musinsa/shared-url"));
+
+        assertThat(result.getItems()).singleElement().satisfies(item -> {
+            assertThat(item.getMatchStatus()).isEqualTo(ShoeImportMatchStatus.AMBIGUOUS);
+            assertThat(item.getOperation()).isEqualTo(ShoeImportOperation.STAGED);
+        });
+        assertThat(shoeRepository.findAll()).singleElement()
+                .satisfies(shoe -> assertThat(shoe.getMusinsaGoodsNo()).isEqualTo("goods-owner"));
+        assertThat(shoeRepository.findByMusinsaGoodsNo("goods-intruder")).isEmpty();
+    }
+
+    @Test
+    void targetedRunRepeatUsesExactGoodsNoAndIdempotentlyReplacesRawMetrics() {
+        service.importMusinsa(musinsa(159000, null, 4.7f, 0));
+        LocalDateTime capturedAt = LocalDateTime.of(2026, 8, 23, 13, 0);
+
+        var created = service.importRunRepeatTargeted(targetedRunRepeat(
+                "goods-100", " goods-100 ", "RR-SOURCE-SKU",
+                capturedAt, new BigDecimal("98.000000")));
+        var updated = service.importRunRepeatTargeted(targetedRunRepeat(
+                "goods-100", " goods-100 ", "RR-SOURCE-SKU",
+                capturedAt, new BigDecimal("99.100000")));
+
+        Shoe matchedShoe = shoeRepository.findByMusinsaGoodsNo("goods-100").orElseThrow();
+        assertThat(created.getItems()).singleElement().satisfies(item -> {
+            assertThat(item.getShoeId()).isEqualTo(matchedShoe.getId());
+            assertThat(item.getMatchStatus()).isEqualTo(ShoeImportMatchStatus.MATCHED);
+            assertThat(item.getOperation()).isEqualTo(ShoeImportOperation.CREATED);
+        });
+        assertThat(updated.getItems()).singleElement()
+                .extracting("operation")
+                .isEqualTo(ShoeImportOperation.UPDATED);
+
+        assertThat(labRepository.findByShoeIdAndSourceOrderByCapturedAtDescIdDesc(
+                matchedShoe.getId(), "RUNREPEAT"))
+                .singleElement()
+                .satisfies(snapshot -> {
+                    assertThat(snapshot.getSourceModelCode()).isEqualTo("RR-SOURCE-SKU");
+                    assertThat(snapshot.getRawMetrics()).singleElement()
+                            .satisfies(metric -> assertThat(metric.getValue())
+                                    .isEqualByComparingTo("99.100000"));
+                });
+        assertThat(auditRepository.findAll())
+                .filteredOn(audit -> audit.getSource() == ShoeImportSource.RUNREPEAT)
+                .allSatisfy(audit -> assertThat(audit.getRawPayload())
+                        .contains("\"targetGoodsNo\":\" goods-100 \"")
+                        .contains("\"modelCode\":\"RR-SOURCE-SKU\""));
+    }
+
+    @Test
+    void targetedRunRepeatDoesNotFallbackAndRejectsCaseMismatchedGoodsNo() {
+        service.importMusinsa(musinsa(159000, null, 4.7f, 0));
+        LocalDateTime capturedAt = LocalDateTime.of(2026, 8, 23, 14, 0);
+
+        var missing = service.importRunRepeatTargeted(targetedRunRepeat(
+                "missing-goods", "missing-goods", "MODEL-1",
+                capturedAt, BigDecimal.ONE));
+        var caseMismatch = service.importRunRepeatTargeted(targetedRunRepeat(
+                "GOODS-100", "GOODS-100", "MODEL-1",
+                capturedAt, BigDecimal.ONE));
+
+        assertThat(missing.getItems()).singleElement().satisfies(item -> {
+            assertThat(item.getMatchStatus()).isEqualTo(ShoeImportMatchStatus.UNMATCHED);
+            assertThat(item.getOperation()).isEqualTo(ShoeImportOperation.STAGED);
+        });
+        assertThat(caseMismatch.getItems()).singleElement().satisfies(item -> {
+            assertThat(item.getMatchStatus()).isEqualTo(ShoeImportMatchStatus.UNMATCHED);
+            assertThat(item.getOperation()).isEqualTo(ShoeImportOperation.STAGED);
+        });
+        Shoe shoe = shoeRepository.findByMusinsaGoodsNo("goods-100").orElseThrow();
+        assertThat(labRepository.findByShoeIdAndSourceOrderByCapturedAtDescIdDesc(
+                shoe.getId(), "RUNREPEAT")).isEmpty();
+    }
+
     private ShoeIngestionRequestDTO.MusinsaImportRequest musinsa(
             Integer price, String imageUrl, Float rating, int reviewCount,
             ShoeIngestionRequestDTO.MusinsaReviewItem... reviews) {
@@ -140,6 +240,28 @@ class ShoeIngestionJpaIntegrationTest {
                         .overallRating(rating)
                         .reviewCount(reviewCount)
                         .reviews(List.of(reviews))
+                        .build()))
+                .build();
+    }
+
+    private ShoeIngestionRequestDTO.MusinsaImportRequest musinsaProduct(
+            String goodsNo,
+            String modelCode,
+            String musinsaUrl) {
+        return ShoeIngestionRequestDTO.MusinsaImportRequest.builder()
+                .source(ShoeImportSource.MUSINSA)
+                .collectedAt(LocalDateTime.of(2026, 8, 23, 11, 0))
+                .shoes(List.of(ShoeIngestionRequestDTO.MusinsaShoeItem.builder()
+                        .goodsNo(goodsNo)
+                        .brandName("Brand")
+                        .shoeName("Shoe")
+                        .modelCode(modelCode)
+                        .musinsaUrl(musinsaUrl)
+                        .price(159000)
+                        .imageUrl("https://image/" + goodsNo)
+                        .overallRating(4.7f)
+                        .reviewCount(0)
+                        .reviews(List.of())
                         .build()))
                 .build();
     }
@@ -163,6 +285,34 @@ class ShoeIngestionJpaIntegrationTest {
     private ShoeIngestionRequestDTO.RunRepeatImportRequest runRepeatWithIdentity(
             String externalKey, String modelCode, String brandName, String shoeName,
             LocalDateTime capturedAt, BigDecimal width) {
+        return runRepeatPayload(
+                externalKey, null, modelCode, brandName, shoeName, capturedAt, width);
+    }
+
+    private ShoeIngestionRequestDTO.RunRepeatImportRequest targetedRunRepeat(
+            String externalKey,
+            String targetGoodsNo,
+            String modelCode,
+            LocalDateTime capturedAt,
+            BigDecimal width) {
+        return runRepeatPayload(
+                externalKey,
+                targetGoodsNo,
+                modelCode,
+                "RunRepeat Brand",
+                "RunRepeat Shoe",
+                capturedAt,
+                width);
+    }
+
+    private ShoeIngestionRequestDTO.RunRepeatImportRequest runRepeatPayload(
+            String externalKey,
+            String targetGoodsNo,
+            String modelCode,
+            String brandName,
+            String shoeName,
+            LocalDateTime capturedAt,
+            BigDecimal width) {
         var metric = ShoeIngestionRequestDTO.RawMetricItem.builder()
                 .canonicalCharacteristic(ShoeLabCharacteristic.WIDTH_SPACE)
                 .sourceMetricName("Toebox width at the widest part")
@@ -181,6 +331,7 @@ class ShoeIngestionJpaIntegrationTest {
                 .source(ShoeImportSource.RUNREPEAT)
                 .items(List.of(ShoeIngestionRequestDTO.RunRepeatSnapshotItem.builder()
                         .externalKey(externalKey)
+                        .targetGoodsNo(targetGoodsNo)
                         .brandName(brandName)
                         .shoeName(shoeName)
                         .modelCode(modelCode)

@@ -10,16 +10,19 @@ import com.feetfit.server.domain.MeasurementSession;
 import com.feetfit.server.domain.ShoeClickHistory;
 import com.feetfit.server.domain.ShoeRecommendation;
 import com.feetfit.server.domain.ShoeRecommendationReason;
+import com.feetfit.server.domain.ShoeRecommendationRun;
 import com.feetfit.server.domain.ShoeReview;
 import com.feetfit.server.domain.User;
 import com.feetfit.server.domain.enums.MeasurementStatus;
 import com.feetfit.server.domain.enums.ReasonType;
 import com.feetfit.server.domain.enums.ShoeReviewSource;
+import com.feetfit.server.domain.enums.ShoeRecommendationRunStatus;
 import com.feetfit.server.repository.MeasurementSessionRepository;
 import com.feetfit.server.repository.ShoeClickHistoryRepository;
 import com.feetfit.server.repository.ShoeRecommendationReasonRepository;
 import com.feetfit.server.repository.ShoeRecommendationReasonReviewRepository;
 import com.feetfit.server.repository.ShoeRecommendationRepository;
+import com.feetfit.server.repository.ShoeRecommendationRunRepository;
 import com.feetfit.server.repository.ShoeRepository;
 import com.feetfit.server.repository.ShoeReviewRepository;
 import com.feetfit.server.repository.UserRepository;
@@ -49,6 +52,7 @@ public class ShoeCommandServiceImpl implements ShoeCommandService {
     private final ShoeClickHistoryRepository shoeClickHistoryRepository;
     private final UserRepository userRepository;
     private final ShoeRecommendationRepository shoeRecommendationRepository;
+    private final ShoeRecommendationRunRepository shoeRecommendationRunRepository;
     private final ShoeRecommendationReasonRepository shoeRecommendationReasonRepository;
     private final ShoeRecommendationReasonReviewRepository shoeRecommendationReasonReviewRepository;
     private final ShoeReviewRepository shoeReviewRepository;
@@ -89,13 +93,19 @@ public class ShoeCommandServiceImpl implements ShoeCommandService {
         validateRecommendationRequest(request);
 
         MeasurementSession measurementSession = measurementSessionRepository
-                .findById(request.getMeasurementSessionId())
+                .findByIdForUpdate(request.getMeasurementSessionId())
                 .orElseThrow(() -> new MeasurementHandler(ErrorStatus.MEASUREMENT_NOT_FOUND));
         if (!measurementSession.getUser().getId().equals(userId)) {
             throw new MeasurementHandler(ErrorStatus.MEASUREMENT_FORBIDDEN);
         }
         if (measurementSession.getStatus() != MeasurementStatus.COMPLETED) {
             throw new MeasurementHandler(ErrorStatus.MEASUREMENT_NOT_COMPLETED);
+        }
+        ShoeRecommendationRun recommendationRun = shoeRecommendationRunRepository
+                .findByMeasurementSessionIdForUpdate(measurementSession.getId())
+                .orElseThrow(() -> new ShoeHandler(ErrorStatus.SHOE_RECOMMENDATION_RUN_NOT_FOUND));
+        if (recommendationRun.getStatus() != ShoeRecommendationRunStatus.RUNNING) {
+            throw new ShoeHandler(ErrorStatus.SHOE_RECOMMENDATION_RUN_NOT_RUNNING);
         }
 
         User user = userRepository.findById(userId)
@@ -129,10 +139,10 @@ public class ShoeCommandServiceImpl implements ShoeCommandService {
             }
 
             ShoeRecommendation recommendation = shoeRecommendationRepository
-                    .findByUserIdAndShoeId(user.getId(), shoe.getId())
+                    .findByMeasurementSessionIdAndShoeId(measurementSession.getId(), shoe.getId())
                     .map(existing -> {
                         existing.updateShoeRecommendation(
-                                item.getFitScore(), item.getPointSummary(), analyzedAt, measurementSession);
+                                item.getFitScore(), item.getPointSummary(), analyzedAt);
                         return existing;
                     })
                     .orElseGet(() -> shoeRecommendationRepository.save(
@@ -171,6 +181,14 @@ public class ShoeCommandServiceImpl implements ShoeCommandService {
             processedCount++;
         }
 
+        // reason bulk delete의 clearAutomatically=true가 persistence context를 비울 수 있으므로
+        // run을 다시 잠가 managed 상태에서 절대 진행 수를 기록한다.
+        ShoeRecommendationRun managedRun = shoeRecommendationRunRepository
+                .findByMeasurementSessionIdForUpdate(measurementSession.getId())
+                .orElseThrow(() -> new ShoeHandler(ErrorStatus.SHOE_RECOMMENDATION_RUN_NOT_FOUND));
+        managedRun.updateProcessedCount(
+                shoeRecommendationRepository.countByMeasurementSessionId(measurementSession.getId()));
+
         log.info(
                 "Shoe recommendations updated. measurementSessionId={}, userId={}, requested={}, processed={}, "
                         + "skipped={}, invalidReviewShoeIds={}",
@@ -179,15 +197,31 @@ public class ShoeCommandServiceImpl implements ShoeCommandService {
         );
 
         return ShoeConverter.toSaveShoeRecommendationResultDTO(
-                request.getRecommendations().size(), processedCount, skippedShoeIds, invalidReviewShoeIds);
+                measurementSession.getId(), request.getRecommendations().size(), processedCount,
+                skippedShoeIds, invalidReviewShoeIds);
     }
 
     @Override
     public void saveShoeSummaries(
             Long userId, Long shoeId, ShoeRequestDTO.SaveShoeSummariesDTO request) {
         validateSummaryRequest(request);
+        MeasurementSession measurementSession = measurementSessionRepository
+                .findByIdForUpdate(request.getMeasurementSessionId())
+                .orElseThrow(() -> new MeasurementHandler(ErrorStatus.MEASUREMENT_NOT_FOUND));
+        if (!measurementSession.getUser().getId().equals(userId)) {
+            throw new MeasurementHandler(ErrorStatus.MEASUREMENT_FORBIDDEN);
+        }
+        if (measurementSession.getStatus() != MeasurementStatus.COMPLETED) {
+            throw new MeasurementHandler(ErrorStatus.MEASUREMENT_NOT_COMPLETED);
+        }
+        ShoeRecommendationRun recommendationRun = shoeRecommendationRunRepository
+                .findByMeasurementSessionIdForUpdate(measurementSession.getId())
+                .orElseThrow(() -> new ShoeHandler(ErrorStatus.SHOE_RECOMMENDATION_RUN_NOT_FOUND));
+        if (recommendationRun.getStatus() != ShoeRecommendationRunStatus.RUNNING) {
+            throw new ShoeHandler(ErrorStatus.SHOE_RECOMMENDATION_RUN_NOT_RUNNING);
+        }
         ShoeRecommendation recommendation = shoeRecommendationRepository
-                .findByUserIdAndShoeId(userId, shoeId)
+                .findByMeasurementSessionIdAndShoeId(measurementSession.getId(), shoeId)
                 .orElseThrow(() -> new ShoeHandler(ErrorStatus.SHOE_RECOMMENDATION_NOT_FOUND));
 
         recommendation.updatePointSummary(request.getPointSummary());
@@ -207,11 +241,15 @@ public class ShoeCommandServiceImpl implements ShoeCommandService {
                 || request.getRecommendations() == null || request.getRecommendations().isEmpty()) {
             throw invalidRecommendationRequest("measurementSessionId와 recommendations는 필수입니다.");
         }
+        Set<Long> shoeIds = new HashSet<>();
         for (ShoeRequestDTO.ShoeRecommendationItemDTO item : request.getRecommendations()) {
             if (item == null || item.getShoeId() == null || item.getFitScore() == null
                     || !Float.isFinite(item.getFitScore())
                     || item.getFitScore() < 0.0f || item.getFitScore() > 100.0f) {
                 throw invalidRecommendationRequest("shoeId와 0~100 범위의 fitScore가 필요합니다.");
+            }
+            if (!shoeIds.add(item.getShoeId())) {
+                throw invalidRecommendationRequest("recommendations의 shoeId는 중복될 수 없습니다.");
             }
             validateReasons(item.getReasons());
             for (ShoeRequestDTO.ShoeRecommendationReasonDTO reason : item.getReasons()) {
@@ -226,9 +264,10 @@ public class ShoeCommandServiceImpl implements ShoeCommandService {
     }
 
     private void validateSummaryRequest(ShoeRequestDTO.SaveShoeSummariesDTO request) {
-        if (request == null || request.getPointSummary() == null
+        if (request == null || request.getMeasurementSessionId() == null
+                || request.getPointSummary() == null
                 || request.getPointSummary().isBlank() || request.getReasons() == null) {
-            throw invalidRecommendationRequest("pointSummary와 reasons는 필수입니다.");
+            throw invalidRecommendationRequest("measurementSessionId, pointSummary와 reasons는 필수입니다.");
         }
         if (request.getReasons().size() != 3) {
             throw invalidRecommendationRequest("요약 reasons는 정확히 3개여야 합니다.");

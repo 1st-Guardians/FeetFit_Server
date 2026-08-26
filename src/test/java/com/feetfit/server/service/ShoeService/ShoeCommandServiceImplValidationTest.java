@@ -11,6 +11,7 @@ import com.feetfit.server.repository.ShoeClickHistoryRepository;
 import com.feetfit.server.repository.ShoeRecommendationReasonRepository;
 import com.feetfit.server.repository.ShoeRecommendationReasonReviewRepository;
 import com.feetfit.server.repository.ShoeRecommendationRepository;
+import com.feetfit.server.repository.ShoeRecommendationRunRepository;
 import com.feetfit.server.repository.ShoeRepository;
 import com.feetfit.server.repository.ShoeReviewRepository;
 import com.feetfit.server.repository.UserRepository;
@@ -34,6 +35,7 @@ class ShoeCommandServiceImplValidationTest {
     @Mock ShoeClickHistoryRepository shoeClickHistoryRepository;
     @Mock UserRepository userRepository;
     @Mock ShoeRecommendationRepository shoeRecommendationRepository;
+    @Mock ShoeRecommendationRunRepository shoeRecommendationRunRepository;
     @Mock ShoeRecommendationReasonRepository shoeRecommendationReasonRepository;
     @Mock ShoeRecommendationReasonReviewRepository shoeRecommendationReasonReviewRepository;
     @Mock ShoeReviewRepository shoeReviewRepository;
@@ -42,6 +44,29 @@ class ShoeCommandServiceImplValidationTest {
     @InjectMocks ShoeCommandServiceImpl service;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    @Test
+    void rejectsDuplicateShoeIdBeforeAnyDatabaseAccess() throws Exception {
+        ShoeRequestDTO.SaveShoeRecommendationDTO request = readRequest("""
+                {"measurementSessionId":1,"recommendations":[
+                  {"shoeId":10,"fitScore":80,"reasons":[
+                    {"reasonType":"FOREFOOT","title":"a","riskLevel":"LOW","reviewIds":[]},
+                    {"reasonType":"HEEL","title":"b","riskLevel":"LOW","reviewIds":[]},
+                    {"reasonType":"INSOLE","title":"c","riskLevel":"LOW","reviewIds":[]}
+                  ]},
+                  {"shoeId":10,"fitScore":81,"reasons":[
+                    {"reasonType":"FOREFOOT","title":"a","riskLevel":"LOW","reviewIds":[]},
+                    {"reasonType":"HEEL","title":"b","riskLevel":"LOW","reviewIds":[]},
+                    {"reasonType":"INSOLE","title":"c","riskLevel":"LOW","reviewIds":[]}
+                  ]}
+                ]}
+                """);
+
+        assertThatThrownBy(() -> service.saveShoeRecommendations(7L, request))
+                .isInstanceOf(ShoeHandler.class);
+        verifyNoInteractions(measurementSessionRepository, shoeRepository,
+                shoeRecommendationRepository, shoeRecommendationRunRepository);
+    }
 
     @Test
     void rejectsDuplicateReasonTypeBeforeAnyDatabaseWrite() throws Exception {
@@ -78,7 +103,7 @@ class ShoeCommandServiceImplValidationTest {
                 .user(User.builder().id(99L).build())
                 .status(MeasurementStatus.COMPLETED)
                 .build();
-        when(measurementSessionRepository.findById(1L)).thenReturn(Optional.of(otherUsersSession));
+        when(measurementSessionRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(otherUsersSession));
 
         assertThatThrownBy(() -> service.saveShoeRecommendations(7L, request))
                 .isInstanceOf(MeasurementHandler.class);

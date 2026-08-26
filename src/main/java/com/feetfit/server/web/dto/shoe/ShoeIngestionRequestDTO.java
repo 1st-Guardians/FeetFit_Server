@@ -124,6 +124,12 @@ public class ShoeIngestionRequestDTO {
     public static class RunRepeatSnapshotItem {
         private String externalKey;
 
+        /**
+         * Reviewed MUSINSA identity used only by the targeted ingestion endpoint.
+         * It is deliberately separate from RunRepeat's source modelCode.
+         */
+        private String targetGoodsNo;
+
         @NotBlank
         private String brandName;
 

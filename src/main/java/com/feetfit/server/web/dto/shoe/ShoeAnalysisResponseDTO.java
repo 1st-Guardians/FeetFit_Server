@@ -197,6 +197,7 @@ public class ShoeAnalysisResponseDTO {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class RecommendationSummaryContext {
+        private Long measurementSessionId;
         private Long userId;
         private Long shoeId;
         private String brandName;

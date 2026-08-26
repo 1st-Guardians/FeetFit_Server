@@ -9,7 +9,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
-@Table(name = "shoe_recommendation")
+@Table(
+        name = "shoe_recommendation",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uq_shoe_recommendation_session_shoe",
+                columnNames = {"measurement_session_id", "shoe_id"}
+        )
+)
 @Getter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -28,8 +34,8 @@ public class ShoeRecommendation extends BaseEntity {
     @JoinColumn(name = "shoe_id", nullable = false)
     private Shoe shoe;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "measurement_session_id")
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "measurement_session_id", nullable = false)
     private MeasurementSession measurementSession;
 
     @Column(nullable = false)
@@ -48,12 +54,10 @@ public class ShoeRecommendation extends BaseEntity {
     public void updateShoeRecommendation(
             Float fitScore,
             String pointSummary,
-            LocalDateTime analyzedAt,
-            MeasurementSession measurementSession) {
+            LocalDateTime analyzedAt) {
         this.fitScore = fitScore;
         this.pointSummary = pointSummary;
         this.analyzedAt = analyzedAt;
-        this.measurementSession = measurementSession;
     }
 
     public void updatePointSummary(String pointSummary) {
