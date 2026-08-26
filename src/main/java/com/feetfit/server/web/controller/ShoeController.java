@@ -72,11 +72,13 @@ public class ShoeController {
     public ApiResponse<ShoeResponseDTO.ShoeListResultDTO> getShoeList(
             @RequestParam(defaultValue = "FIT_SCORE") ShoeSort sort,
             @RequestParam(defaultValue = "0") @Min(value = 0, message = "page는 0 이상이어야 합니다.") int page,
-            @RequestParam(defaultValue = "20") @Min(value = 1, message = "size는 1 이상이어야 합니다.") @Max(value = 100, message = "size는 100 이하이어야 합니다.") int size
+            @RequestParam(defaultValue = "20") @Min(value = 1, message = "size는 1 이상이어야 합니다.") @Max(value = 100, message = "size는 100 이하이어야 합니다.") int size,
+            @RequestParam(required = false) @Min(1) Long measurementSessionId
     ) {
         Long userId = findLoginUser.getCurrentUserId();
         ShoeSort resolvedSort = (sort != null) ? sort : ShoeSort.FIT_SCORE;  // null 방어
-        ShoeRequestDTO.ShoeListRequestDTO request = new ShoeRequestDTO.ShoeListRequestDTO(resolvedSort, page, size);
+        ShoeRequestDTO.ShoeListRequestDTO request = new ShoeRequestDTO.ShoeListRequestDTO(
+                resolvedSort, page, size, measurementSessionId);
         return ApiResponse.onSuccess(shoeQueryService.getShoeList(userId, request));
     }
 
@@ -115,10 +117,12 @@ public class ShoeController {
             )
     })
     public ApiResponse<ShoeResponseDTO.ShoeDetailResultDTO> getShoeDetail(
-            @PathVariable Long shoeId
+            @PathVariable Long shoeId,
+            @RequestParam(required = false) @Min(1) Long measurementSessionId
     ) {
         Long userId = findLoginUser.getCurrentUserId();
-        return ApiResponse.onSuccess(shoeSearchQueryService.getShoeDetail(userId, shoeId));
+        return ApiResponse.onSuccess(shoeSearchQueryService.getShoeDetail(
+                userId, shoeId, measurementSessionId));
     }
 
     @PostMapping("/{shoeId}/click")
@@ -167,9 +171,9 @@ public class ShoeController {
                 신발 전체에 대한 발 적합도를 배치로 저장/갱신할 때 호출합니다.
                 Authorization 헤더에 Bearer accessToken이 필요합니다 (무좀/무지외반 분석 저장과 동일하게,
                 Feetfit_AI가 사용자의 accessToken을 그대로 포워딩합니다).
-                - 토큰에서 추출한 userId 기준으로 (userId, shoeId) 조합의 ShoeRecommendation을 upsert합니다.
-                - reasons 배열에 FOREFOOT/HEEL/INSOLE을 한 번에 담아 보낼 수 있습니다.
-                - reasons는 최소 1개 이상이어야 하며, 비어 있으면 400 에러가 발생합니다.
+                - 요청의 measurementSessionId와 shoeId 조합으로 ShoeRecommendation을 upsert합니다.
+                  같은 세션 재계산은 기존 행을 갱신하고, 다른 측정 세션은 별도 행으로 보존합니다.
+                - reasons에는 FOREFOOT/HEEL/INSOLE 세 종류를 중복 없이 모두 담아야 합니다.
                 - 기존에 저장된 부위별(FOREFOOT/HEEL/INSOLE) 근거는 이번 요청의 reasons로 통째로 교체되므로,
                   3개를 모두 유지하고 싶다면 매번 3개를 모두 함께 보내야 합니다.
                 - DB에 없는 shoeId는 건너뛰고 skippedShoeIds로 반환합니다.
@@ -392,9 +396,11 @@ public class ShoeController {
                     content = @Content(examples = @ExampleObject(value = INTERNAL_SERVER_ERROR_RESPONSE))
             )
     })
-    public ApiResponse<ShoeResponseDTO.ShoeRecommendTop3ResultDTO> getTop3ShoesByFitScore() {
+    public ApiResponse<ShoeResponseDTO.ShoeRecommendTop3ResultDTO> getTop3ShoesByFitScore(
+            @RequestParam(required = false) @Min(1) Long measurementSessionId) {
         Long userId = findLoginUser.getCurrentUserId();
-        return ApiResponse.onSuccess(shoeQueryService.getTop3ShoesByFitScore(userId));
+        return ApiResponse.onSuccess(shoeQueryService.getTop3ShoesByFitScore(
+                userId, measurementSessionId));
     }
 
     private static final String SHOE_DETAIL_SUCCESS_RESPONSE = """

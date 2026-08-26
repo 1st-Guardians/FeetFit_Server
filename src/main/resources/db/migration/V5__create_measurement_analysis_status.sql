@@ -1,4 +1,6 @@
-CREATE TABLE measurement_analysis_status (
+-- Adopt the Hibernate-created table when present. V7 normalizes the adopted
+-- definition (defaults, timestamp nullability, and canonical FK/index names).
+CREATE TABLE IF NOT EXISTS measurement_analysis_status (
     id BIGINT NOT NULL AUTO_INCREMENT,
     measurement_session_id BIGINT NOT NULL,
     photo_capture_completed BOOLEAN NOT NULL DEFAULT FALSE,

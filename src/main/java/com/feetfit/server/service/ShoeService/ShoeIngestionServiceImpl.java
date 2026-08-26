@@ -61,7 +61,11 @@ public class ShoeIngestionServiceImpl implements ShoeIngestionService {
             String rawPayload = serialize(item);
             List<Shoe> candidates = findMusinsaCandidates(item);
 
-            if (candidates.size() > 1) {
+            boolean conflictingGoodsNo = candidates.stream()
+                    .map(Shoe::getMusinsaGoodsNo)
+                    .anyMatch(existingGoodsNo -> existingGoodsNo != null
+                            && !item.getGoodsNo().trim().equals(existingGoodsNo));
+            if (candidates.size() > 1 || conflictingGoodsNo) {
                 List<Long> candidateIds = candidateIds(candidates);
                 ShoeImportAudit audit = saveAudit(
                         ShoeImportSource.MUSINSA,
@@ -73,7 +77,7 @@ public class ShoeIngestionServiceImpl implements ShoeIngestionService {
                         ShoeImportMatchStatus.AMBIGUOUS,
                         null,
                         candidateIds,
-                        "goodsNo, musinsaUrl 또는 modelCode가 서로 다른 신발을 가리킵니다.",
+                        "goodsNo와 musinsaUrl이 서로 다른 신발을 가리킵니다.",
                         request.getCollectedAt(),
                         rawPayload);
                 results.add(importResult(
@@ -142,13 +146,28 @@ public class ShoeIngestionServiceImpl implements ShoeIngestionService {
     @Override
     public ShoeIngestionResponseDTO.ImportResult importRunRepeat(
             ShoeIngestionRequestDTO.RunRepeatImportRequest request) {
+        return importRunRepeat(request, false);
+    }
+
+    @Override
+    public ShoeIngestionResponseDTO.ImportResult importRunRepeatTargeted(
+            ShoeIngestionRequestDTO.RunRepeatImportRequest request) {
+        return importRunRepeat(request, true);
+    }
+
+    private ShoeIngestionResponseDTO.ImportResult importRunRepeat(
+            ShoeIngestionRequestDTO.RunRepeatImportRequest request,
+            boolean targeted) {
         requireSource(request.getSource(), ShoeImportSource.RUNREPEAT);
+        requireRunRepeatShape(request, targeted);
 
         List<ShoeIngestionResponseDTO.ImportItemResult> results = new ArrayList<>();
         int processed = 0;
         for (ShoeIngestionRequestDTO.RunRepeatSnapshotItem item : request.getItems()) {
             String rawPayload = serialize(item);
-            List<Shoe> candidates = findRunRepeatCandidates(item);
+            List<Shoe> candidates = targeted
+                    ? findTargetedRunRepeatCandidates(item)
+                    : findRunRepeatCandidates(item);
             if (candidates.size() != 1) {
                 ShoeImportMatchStatus status = candidates.isEmpty()
                         ? ShoeImportMatchStatus.UNMATCHED
@@ -165,7 +184,9 @@ public class ShoeIngestionServiceImpl implements ShoeIngestionService {
                         null,
                         candidateIds,
                         status == ShoeImportMatchStatus.UNMATCHED
-                                ? "기존 SHOE와 정확히 일치하는 항목이 없습니다."
+                                ? targeted
+                                        ? "targetGoodsNo와 정확히 일치하는 MUSINSA SHOE가 없습니다."
+                                        : "기존 SHOE와 정확히 일치하는 항목이 없습니다."
                                 : "정확히 일치하는 SHOE가 둘 이상이어서 연결하지 않았습니다.",
                         item.getCapturedAt(),
                         rawPayload);
@@ -267,12 +288,30 @@ public class ShoeIngestionServiceImpl implements ShoeIngestionService {
 
     private List<Shoe> findMusinsaCandidates(ShoeIngestionRequestDTO.MusinsaShoeItem item) {
         Map<Long, Shoe> unique = new LinkedHashMap<>();
-        shoeRepository.findByMusinsaGoodsNo(item.getGoodsNo().trim())
+        String goodsNo = item.getGoodsNo().trim();
+        shoeRepository.findByMusinsaGoodsNo(goodsNo)
+                // Keep matching exact even with a case-insensitive database collation.
+                .filter(shoe -> goodsNo.equals(shoe.getMusinsaGoodsNo()))
                 .ifPresent(shoe -> unique.put(shoe.getId(), shoe));
         shoeRepository.findByMusinsaUrl(item.getMusinsaUrl().trim())
+                .stream()
+                .filter(shoe -> item.getMusinsaUrl().trim().equals(shoe.getMusinsaUrl()))
                 .forEach(shoe -> unique.put(shoe.getId(), shoe));
-        shoeRepository.findByModelCodeIgnoreCase(item.getModelCode().trim())
-                .forEach(shoe -> unique.put(shoe.getId(), shoe));
+
+        // modelCode/styleNo is not a product identity: MUSINSA legitimately has
+        // multiple goodsNo values for colour SKUs that share it. Use modelCode
+        // only to adopt one legacy row that predates musinsaGoodsNo, never to
+        // merge or reject two fully identified MUSINSA products.
+        List<Shoe> legacyModelMatches = shoeRepository
+                .findByModelCodeIgnoreCase(item.getModelCode().trim()).stream()
+                .filter(shoe -> shoe.getMusinsaGoodsNo() == null)
+                .toList();
+        if (unique.isEmpty() && legacyModelMatches.size() == 1) {
+            Shoe legacy = legacyModelMatches.get(0);
+            unique.put(legacy.getId(), legacy);
+        } else if (unique.isEmpty() && legacyModelMatches.size() > 1) {
+            legacyModelMatches.forEach(shoe -> unique.put(shoe.getId(), shoe));
+        }
         return unique.values().stream().sorted(Comparator.comparing(Shoe::getId)).toList();
     }
 
@@ -288,6 +327,49 @@ public class ShoeIngestionServiceImpl implements ShoeIngestionService {
                         .equals(normalizedSourceName))
                 .sorted(Comparator.comparing(Shoe::getId))
                 .toList();
+    }
+
+    private List<Shoe> findTargetedRunRepeatCandidates(
+            ShoeIngestionRequestDTO.RunRepeatSnapshotItem item) {
+        String targetGoodsNo = item.getTargetGoodsNo().trim();
+        return shoeRepository.findByMusinsaGoodsNo(targetGoodsNo).stream()
+                // Keep matching exact even when the backing database uses a
+                // case-insensitive collation.
+                .filter(shoe -> targetGoodsNo.equals(shoe.getMusinsaGoodsNo()))
+                .toList();
+    }
+
+    private void requireRunRepeatShape(
+            ShoeIngestionRequestDTO.RunRepeatImportRequest request,
+            boolean targeted) {
+        for (ShoeIngestionRequestDTO.RunRepeatSnapshotItem item : request.getItems()) {
+            String targetGoodsNo = item.getTargetGoodsNo();
+            if (!targeted && targetGoodsNo != null) {
+                throw new GeneralException(
+                        ErrorStatus._BAD_REQUEST,
+                        "legacy RunRepeat import item에는 targetGoodsNo를 보낼 수 없습니다.");
+            }
+            if (!targeted) {
+                continue;
+            }
+
+            String trimmedTargetGoodsNo = trimToNull(targetGoodsNo);
+            if (trimmedTargetGoodsNo == null) {
+                throw new GeneralException(
+                        ErrorStatus._BAD_REQUEST,
+                        "targeted RunRepeat import의 모든 item에는 targetGoodsNo가 필요합니다.");
+            }
+            if (trimToNull(item.getExternalKey()) == null) {
+                throw new GeneralException(
+                        ErrorStatus._BAD_REQUEST,
+                        "targeted RunRepeat import의 모든 item에는 externalKey가 필요합니다.");
+            }
+            if (!trimmedTargetGoodsNo.equals(item.getExternalKey())) {
+                throw new GeneralException(
+                        ErrorStatus._BAD_REQUEST,
+                        "targeted RunRepeat import의 externalKey는 trim(targetGoodsNo)와 정확히 같아야 합니다.");
+            }
+        }
     }
 
     /**

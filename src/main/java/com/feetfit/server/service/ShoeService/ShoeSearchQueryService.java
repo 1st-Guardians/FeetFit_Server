@@ -8,5 +8,6 @@ public interface ShoeSearchQueryService {
     ShoeSearchResponseDTO.ShoeSearchResultDTO searchSuggestions(String keyword, int page, int size);
     ShoeSearchResponseDTO.ShoeSearchHistoryResultDTO getSearchHistory(Long userId);
     void deleteSearchHistory(Long userId, Long historyId);
-    ShoeResponseDTO.ShoeDetailResultDTO getShoeDetail(Long userId, Long shoeId);
+    ShoeResponseDTO.ShoeDetailResultDTO getShoeDetail(
+            Long userId, Long shoeId, Long measurementSessionId);
 }

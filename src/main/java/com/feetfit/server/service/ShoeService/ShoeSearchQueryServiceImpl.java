@@ -30,6 +30,7 @@ public class ShoeSearchQueryServiceImpl implements ShoeSearchQueryService {
     private final UserRepository userRepository;
     private final ShoeRecommendationReasonRepository shoeRecommendationReasonRepository;
     private final ShoeRecommendationRepository shoeRecommendationRepository;
+    private final ShoeRecommendationSessionResolver recommendationSessionResolver;
 
     private static final int MAX_HISTORY_COUNT = 10;
 
@@ -100,21 +101,33 @@ public class ShoeSearchQueryServiceImpl implements ShoeSearchQueryService {
     }
 
     @Override
-    public ShoeResponseDTO.ShoeDetailResultDTO getShoeDetail(Long userId, Long shoeId) {
+    public ShoeResponseDTO.ShoeDetailResultDTO getShoeDetail(
+            Long userId, Long shoeId, Long measurementSessionId) {
 
         Shoe shoe = shoeRepository.findById(shoeId)
                 .orElseThrow(() -> new ShoeHandler(ErrorStatus.SHOE_NOT_FOUND));
 
         if (userId == null) {
-            return ShoeConverter.toShoeDetailResultDTO(shoe, null, List.of());
+            return ShoeConverter.toShoeDetailResultDTO(shoe, null, List.of(), null);
+        }
+
+        ShoeRecommendationSessionResolver.ResolvedRecommendationSession scope;
+        if (measurementSessionId != null) {
+            scope = recommendationSessionResolver.requireCompleted(userId, measurementSessionId);
+        } else {
+            scope = recommendationSessionResolver.resolveCurrentCompleted(userId).orElse(null);
+        }
+        if (scope == null) {
+            return ShoeConverter.toShoeDetailResultDTO(shoe, null, List.of(), null);
         }
 
         ShoeRecommendation recommendation = shoeRecommendationRepository
-                .findByUserIdAndShoeId(userId, shoeId)
+                .findByMeasurementSessionIdAndShoeId(scope.measurementSessionId(), shoeId)
                 .orElse(null);
 
         if (recommendation == null) {
-            return ShoeConverter.toShoeDetailResultDTO(shoe, null, List.of());
+            return ShoeConverter.toShoeDetailResultDTO(
+                    shoe, null, List.of(), scope.measurementSessionId());
         }
 
         // reason 조회 (연관된 리뷰 3개 포함)
@@ -125,6 +138,7 @@ public class ShoeSearchQueryServiceImpl implements ShoeSearchQueryService {
                 .map(ShoeConverter::toReasonResultDTO)
                 .collect(Collectors.toList());
 
-        return ShoeConverter.toShoeDetailResultDTO(shoe, recommendation, reasonResultDTOs);
+        return ShoeConverter.toShoeDetailResultDTO(
+                shoe, recommendation, reasonResultDTOs, scope.measurementSessionId());
     }
 }

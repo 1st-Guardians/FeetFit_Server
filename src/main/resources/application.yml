@@ -9,7 +9,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: ${JPA_DDL_AUTO:update}
+      ddl-auto: ${JPA_DDL_AUTO:validate}
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
@@ -19,7 +19,7 @@ spring:
     show-sql: true
 
   flyway:
-    enabled: false
+    enabled: ${FLYWAY_ENABLED:true}
     baseline-on-migrate: true
     baseline-version: 0
     locations: classpath:db/migration
@@ -60,4 +60,6 @@ hardware:
     start-url: ${HARDWARE_MEASUREMENT_START_URL:https://bf29-2001-e60-3162-4147-da3a-ddff-fe82-9fa6.ngrok-free.app/api/reports/all}
 
 internal:
-  api-key: feetfit-local-secret-2026
+  # Fail closed outside tests: ingestion and other internal endpoints must not
+  # inherit a repository-known credential when the deployment forgot its secret.
+  api-key: ${INTERNAL_API_KEY:}

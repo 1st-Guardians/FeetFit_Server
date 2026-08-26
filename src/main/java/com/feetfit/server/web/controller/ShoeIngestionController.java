@@ -38,6 +38,12 @@ public class ShoeIngestionController {
         return ApiResponse.onSuccess(shoeIngestionService.importRunRepeat(request));
     }
 
+    @PostMapping("/imports/runrepeat/targeted")
+    public ApiResponse<ShoeIngestionResponseDTO.ImportResult> importRunRepeatTargeted(
+            @RequestBody @Valid ShoeIngestionRequestDTO.RunRepeatImportRequest request) {
+        return ApiResponse.onSuccess(shoeIngestionService.importRunRepeatTargeted(request));
+    }
+
     @GetMapping("/import-audits")
     public ApiResponse<ShoeIngestionResponseDTO.AuditPageResult> getImportAudits(
             @RequestParam(required = false) ShoeImportSource source,

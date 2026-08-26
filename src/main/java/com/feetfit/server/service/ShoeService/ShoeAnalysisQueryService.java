@@ -7,5 +7,5 @@ public interface ShoeAnalysisQueryService {
             Long userId, Long measurementSessionId, int page, int size);
 
     ShoeAnalysisResponseDTO.RecommendationSummaryContext getRecommendationSummaryContext(
-            Long userId, Long shoeId);
+            Long userId, Long measurementSessionId, Long shoeId);
 }

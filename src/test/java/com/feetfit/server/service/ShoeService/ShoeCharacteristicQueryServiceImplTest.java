@@ -279,6 +279,45 @@ class ShoeCharacteristicQueryServiceImplTest {
     }
 
     @Test
+    void filtersBroadLatestRowsInJavaWithoutCollationSensitiveStringParameters() {
+        ShoeLabMeasurement target = snapshot(751L, targetShoe(), "US 9");
+        ShoeLabMeasurement peerOne = snapshot(752L, shoe(46L), "US 9");
+        ShoeLabMeasurement peerTwo = snapshot(753L, shoe(47L), "US 9");
+        ShoeLabMeasurement wrongCohort = snapshot(754L, shoe(48L), "US 9");
+        ShoeLabMeasurement wrongSize = snapshot(755L, shoe(49L), "US 10");
+
+        List<ShoeLabMetric> metrics = List.of(
+                metric(target, ShoeLabCharacteristic.WIDTH_SPACE, "Width / Fit",
+                        "93.4", "95.2", null, null,
+                        "mm", null, "primary", "US 9", " Road Running "),
+                metric(peerOne, ShoeLabCharacteristic.WIDTH_SPACE, " width / fit ",
+                        "90", null, null, null,
+                        " MM ", null, " PRIMARY ", " us 9 ", "road running"),
+                metric(peerTwo, ShoeLabCharacteristic.WIDTH_SPACE, "WIDTH / FIT",
+                        "100", null, null, null,
+                        "mm", null, "primary", "US 9", "ROAD   RUNNING"),
+                metric(wrongCohort, ShoeLabCharacteristic.WIDTH_SPACE, "Width / Fit",
+                        "10", null, null, null,
+                        "mm", null, "primary", "US 9", "trail running"),
+                metric(wrongSize, ShoeLabCharacteristic.WIDTH_SPACE, "Width / Fit",
+                        "200", null, null, null,
+                        "mm", null, "primary", "US 10", "road running"));
+        stubSnapshots(
+                List.of(target, peerOne, peerTwo, wrongCohort, wrongSize),
+                metrics);
+
+        ShoeCharacteristicResponseDTO.Item width = item(
+                service.getCharacteristics(TARGET_SHOE_ID),
+                ShoeLabCharacteristic.WIDTH_SPACE);
+
+        assertThat(width.getMinValue()).isEqualByComparingTo("90");
+        assertThat(width.getMaxValue()).isEqualByComparingTo("100");
+        verify(metricRepository).findLatestMetricsBySourceAndCharacteristic(
+                RUNREPEAT,
+                ShoeLabCharacteristic.WIDTH_SPACE);
+    }
+
+    @Test
     void unknownComparisonCohortSkipsDistributionQueryButKeepsRawFacts() {
         ShoeLabMeasurement target = snapshot(801L, targetShoe(), "US 9");
         ShoeLabMetric unknownCohort = canonicalMetricWithCohort(
@@ -304,16 +343,9 @@ class ShoeCharacteristicQueryServiceImplTest {
         assertThat(width.getMinValue()).isNull();
         assertThat(width.getMaxValue()).isNull();
         assertThat(result.getSummary()).isNull();
-        verify(metricRepository, never()).findLatestCompatibleMetrics(
+        verify(metricRepository, never()).findLatestMetricsBySourceAndCharacteristic(
                 anyString(),
-                any(ShoeLabCharacteristic.class),
-                anyString(),
-                anyString(),
-                anyString(),
-                anyString(),
-                anyString(),
-                anyString(),
-                anyString());
+                any(ShoeLabCharacteristic.class));
     }
 
     private void stubSnapshots(
@@ -330,16 +362,9 @@ class ShoeCharacteristicQueryServiceImplTest {
                 .thenReturn(metrics.stream()
                         .filter(metric -> metric.getLabMeasurement().getId().equals(target.getId()))
                         .toList());
-        when(metricRepository.findLatestCompatibleMetrics(
+        when(metricRepository.findLatestMetricsBySourceAndCharacteristic(
                 anyString(),
-                any(ShoeLabCharacteristic.class),
-                anyString(),
-                anyString(),
-                anyString(),
-                anyString(),
-                anyString(),
-                anyString(),
-                anyString()))
+                any(ShoeLabCharacteristic.class)))
                 .thenAnswer(invocation -> {
                     ShoeLabCharacteristic characteristic = invocation.getArgument(1);
                     return metrics.stream()

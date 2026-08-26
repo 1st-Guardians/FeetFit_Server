@@ -1,7 +1,5 @@
 package com.feetfit.server.service.ShoeService;
 
-import com.feetfit.server.apiPayload.code.status.ErrorStatus;
-import com.feetfit.server.apiPayload.exception.handler.ShoeHandler;
 import com.feetfit.server.converter.ShoeConverter;
 import com.feetfit.server.domain.Shoe;
 import com.feetfit.server.domain.ShoeRecommendation;
@@ -28,27 +26,26 @@ public class ShoeQueryServiceImpl implements ShoeQueryService {
 
     private final ShoeRepository shoeRepository;
     private final ShoeRecommendationRepository shoeRecommendationRepository;
+    private final ShoeRecommendationSessionResolver recommendationSessionResolver;
 
     @Override
     public ShoeResponseDTO.ShoeListResultDTO getShoeList(Long userId, ShoeRequestDTO.ShoeListRequestDTO request) {
 
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
-        boolean hasMeasurement = shoeRecommendationRepository.existsByUserId(userId);
-
         // sort null 방어
         ShoeSort sort = request.getSort() != null ? request.getSort() : ShoeSort.FIT_SCORE;
 
-        // 측정 안 한 유저가 발 적합도순 요청 시 400 에러
-        if (sort == ShoeSort.FIT_SCORE && !hasMeasurement) {
-            throw new ShoeHandler(ErrorStatus.SHOE_FIT_SCORE_UNAVAILABLE);
-        }
-
         Page<Shoe> shoePage;
         Map<Long, Float> fitScoreMap = Map.of();
+        Long appliedMeasurementSessionId = null;
 
         switch (sort) {
             case FIT_SCORE -> {
-                shoePage = shoeRepository.findAllByFitScoreDesc(userId, pageable);
+                ShoeRecommendationSessionResolver.ResolvedRecommendationSession scope =
+                        recommendationSessionResolver.resolveCompleted(
+                                userId, request.getMeasurementSessionId());
+                appliedMeasurementSessionId = scope.measurementSessionId();
+                shoePage = shoeRepository.findAllByFitScoreDesc(appliedMeasurementSessionId, pageable);
 
                 // 현재 페이지 shoeId 범위로만 fitScore 조회
                 List<Long> shoeIds = shoePage.getContent().stream()
@@ -56,7 +53,8 @@ public class ShoeQueryServiceImpl implements ShoeQueryService {
                         .collect(Collectors.toList());
 
                 fitScoreMap = shoeRecommendationRepository
-                        .findByUserIdAndShoeIdIn(userId, shoeIds).stream()
+                        .findByMeasurementSessionIdAndShoeIdIn(
+                                appliedMeasurementSessionId, shoeIds).stream()
                         .collect(Collectors.toMap(
                                 r -> r.getShoe().getId(),
                                 ShoeRecommendation::getFitScore
@@ -68,31 +66,35 @@ public class ShoeQueryServiceImpl implements ShoeQueryService {
         }
 
         Map<Long, Float> finalFitScoreMap = fitScoreMap;
-        return ShoeConverter.toShoeListResultDTO(shoePage, finalFitScoreMap);
+        return ShoeConverter.toShoeListResultDTO(
+                shoePage, finalFitScoreMap, appliedMeasurementSessionId);
     }
 
     @Override
-    public ShoeResponseDTO.ShoeRecommendTop3ResultDTO getTop3ShoesByFitScore(Long userId) {
+    public ShoeResponseDTO.ShoeRecommendTop3ResultDTO getTop3ShoesByFitScore(
+            Long userId, Long measurementSessionId) {
 
-        // 측정 이력 없으면 400 에러
-        if (!shoeRecommendationRepository.existsByUserId(userId)) {
-            throw new ShoeHandler(ErrorStatus.SHOE_FIT_SCORE_UNAVAILABLE);
-        }
+        ShoeRecommendationSessionResolver.ResolvedRecommendationSession scope =
+                recommendationSessionResolver.resolveCompleted(userId, measurementSessionId);
+        Long appliedMeasurementSessionId = scope.measurementSessionId();
 
         Pageable pageable = PageRequest.of(0, 3);
-        List<Shoe> shoes = shoeRepository.findTop3ByFitScoreDesc(userId, pageable);
+        List<Shoe> shoes = shoeRepository.findTop3ByFitScoreDesc(
+                appliedMeasurementSessionId, pageable);
 
         List<Long> shoeIds = shoes.stream()
                 .map(Shoe::getId)
                 .collect(Collectors.toList());
 
         Map<Long, Float> fitScoreMap = shoeRecommendationRepository
-                .findByUserIdAndShoeIdIn(userId, shoeIds).stream()
+                .findByMeasurementSessionIdAndShoeIdIn(
+                        appliedMeasurementSessionId, shoeIds).stream()
                 .collect(Collectors.toMap(
                         r -> r.getShoe().getId(),
                         ShoeRecommendation::getFitScore
                 ));
 
-        return ShoeConverter.toShoeRecommendTop3ResultDTO(shoes, fitScoreMap);
+        return ShoeConverter.toShoeRecommendTop3ResultDTO(
+                shoes, fitScoreMap, appliedMeasurementSessionId);
     }
 }

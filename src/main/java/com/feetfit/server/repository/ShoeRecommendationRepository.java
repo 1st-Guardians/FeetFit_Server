@@ -7,8 +7,10 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ShoeRecommendationRepository extends JpaRepository<ShoeRecommendation, Long> {
-    boolean existsByUserId(Long userId);
-    List<ShoeRecommendation> findByUserId(Long userId);
-    List<ShoeRecommendation> findByUserIdAndShoeIdIn(Long userId, List<Long> shoeIds);
-    Optional<ShoeRecommendation> findByUserIdAndShoeId(Long userId, Long shoeId);
+    boolean existsByMeasurementSessionId(Long measurementSessionId);
+    long countByMeasurementSessionId(Long measurementSessionId);
+    List<ShoeRecommendation> findByMeasurementSessionIdAndShoeIdIn(
+            Long measurementSessionId, List<Long> shoeIds);
+    Optional<ShoeRecommendation> findByMeasurementSessionIdAndShoeId(
+            Long measurementSessionId, Long shoeId);
 }

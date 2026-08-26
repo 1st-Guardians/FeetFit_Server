@@ -24,6 +24,7 @@ import com.feetfit.server.repository.MeasurementSessionRepository;
 import com.feetfit.server.repository.TinaPedisAnalysisRepository;
 import com.feetfit.server.service.ImageService.ImageUploadService;
 import com.feetfit.server.service.MeasurementService.MeasurementSocketService;
+import com.feetfit.server.service.MeasurementService.MeasurementCompletionService;
 import com.feetfit.server.web.dto.image.ImageResponseDTO;
 import com.feetfit.server.web.dto.report.ReportRequestDTO;
 import com.feetfit.server.web.dto.report.ReportResponseDTO;
@@ -85,12 +86,15 @@ class ReportCommandServiceImplTest {
     @Mock
     private MeasurementSocketService measurementSocketService;
 
+    @Mock
+    private MeasurementCompletionService measurementCompletionService;
+
     @InjectMocks
     private ReportCommandServiceImpl reportCommandService;
 
     @Test
     void saveTinaPedisAnalysis_completedOwnMeasurement_savesAnalysis() {
-        given(measurementSessionRepository.findById(1L)).willReturn(Optional.of(measurementSession(MeasurementStatus.TRANSFERRING)));
+        given(measurementSessionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(measurementSession(MeasurementStatus.TRANSFERRING)));
         given(tinaPedisAnalysisRepository.findByMeasurementSessionId(1L)).willReturn(Optional.empty());
         givenImageUploads();
         given(tinaPedisAnalysisRepository.save(any(TinaPedisAnalysis.class)))
@@ -134,7 +138,7 @@ class ReportCommandServiceImplTest {
                 .recordedAt(LocalDateTime.of(2026, 5, 19, 9, 0))
                 .build();
 
-        given(measurementSessionRepository.findById(1L)).willReturn(Optional.of(measurementSession(MeasurementStatus.TRANSFERRING)));
+        given(measurementSessionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(measurementSession(MeasurementStatus.TRANSFERRING)));
         given(tinaPedisAnalysisRepository.findByMeasurementSessionId(1L)).willReturn(Optional.of(existingAnalysis));
         givenImageUploads();
         given(tinaPedisAnalysisRepository
@@ -160,8 +164,8 @@ class ReportCommandServiceImplTest {
     }
 
     @Test
-    void saveTinaPedisAnalysis_notCompletedMeasurement_throwsMeasurementHandler() {
-        given(measurementSessionRepository.findById(1L)).willReturn(Optional.of(measurementSession(MeasurementStatus.PENDING)));
+    void saveTinaPedisAnalysis_failedMeasurement_throwsMeasurementHandler() {
+        given(measurementSessionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(measurementSession(MeasurementStatus.FAILED)));
 
         assertThatThrownBy(() -> reportCommandService.saveTinaPedisAnalysis(1L, tinaPedisRequest(), anyImage(), anyImage(), anyImage(), anyImage()))
                 .isInstanceOf(MeasurementHandler.class);
@@ -181,7 +185,7 @@ class ReportCommandServiceImplTest {
                 footCareTodo(5L, HealthType.POSTURE, "균형 스트레칭")
         );
 
-        given(measurementSessionRepository.findById(1L)).willReturn(Optional.of(measurementSession));
+        given(measurementSessionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(measurementSession));
         given(reportRepository.findTopByUserIdAndReportDateGreaterThanEqualAndReportDateLessThanOrderByReportDateDesc(
                 eq(1L), any(LocalDateTime.class), any(LocalDateTime.class)
         )).willReturn(Optional.empty());
@@ -220,7 +224,7 @@ class ReportCommandServiceImplTest {
     @Test
     void saveTinaPedisAnalysis_whenBothRequiredAnalysesExist_keepsTransferringAndDoesNotSendSocket() {
         MeasurementSession measurementSession = measurementSession(MeasurementStatus.TRANSFERRING);
-        given(measurementSessionRepository.findById(1L)).willReturn(Optional.of(measurementSession));
+        given(measurementSessionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(measurementSession));
         given(tinaPedisAnalysisRepository.findByMeasurementSessionId(1L)).willReturn(Optional.empty());
         givenImageUploads();
         given(tinaPedisAnalysisRepository.save(any(TinaPedisAnalysis.class)))
@@ -241,7 +245,7 @@ class ReportCommandServiceImplTest {
     @Test
     void saveTinaPedisAnalysis_whenMeasuring_marksMeasurementTransferringAndDoesNotSendSocket() {
         MeasurementSession measurementSession = measurementSession(MeasurementStatus.MEASURING);
-        given(measurementSessionRepository.findById(1L)).willReturn(Optional.of(measurementSession));
+        given(measurementSessionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(measurementSession));
         given(tinaPedisAnalysisRepository.findByMeasurementSessionId(1L)).willReturn(Optional.empty());
         givenImageUploads();
         given(tinaPedisAnalysisRepository.save(any(TinaPedisAnalysis.class)))

@@ -13,12 +13,14 @@ import com.feetfit.server.domain.ShoeLabMeasurement;
 import com.feetfit.server.domain.ShoeLabMetric;
 import com.feetfit.server.domain.ShoeRecommendation;
 import com.feetfit.server.domain.ShoeRecommendationReason;
+import com.feetfit.server.domain.ShoeRecommendationRun;
 import com.feetfit.server.domain.ShoeReview;
 import com.feetfit.server.domain.StaticPressureAnalysis;
 import com.feetfit.server.domain.TinaPedisAnalysis;
 import com.feetfit.server.domain.enums.FootRegion;
 import com.feetfit.server.domain.enums.MeasurementStatus;
 import com.feetfit.server.domain.enums.ShoeReviewSource;
+import com.feetfit.server.domain.enums.ShoeRecommendationRunStatus;
 import com.feetfit.server.repository.DailyFootAnalysisRepository;
 import com.feetfit.server.repository.HalluxValgusAnalysisRepository;
 import com.feetfit.server.repository.MeasurementSessionRepository;
@@ -27,6 +29,7 @@ import com.feetfit.server.repository.ShoeLabMeasurementRepository;
 import com.feetfit.server.repository.ShoeLabMetricRepository;
 import com.feetfit.server.repository.ShoeRecommendationReasonRepository;
 import com.feetfit.server.repository.ShoeRecommendationRepository;
+import com.feetfit.server.repository.ShoeRecommendationRunRepository;
 import com.feetfit.server.repository.ShoeRepository;
 import com.feetfit.server.repository.ShoeReviewRepository;
 import com.feetfit.server.repository.StaticPressureAnalysisRepository;
@@ -61,6 +64,7 @@ public class ShoeAnalysisQueryServiceImpl implements ShoeAnalysisQueryService {
     private final ShoeLabMeasurementRepository shoeLabMeasurementRepository;
     private final ShoeLabMetricRepository shoeLabMetricRepository;
     private final ShoeRecommendationRepository shoeRecommendationRepository;
+    private final ShoeRecommendationRunRepository shoeRecommendationRunRepository;
     private final ShoeRecommendationReasonRepository shoeRecommendationReasonRepository;
 
     @Override
@@ -137,9 +141,16 @@ public class ShoeAnalysisQueryServiceImpl implements ShoeAnalysisQueryService {
 
     @Override
     public ShoeAnalysisResponseDTO.RecommendationSummaryContext getRecommendationSummaryContext(
-            Long userId, Long shoeId) {
+            Long userId, Long measurementSessionId, Long shoeId) {
+        getOwnedCompletedSession(userId, measurementSessionId);
+        ShoeRecommendationRun run = shoeRecommendationRunRepository
+                .findByMeasurementSessionIdAndMeasurementSessionUserId(measurementSessionId, userId)
+                .orElseThrow(() -> new ShoeHandler(ErrorStatus.SHOE_RECOMMENDATION_RUN_NOT_FOUND));
+        if (run.getStatus() != ShoeRecommendationRunStatus.RUNNING) {
+            throw new ShoeHandler(ErrorStatus.SHOE_RECOMMENDATION_RUN_NOT_RUNNING);
+        }
         ShoeRecommendation recommendation = shoeRecommendationRepository
-                .findByUserIdAndShoeId(userId, shoeId)
+                .findByMeasurementSessionIdAndShoeId(measurementSessionId, shoeId)
                 .orElseThrow(() -> new ShoeHandler(ErrorStatus.SHOE_RECOMMENDATION_NOT_FOUND));
         Shoe shoe = recommendation.getShoe();
         List<ShoeAnalysisResponseDTO.SavedReasonItem> reasons =
@@ -150,6 +161,7 @@ public class ShoeAnalysisQueryServiceImpl implements ShoeAnalysisQueryService {
                         .toList();
 
         return ShoeAnalysisResponseDTO.RecommendationSummaryContext.builder()
+                .measurementSessionId(measurementSessionId)
                 .userId(userId)
                 .shoeId(shoe.getId())
                 .brandName(shoe.getBrandName())

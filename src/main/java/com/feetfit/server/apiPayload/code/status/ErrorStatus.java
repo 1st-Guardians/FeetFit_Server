@@ -58,6 +58,10 @@ public enum ErrorStatus implements BaseErrorCode {
     SHOE_SEARCH_HISTORY_NOT_FOUND(HttpStatus.NOT_FOUND, "SHOE4003", "검색 기록을 찾을 수 없습니다."),
     SHOE_REVIEW_MISMATCH(HttpStatus.BAD_REQUEST, "SHOE4004", "reviewId가 해당 shoeId의 리뷰가 아니거나 존재하지 않습니다."),
     SHOE_RECOMMENDATION_NOT_FOUND(HttpStatus.NOT_FOUND, "SHOE4005", "신발 추천 결과를 찾을 수 없습니다."),
+    SHOE_RECOMMENDATION_RUN_NOT_FOUND(HttpStatus.NOT_FOUND, "SHOE4006", "신발 추천 실행 정보를 찾을 수 없습니다."),
+    SHOE_RECOMMENDATION_RUN_NOT_COMPLETED(HttpStatus.CONFLICT, "SHOE4007", "완료된 신발 추천 실행이 아닙니다."),
+    SHOE_RECOMMENDATION_RUN_NOT_RUNNING(HttpStatus.CONFLICT, "SHOE4008", "진행 중인 신발 추천 실행이 아닙니다."),
+    SHOE_RECOMMENDATION_RUN_CONFLICT(HttpStatus.CONFLICT, "SHOE4009", "신발 추천 실행 상태가 요청과 충돌합니다."),
 
     // Health Article
     ARTICLE_NOT_FOUND(HttpStatus.NOT_FOUND, "ARTICLE4001", "아티클을 찾을 수 없습니다.");

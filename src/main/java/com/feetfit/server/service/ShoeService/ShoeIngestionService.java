@@ -12,6 +12,9 @@ public interface ShoeIngestionService {
     ShoeIngestionResponseDTO.ImportResult importRunRepeat(
             ShoeIngestionRequestDTO.RunRepeatImportRequest request);
 
+    ShoeIngestionResponseDTO.ImportResult importRunRepeatTargeted(
+            ShoeIngestionRequestDTO.RunRepeatImportRequest request);
+
     ShoeIngestionResponseDTO.AuditPageResult getImportAudits(
             ShoeImportSource source,
             ShoeImportMatchStatus matchStatus,

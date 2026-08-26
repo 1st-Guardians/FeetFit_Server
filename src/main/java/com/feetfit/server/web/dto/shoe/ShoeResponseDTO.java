@@ -16,6 +16,7 @@ public class ShoeResponseDTO {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class ShoeListResultDTO {
+        private Long measurementSessionId;
         private List<ShoeItemDTO> shoes;
         private int currentPage;
         private int totalPages;
@@ -56,6 +57,7 @@ public class ShoeResponseDTO {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class ShoeRecommendTop3ResultDTO {
+        private Long measurementSessionId;
         private List<ShoeRecommendTop3ItemDTO> shoes;
     }
 
@@ -81,6 +83,7 @@ public class ShoeResponseDTO {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class ShoeDetailResultDTO {
+        private Long measurementSessionId;
         private Long id;
         private String brandName;
         private String shoeName;
@@ -114,6 +117,7 @@ public class ShoeResponseDTO {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class SaveShoeRecommendationResultDTO {
+        private Long measurementSessionId;
         private Integer requestedCount;
         private Integer processedCount;
         private List<Long> skippedShoeIds;          // DB에 없는 shoeId라서 건너뜀

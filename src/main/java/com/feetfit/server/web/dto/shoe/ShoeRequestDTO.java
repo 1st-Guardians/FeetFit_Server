@@ -27,6 +27,7 @@ public class ShoeRequestDTO {
         private ShoeSort sort = ShoeSort.FIT_SCORE;
         private int page = 0;
         private int size = 20;
+        private Long measurementSessionId;
     }
 
     @Getter
@@ -140,6 +141,10 @@ public class ShoeRequestDTO {
     @NoArgsConstructor
     @Schema(description = "AI가 생성한 추천 설명 저장 요청")
     public static class SaveShoeSummariesDTO {
+
+        @NotNull(message = "측정 세션 ID는 필수입니다.")
+        @Positive(message = "측정 세션 ID는 양수여야 합니다.")
+        private Long measurementSessionId;
 
         @NotBlank(message = "pointSummary는 필수입니다.")
         private String pointSummary;

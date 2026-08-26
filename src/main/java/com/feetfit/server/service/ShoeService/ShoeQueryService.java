@@ -5,5 +5,6 @@ import com.feetfit.server.web.dto.shoe.ShoeResponseDTO;
 
 public interface ShoeQueryService {
     ShoeResponseDTO.ShoeListResultDTO getShoeList(Long userId, ShoeRequestDTO.ShoeListRequestDTO request);
-    ShoeResponseDTO.ShoeRecommendTop3ResultDTO getTop3ShoesByFitScore(Long userId);
+    ShoeResponseDTO.ShoeRecommendTop3ResultDTO getTop3ShoesByFitScore(
+            Long userId, Long measurementSessionId);
 }
