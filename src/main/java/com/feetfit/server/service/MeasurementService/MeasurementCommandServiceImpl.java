@@ -19,6 +19,8 @@ import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -56,17 +58,32 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
         saved.updateStatus(MeasurementStatus.WAITING_FOR_PHOTO, null);
         measurementCompletionService.initialize(saved);
 
+        measurementHardwareClient.requestInitialEnvironmentMeasurement(
+                saved.getId(),
+                authorizationHeader
+        );
         measurementSocketService.sendMeasurementStatusChanged(saved);
-        measurementHardwareClient.requestMeasurementStart(saved.getId(), authorizationHeader);
 
         return MeasurementConverter.toCreateMeasurementSessionResultDTO(saved);
     }
 
     @Override
     public MeasurementResponseDTO.UpdateMeasurementStatusResultDTO updateMeasurementStatus(
-            Long userId, Long measurementSessionId, MeasurementRequestDTO.UpdateMeasurementStatusDTO request) {
+            Long userId,
+            Long measurementSessionId,
+            MeasurementRequestDTO.UpdateMeasurementStatusDTO request,
+            String authorizationHeader) {
 
         MeasurementSession measurementSession = getOwnedMeasurementSession(userId, measurementSessionId);
+        MeasurementStatus previousStatus = measurementSession.getStatus();
+
+        if (previousStatus == MeasurementStatus.FAILED) {
+            measurementSocketService.sendMeasurementStatusChanged(measurementSession);
+            if (request.getStatus() == MeasurementStatus.FAILED) {
+                return MeasurementConverter.toUpdateMeasurementStatusResultDTO(measurementSession);
+            }
+            throw new MeasurementHandler(ErrorStatus.MEASUREMENT_ALREADY_FAILED);
+        }
 
         if (request.getStatus() == MeasurementStatus.COMPLETED) {
             measurementCompletionService.completeMeasurementIfReady(
@@ -92,7 +109,40 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
         if (measurementSession.getStatus() != MeasurementStatus.COMPLETED) {
             measurementSocketService.sendMeasurementStatusChanged(measurementSession);
         }
+        requestHardwareTaskIfNeeded(measurementSession, previousStatus, authorizationHeader);
         return MeasurementConverter.toUpdateMeasurementStatusResultDTO(measurementSession);
+    }
+
+    private void requestHardwareTaskIfNeeded(
+            MeasurementSession measurementSession,
+            MeasurementStatus previousStatus,
+            String authorizationHeader) {
+        MeasurementStatus currentStatus = measurementSession.getStatus();
+        if (previousStatus == currentStatus) {
+            return;
+        }
+
+        Runnable hardwareRequest = switch (currentStatus) {
+            case READY_FOR_PHOTO -> () -> measurementHardwareClient.requestPhotoCapture(
+                    measurementSession.getId(), authorizationHeader);
+            case READY_FOR_PRESSURE -> () -> measurementHardwareClient.requestPressureAndEnvironmentMeasurement(
+                    measurementSession.getId(), authorizationHeader);
+            default -> null;
+        };
+        if (hardwareRequest == null) {
+            return;
+        }
+
+        requestHardwareTaskAfterCommit(hardwareRequest);
+    }
+
+    private void requestHardwareTaskAfterCommit(Runnable hardwareRequest) {
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                hardwareRequest.run();
+            }
+        });
     }
 
     @Override
@@ -194,7 +244,7 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
 
     private MeasurementSession getOwnedMeasurementSession(Long userId, Long measurementSessionId) {
         MeasurementSession measurementSession = measurementSessionRepository
-                .findById(measurementSessionId)
+                .findByIdForUpdate(measurementSessionId)
                 .orElseThrow(() -> new MeasurementHandler(ErrorStatus.MEASUREMENT_NOT_FOUND));
 
         if (!measurementSession.getUser().getId().equals(userId)) {

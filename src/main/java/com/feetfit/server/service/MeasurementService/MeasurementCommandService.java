@@ -7,7 +7,10 @@ public interface MeasurementCommandService {
     MeasurementResponseDTO.CreateMeasurementSessionResultDTO createMeasurementSession(Long userId, String authorizationHeader);
 
     MeasurementResponseDTO.UpdateMeasurementStatusResultDTO updateMeasurementStatus(
-            Long userId, Long measurementSessionId, MeasurementRequestDTO.UpdateMeasurementStatusDTO request);
+            Long userId,
+            Long measurementSessionId,
+            MeasurementRequestDTO.UpdateMeasurementStatusDTO request,
+            String authorizationHeader);
 
     MeasurementResponseDTO.DeleteMeasurementRecordsResultDTO deleteMeasurementRecords(Long measurementSessionId);
 }

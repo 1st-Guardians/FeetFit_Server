@@ -2,10 +2,12 @@ package com.feetfit.server.service.MeasurementService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
@@ -22,35 +24,89 @@ public class MeasurementHardwareClient {
     @Value("${hardware.measurement.start-url}")
     private String measurementStartUrl;
 
-    public void requestMeasurementStart(Long measurementSessionId, String authorizationHeader) {
-        webClient.post()
-                .uri(measurementStartUrl)
-                .header(HttpHeaders.AUTHORIZATION, authorizationHeader)
+    @Value("${hardware.measurement.photo-capture-url}")
+    private String photoCaptureUrl;
+
+    @Value("${hardware.measurement.pressure-environment-measurement-url}")
+    private String pressureEnvironmentMeasurementUrl;
+
+    public void requestPhotoCapture(Long measurementSessionId, String authorizationHeader) {
+        requestHardwareTask("photo-capture", photoCaptureUrl, measurementSessionId, authorizationHeader);
+    }
+
+    public void requestInitialEnvironmentMeasurement(Long measurementSessionId, String authorizationHeader) {
+        requestHardwareTask(
+                "measurement-start",
+                measurementStartUrl,
+                measurementSessionId,
+                authorizationHeader
+        );
+    }
+
+    public void requestPressureAndEnvironmentMeasurement(Long measurementSessionId, String authorizationHeader) {
+        requestHardwareTask(
+                "pressure-environment-measurement",
+                pressureEnvironmentMeasurementUrl,
+                measurementSessionId,
+                authorizationHeader
+        );
+    }
+
+    private void requestHardwareTask(String taskName, String requestUrl, Long measurementSessionId, String authorizationHeader) {
+        boolean hasAuthorization = StringUtils.hasText(authorizationHeader);
+        String authorizationPreview = hasAuthorization
+                ? authorizationHeader.substring(0, Math.min(authorizationHeader.length(), 12))
+                : null;
+
+        log.info("Hardware task request sending. taskName={}, url={}, measurementSessionId={}, hasAuthorization={}, authorizationPreview={}, body={}",
+                taskName,
+                requestUrl,
+                measurementSessionId,
+                hasAuthorization,
+                authorizationPreview,
+                Map.of("measurementSessionId", measurementSessionId)
+        );
+
+        WebClient.RequestBodySpec requestSpec = webClient.post()
+                .uri(requestUrl)
                 .contentType(MediaType.APPLICATION_JSON)
-                .accept(MediaType.APPLICATION_JSON)
-                .bodyValue(Map.of("measurementSessionId", measurementSessionId))
-                .retrieve()
-                .toBodilessEntity()
-                .timeout(Duration.ofSeconds(10))
-                .doOnSuccess(response -> log.info(
-                        "Hardware measurement request accepted. url={}, measurementSessionId={}, status={}",
-                        measurementStartUrl,
-                        measurementSessionId,
-                        response.getStatusCode()
-                ))
-                .doOnError(WebClientResponseException.class, e -> log.error(
-                        "Hardware measurement request failed. url={}, measurementSessionId={}, status={}, responseBody={}",
-                        measurementStartUrl,
-                        measurementSessionId,
-                        e.getStatusCode(),
-                        e.getResponseBodyAsString()
-                ))
-                .doOnError(e -> !(e instanceof WebClientResponseException), e -> log.error(
-                        "Hardware measurement request failed. url={}, measurementSessionId={}",
-                        measurementStartUrl,
-                        measurementSessionId,
-                        e
-                ))
-                .subscribe();
+                .accept(MediaType.APPLICATION_JSON);
+
+        if (hasAuthorization) {
+            requestSpec.header(HttpHeaders.AUTHORIZATION, authorizationHeader);
+        }
+
+        try {
+            ResponseEntity<Void> response = requestSpec
+                    .bodyValue(Map.of("measurementSessionId", measurementSessionId))
+                    .retrieve()
+                    .toBodilessEntity()
+                    .block(Duration.ofSeconds(10));
+
+            log.info(
+                    "Hardware task request accepted. taskName={}, url={}, measurementSessionId={}, status={}",
+                    taskName,
+                    requestUrl,
+                    measurementSessionId,
+                    response != null ? response.getStatusCode() : null
+            );
+        } catch (WebClientResponseException e) {
+            log.error(
+                    "Hardware task request failed. taskName={}, url={}, measurementSessionId={}, status={}, responseBody={}",
+                    taskName,
+                    requestUrl,
+                    measurementSessionId,
+                    e.getStatusCode(),
+                    e.getResponseBodyAsString()
+            );
+        } catch (Exception e) {
+            log.error(
+                    "Hardware task request failed. taskName={}, url={}, measurementSessionId={}",
+                    taskName,
+                    requestUrl,
+                    measurementSessionId,
+                    e
+            );
+        }
     }
 }
