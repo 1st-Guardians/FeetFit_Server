@@ -44,6 +44,7 @@ public class MeasurementCompletionService {
     private final MetricAnalysisResultRepository metricAnalysisResultRepository;
     private final MeasurementSessionRepository measurementSessionRepository;
     private final MeasurementSocketService measurementSocketService;
+    private final MeasurementCareTipsGenerationService measurementCareTipsGenerationService;
 
     public void initialize(MeasurementSession measurementSession) {
         findOrCreate(measurementSession);
@@ -236,6 +237,7 @@ public class MeasurementCompletionService {
                 resolveMeasurementDurationSec(lockedMeasurementSession, measurementDurationSec)
         );
         lockedMeasurementSession.clearFailure();
+        measurementCareTipsGenerationService.generateAndSaveIfNeeded(lockedMeasurementSession);
         measurementSocketService.sendMeasurementStatusChanged(lockedMeasurementSession);
     }
 
