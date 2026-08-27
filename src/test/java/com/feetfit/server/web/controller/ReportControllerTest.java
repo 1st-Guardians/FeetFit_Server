@@ -27,6 +27,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -127,6 +128,20 @@ class ReportControllerTest {
                 .andExpect(jsonPath("$.isSuccess").value(false))
                 .andExpect(jsonPath("$.code").value("TINA_PEDIS4001"))
                 .andExpect(jsonPath("$.message").value("무좀 분석 결과를 찾을 수 없습니다."));
+    }
+
+    @Test
+    void legacyCareTipsWriteEndpoint_isNotExposed() throws Exception {
+        mockMvc.perform(post("/api/reports/daily-foot-analysis/care-tips")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "measurementSessionId": 1,
+                                  "careTips": ["tip-1", "tip-2", "tip-3"],
+                                  "typeText": "legacy client supplied text"
+                                }
+                                """))
+                .andExpect(status().isNotFound());
     }
 
     private static ReportResponseDTO.TinaPedisAnalysisResultDTO tinaPedisResponse() {

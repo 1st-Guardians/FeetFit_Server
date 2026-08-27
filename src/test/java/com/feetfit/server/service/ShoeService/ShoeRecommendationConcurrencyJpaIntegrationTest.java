@@ -32,7 +32,7 @@ import static org.assertj.core.api.Assertions.assertThat;
         "spring.datasource.driver-class-name=org.h2.Driver",
         "spring.datasource.hikari.connection-init-sql=",
         "jwt.secret=ZmFrZS10ZXN0LWp3dC1zZWNyZXQtZmFrZS10ZXN0LWp3dC1zZWNyZXQ=",
-        "internal.api-key=test-internal-key"
+        "INTERNAL_API_KEY=test-internal-key"
 })
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class ShoeRecommendationConcurrencyJpaIntegrationTest {

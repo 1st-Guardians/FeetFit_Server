@@ -33,7 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.datasource.username=sa",
         "spring.datasource.password=",
         "spring.datasource.hikari.connection-init-sql=",
-        "internal.api-key=test-service-key",
+        "INTERNAL_API_KEY=test-service-key",
         "jwt.secret=dGhpcy1pcy1hLXZlcnktbG9uZy10ZXN0LXNlY3JldC0zMi1ieXRlcw=="
 })
 class ShoeIngestionHttpJpaIntegrationTest {

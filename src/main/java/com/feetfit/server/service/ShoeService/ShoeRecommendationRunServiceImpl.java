@@ -6,6 +6,7 @@ import com.feetfit.server.apiPayload.exception.handler.ShoeHandler;
 import com.feetfit.server.domain.MeasurementSession;
 import com.feetfit.server.domain.ShoeRecommendationRun;
 import com.feetfit.server.domain.enums.MeasurementStatus;
+import com.feetfit.server.domain.enums.ShoeRecommendationRunStatus;
 import com.feetfit.server.repository.MeasurementSessionRepository;
 import com.feetfit.server.repository.ShoeRecommendationRepository;
 import com.feetfit.server.repository.ShoeRecommendationReasonRepository;
@@ -26,6 +27,53 @@ public class ShoeRecommendationRunServiceImpl implements ShoeRecommendationRunSe
     private final ShoeRecommendationRunRepository runRepository;
     private final ShoeRecommendationRepository recommendationRepository;
     private final ShoeRecommendationReasonRepository reasonRepository;
+
+    @Override
+    @Transactional
+    public boolean claimAutomaticRun(Long userId, Long measurementSessionId, int expectedCount) {
+        requirePositiveExpectedCount(expectedCount);
+        MeasurementSession session = lockOwnedCompletedSession(userId, measurementSessionId);
+        ShoeRecommendationRun run = runRepository.findByMeasurementSessionIdForUpdate(measurementSessionId)
+                .orElseGet(() -> runRepository.save(ShoeRecommendationRun.builder()
+                        .measurementSession(session)
+                        .expectedCount(expectedCount)
+                        .build()));
+        if (run.getStatus() == ShoeRecommendationRunStatus.RUNNING
+                || run.getStatus() == ShoeRecommendationRunStatus.COMPLETED) {
+            return false;
+        }
+        try {
+            run.start(expectedCount, false, LocalDateTime.now());
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            throw runConflict(ex.getMessage());
+        }
+        return true;
+    }
+
+    @Override
+    @Transactional
+    public boolean claimAutomaticRetry(
+            Long userId,
+            Long measurementSessionId,
+            int expectedCount) {
+        requirePositiveExpectedCount(expectedCount);
+        MeasurementSession session = lockOwnedCompletedSession(userId, measurementSessionId);
+        ShoeRecommendationRun run = runRepository.findByMeasurementSessionIdForUpdate(measurementSessionId)
+                .orElseGet(() -> runRepository.save(ShoeRecommendationRun.builder()
+                        .measurementSession(session)
+                        .expectedCount(expectedCount)
+                        .build()));
+        if (run.getStatus() == ShoeRecommendationRunStatus.RUNNING
+                || run.getStatus() == ShoeRecommendationRunStatus.COMPLETED) {
+            return false;
+        }
+        try {
+            run.start(expectedCount, false, LocalDateTime.now());
+        } catch (IllegalArgumentException | IllegalStateException ex) {
+            throw runConflict(ex.getMessage());
+        }
+        return true;
+    }
 
     @Override
     @Transactional

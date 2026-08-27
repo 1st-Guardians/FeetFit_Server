@@ -299,15 +299,6 @@ public class ReportCommandServiceImpl implements ReportCommandService {
         return buildDailyFootAnalysisResult(userId, analysis);
     }
 
-    @Override
-    public ReportResponseDTO.DailyFootAnalysisResultDTO saveCareTipsPart(
-            Long userId, ReportRequestDTO.CareTipsPartDTO request) {
-        MeasurementSession session = getValidatedReportWritableMeasurementSession(userId, request.getMeasurementSessionId());
-        DailyFootAnalysis analysis = findOrCreate(session);
-        analysis.updateCareTips(request.getCareTips(), request.getTypeText());
-        return buildDailyFootAnalysisResult(userId, analysis);
-    }
-
     private DailyFootAnalysis findOrCreate(MeasurementSession session) {
         MeasurementSession lockedSession = lockMeasurementSession(session.getId());
         return dailyFootAnalysisRepository.findByMeasurementSessionId(lockedSession.getId())

@@ -757,31 +757,6 @@ public class ReportController {
         return ApiResponse.onSuccess(reportCommandService.saveEnvironmentPart(userId, request));
     }
 
-    @PostMapping("/daily-foot-analysis/care-tips")
-    @Operation(
-            summary = "종합 발 분석 - 관리팁/발 타입 저장 [민지]",
-            description = """
-                관리 팁 3개와 발 타입 텍스트를 저장합니다.
-                Authorization 헤더에 Bearer accessToken이 필요합니다.
-                - careTips는 정확히 3개여야 합니다.
-                """
-    )
-    @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200",
-                    content = @Content(examples = @ExampleObject(value = DAILY_FOOT_ANALYSIS_SUCCESS_RESPONSE))),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401",
-                    content = @Content(examples = @ExampleObject(value = UNAUTHORIZED_RESPONSE))),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
-                    content = @Content(examples = @ExampleObject(value = MEASUREMENT_FORBIDDEN_RESPONSE))),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
-                    content = @Content(examples = @ExampleObject(value = MEASUREMENT_NOT_FOUND_RESPONSE)))
-    })
-    public ApiResponse<ReportResponseDTO.DailyFootAnalysisResultDTO> saveCareTipsPart(
-            @RequestBody @Valid ReportRequestDTO.CareTipsPartDTO request) {
-        Long userId = findLoginUser.getCurrentUserId();
-        return ApiResponse.onSuccess(reportCommandService.saveCareTipsPart(userId, request));
-    }
-
     @GetMapping("/daily-foot-analysis")
     @Operation(
             summary = "종합 발 분석 결과 조회 [민지]",

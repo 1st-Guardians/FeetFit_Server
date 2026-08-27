@@ -3,6 +3,14 @@ package com.feetfit.server.service.ShoeService;
 import com.feetfit.server.web.dto.shoe.ShoeRecommendationRunResponseDTO;
 
 public interface ShoeRecommendationRunService {
+    boolean claimAutomaticRun(
+            Long userId, Long measurementSessionId, int expectedCount);
+
+    boolean claimAutomaticRetry(
+            Long userId,
+            Long measurementSessionId,
+            int expectedCount);
+
     ShoeRecommendationRunResponseDTO.RunResultDTO prepareRun(
             Long userId, Long measurementSessionId, int expectedCount);
 

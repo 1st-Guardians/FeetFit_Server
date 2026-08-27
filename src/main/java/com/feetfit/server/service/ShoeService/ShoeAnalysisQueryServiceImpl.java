@@ -146,7 +146,8 @@ public class ShoeAnalysisQueryServiceImpl implements ShoeAnalysisQueryService {
         ShoeRecommendationRun run = shoeRecommendationRunRepository
                 .findByMeasurementSessionIdAndMeasurementSessionUserId(measurementSessionId, userId)
                 .orElseThrow(() -> new ShoeHandler(ErrorStatus.SHOE_RECOMMENDATION_RUN_NOT_FOUND));
-        if (run.getStatus() != ShoeRecommendationRunStatus.RUNNING) {
+        if (run.getStatus() != ShoeRecommendationRunStatus.RUNNING
+                && run.getStatus() != ShoeRecommendationRunStatus.COMPLETED) {
             throw new ShoeHandler(ErrorStatus.SHOE_RECOMMENDATION_RUN_NOT_RUNNING);
         }
         ShoeRecommendation recommendation = shoeRecommendationRepository

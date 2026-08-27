@@ -3,6 +3,7 @@ package com.feetfit.server.service.ShoeService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.feetfit.server.domain.*;
 import com.feetfit.server.domain.enums.MeasurementStatus;
+import com.feetfit.server.domain.enums.ShoeReviewSource;
 import com.feetfit.server.domain.enums.SocialType;
 import com.feetfit.server.repository.*;
 import com.feetfit.server.web.dto.shoe.ShoeRequestDTO;
@@ -18,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest(properties = {
         "spring.flyway.enabled=false",
@@ -30,7 +32,7 @@ import static org.assertj.core.api.Assertions.assertThat;
         "spring.datasource.driver-class-name=org.h2.Driver",
         "spring.datasource.hikari.connection-init-sql=",
         "jwt.secret=ZmFrZS10ZXN0LWp3dC1zZWNyZXQtZmFrZS10ZXN0LWp3dC1zZWNyZXQ=",
-        "internal.api-key=test-internal-key"
+        "INTERNAL_API_KEY=test-internal-key"
 })
 @Transactional
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
@@ -49,6 +51,8 @@ class ShoeRecommendationSessionServiceJpaIntegrationTest {
     @Autowired ShoeRecommendationRepository recommendationRepository;
     @Autowired ShoeRecommendationRunRepository recommendationRunRepository;
     @Autowired ShoeRecommendationReasonRepository reasonRepository;
+    @Autowired ShoeRecommendationReasonReviewRepository reasonReviewRepository;
+    @Autowired ShoeReviewRepository shoeReviewRepository;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private User user;
@@ -126,10 +130,22 @@ class ShoeRecommendationSessionServiceJpaIntegrationTest {
 
     @Test
     void summarySaveChangesOnlyExplicitSession() throws Exception {
+        Shoe secondShoe = shoeRepository.save(shoe("summary-goods-2", "summary-model-2"));
+        Shoe thirdShoe = shoeRepository.save(shoe("summary-goods-3", "summary-model-3"));
         shoeCommandService.saveShoeRecommendations(
                 user.getId(), recommendationRequest(firstSession.getId(), shoe.getId(), 80));
         shoeCommandService.saveShoeRecommendations(
+                user.getId(), recommendationRequest(firstSession.getId(), secondShoe.getId(), 70));
+        shoeCommandService.saveShoeRecommendations(
+                user.getId(), recommendationRequest(firstSession.getId(), thirdShoe.getId(), 60));
+        shoeCommandService.saveShoeRecommendations(
                 user.getId(), recommendationRequest(secondSession.getId(), shoe.getId(), 95));
+        shoeCommandService.saveShoeRecommendations(
+                user.getId(), recommendationRequest(secondSession.getId(), secondShoe.getId(), 85));
+        shoeCommandService.saveShoeRecommendations(
+                user.getId(), recommendationRequest(secondSession.getId(), thirdShoe.getId(), 75));
+        runService.completeRun(user.getId(), firstSession.getId());
+        runService.completeRun(user.getId(), secondSession.getId());
 
         com.feetfit.server.web.dto.shoe.ShoeAnalysisResponseDTO.RecommendationSummaryContext
                 firstContext = shoeAnalysisQueryService.getRecommendationSummaryContext(
@@ -153,6 +169,92 @@ class ShoeRecommendationSessionServiceJpaIntegrationTest {
                 .orElseThrow();
         assertThat(oldRecommendation.getPointSummary()).isEqualTo("explicit summary");
         assertThat(latestRecommendation.getPointSummary()).isEqualTo("score summary");
+    }
+
+    @Test
+    void summaryReviewIdsOutsideBgeCandidatesFailClosed() throws Exception {
+        Shoe secondShoe = shoeRepository.save(shoe("subset-goods-2", "subset-model-2"));
+        Shoe thirdShoe = shoeRepository.save(shoe("subset-goods-3", "subset-model-3"));
+        save(firstSession, shoe, 80);
+        save(firstSession, secondShoe, 70);
+        save(firstSession, thirdShoe, 60);
+        runService.completeRun(user.getId(), firstSession.getId());
+
+        ShoeRequestDTO.SaveShoeSummariesDTO invalid = objectMapper.readValue("""
+                {"measurementSessionId":%d,"pointSummary":"must not persist","reasons":[
+                  {"reasonType":"FOREFOOT","reviewSummary":"invalid","reviewIds":[999999]},
+                  {"reasonType":"HEEL","reviewSummary":"heel","reviewIds":[]},
+                  {"reasonType":"INSOLE","reviewSummary":"insole","reviewIds":[]}
+                ]}
+                """.formatted(firstSession.getId()),
+                ShoeRequestDTO.SaveShoeSummariesDTO.class);
+
+        assertThatThrownBy(() -> shoeCommandService.saveShoeSummaries(
+                user.getId(), shoe.getId(), invalid)).isInstanceOf(RuntimeException.class);
+
+        ShoeRecommendation unchanged = recommendationRepository
+                .findByMeasurementSessionIdAndShoeId(firstSession.getId(), shoe.getId())
+                .orElseThrow();
+        assertThat(unchanged.getPointSummary()).isEqualTo("score summary");
+        assertThat(reasonRepository.findByShoeRecommendationId(unchanged.getId()))
+                .allMatch(reason -> reason.getReviewSummary() == null);
+    }
+
+    @Test
+    void completedSessionSummaryReplacesLinksWithBgeCandidateSubset() throws Exception {
+        Shoe secondShoe = shoeRepository.save(shoe("selected-goods-2", "selected-model-2"));
+        Shoe thirdShoe = shoeRepository.save(shoe("selected-goods-3", "selected-model-3"));
+        ShoeReview firstReview = shoeReviewRepository.save(review("review-1", "hash-1"));
+        ShoeReview secondReview = shoeReviewRepository.save(review("review-2", "hash-2"));
+
+        ShoeRequestDTO.SaveShoeRecommendationDTO candidates = objectMapper.readValue("""
+                {"measurementSessionId":%d,"recommendations":[{
+                  "shoeId":%d,"fitScore":80,"pointSummary":null,"reasons":[
+                    {"reasonType":"FOREFOOT","title":"forefoot","riskLevel":"LOW","reviewIds":[%d,%d]},
+                    {"reasonType":"HEEL","title":"heel","riskLevel":"MEDIUM","reviewIds":[%d,%d]},
+                    {"reasonType":"INSOLE","title":"insole","riskLevel":"HIGH","reviewIds":[%d,%d]}
+                  ]
+                }]}
+                """.formatted(
+                        firstSession.getId(), shoe.getId(),
+                        firstReview.getId(), secondReview.getId(),
+                        firstReview.getId(), secondReview.getId(),
+                        firstReview.getId(), secondReview.getId()),
+                ShoeRequestDTO.SaveShoeRecommendationDTO.class);
+        shoeCommandService.saveShoeRecommendations(user.getId(), candidates);
+        save(firstSession, secondShoe, 70);
+        save(firstSession, thirdShoe, 60);
+        runService.completeRun(user.getId(), firstSession.getId());
+
+        ShoeRequestDTO.SaveShoeSummariesDTO selected = objectMapper.readValue("""
+                {"measurementSessionId":%d,"pointSummary":"ollama point","reasons":[
+                  {"reasonType":"FOREFOOT","reviewSummary":"forefoot final","reviewIds":[%d]},
+                  {"reasonType":"HEEL","reviewSummary":"heel final","reviewIds":[]},
+                  {"reasonType":"INSOLE","reviewSummary":"insole final","reviewIds":[%d,%d]}
+                ]}
+                """.formatted(
+                        firstSession.getId(), secondReview.getId(),
+                        firstReview.getId(), secondReview.getId()),
+                ShoeRequestDTO.SaveShoeSummariesDTO.class);
+        shoeCommandService.saveShoeSummaries(user.getId(), shoe.getId(), selected);
+
+        ShoeRecommendation recommendation = recommendationRepository
+                .findByMeasurementSessionIdAndShoeId(firstSession.getId(), shoe.getId())
+                .orElseThrow();
+        assertThat(recommendation.getPointSummary()).isEqualTo("ollama point");
+        java.util.Map<com.feetfit.server.domain.enums.ReasonType, java.util.List<Long>> links =
+                reasonRepository.findByShoeRecommendationId(recommendation.getId()).stream()
+                        .collect(java.util.stream.Collectors.toMap(
+                                ShoeRecommendationReason::getReasonType,
+                                reason -> reasonReviewRepository.findByReasonId(reason.getId()).stream()
+                                        .map(link -> link.getReview().getId())
+                                        .sorted()
+                                        .toList()));
+        assertThat(links.get(com.feetfit.server.domain.enums.ReasonType.FOREFOOT))
+                .containsExactly(secondReview.getId());
+        assertThat(links.get(com.feetfit.server.domain.enums.ReasonType.HEEL)).isEmpty();
+        assertThat(links.get(com.feetfit.server.domain.enums.ReasonType.INSOLE))
+                .containsExactly(firstReview.getId(), secondReview.getId());
     }
 
     @Test
@@ -246,6 +348,18 @@ class ShoeRecommendationSessionServiceJpaIntegrationTest {
                 .build();
     }
 
+    private ShoeReview review(String sourceReviewId, String contentHash) {
+        return ShoeReview.builder()
+                .shoe(shoe)
+                .rating(5f)
+                .reviewText(sourceReviewId + " text")
+                .sourceReviewId(sourceReviewId)
+                .contentHash(contentHash)
+                .source(ShoeReviewSource.MUSINSA)
+                .collectedAt(LocalDateTime.now())
+                .build();
+    }
+
     private void save(MeasurementSession session, Shoe targetShoe, int score) throws Exception {
         shoeCommandService.saveShoeRecommendations(
                 user.getId(), recommendationRequest(session.getId(), targetShoe.getId(), score));
@@ -268,9 +382,9 @@ class ShoeRecommendationSessionServiceJpaIntegrationTest {
     private ShoeRequestDTO.SaveShoeSummariesDTO summaryRequest(Long sessionId) throws Exception {
         return objectMapper.readValue("""
                 {"measurementSessionId":%d,"pointSummary":"explicit summary","reasons":[
-                  {"reasonType":"FOREFOOT","reviewSummary":"forefoot summary"},
-                  {"reasonType":"HEEL","reviewSummary":"heel summary"},
-                  {"reasonType":"INSOLE","reviewSummary":"insole summary"}
+                  {"reasonType":"FOREFOOT","reviewSummary":"forefoot summary","reviewIds":[]},
+                  {"reasonType":"HEEL","reviewSummary":"heel summary","reviewIds":[]},
+                  {"reasonType":"INSOLE","reviewSummary":"insole summary","reviewIds":[]}
                 ]}
                 """.formatted(sessionId), ShoeRequestDTO.SaveShoeSummariesDTO.class);
     }

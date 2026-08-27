@@ -30,7 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(ShoeIngestionController.class)
 @AutoConfigureMockMvc(addFilters = false)
 @Import({InternalApiWebConfig.class, InternalApiKeyInterceptor.class, ExceptionAdvice.class})
-@TestPropertySource(properties = "internal.api-key=test-service-key")
+@TestPropertySource(properties = "INTERNAL_API_KEY=test-service-key")
 class ShoeIngestionControllerTest {
 
     @Autowired MockMvc mockMvc;

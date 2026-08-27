@@ -168,8 +168,7 @@ public class DailyFootAnalysis extends BaseEntity {
         this.avgHumidityPercent = avgHumidityPercent;
     }
 
-    public void updateCareTips(List<String> careTips, String typeText) {
-        this.careTips = careTips;
+    public void updateTypeText(String typeText) {
         this.typeText = typeText;
     }
 }
