@@ -16,6 +16,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -101,6 +103,39 @@ class MeasurementCommandServiceImplTest {
         verify(measurementCompletionService)
                 .completeMeasurementIfReady(measurementSession, 180);
         verify(measurementSocketService, never()).sendMeasurementStatusChanged(measurementSession);
+    }
+
+    @Test
+    void updateMeasurementStatus_toReadyForEnvironment_requestsEnvironmentMeasurementAfterCommit() {
+        MeasurementSession measurementSession = measurementSession(MeasurementStatus.WAITING_FOR_ENVIRONMENT);
+        given(measurementSessionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(measurementSession));
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            MeasurementResponseDTO.UpdateMeasurementStatusResultDTO response =
+                    measurementCommandService.updateMeasurementStatus(
+                            1L,
+                            1L,
+                            new MeasurementRequestDTO.UpdateMeasurementStatusDTO(
+                                    MeasurementStatus.READY_FOR_ENVIRONMENT,
+                                    null
+                            ),
+                            "Bearer test-token"
+                    );
+
+            assertThat(response.getStatus()).isEqualTo(MeasurementStatus.READY_FOR_ENVIRONMENT);
+            verify(measurementSocketService).sendMeasurementStatusChanged(measurementSession);
+            verify(measurementHardwareClient, never())
+                    .requestEnvironmentMeasurement(1L, "Bearer test-token");
+
+            TransactionSynchronizationManager.getSynchronizations()
+                    .forEach(TransactionSynchronization::afterCommit);
+
+            verify(measurementHardwareClient)
+                    .requestEnvironmentMeasurement(1L, "Bearer test-token");
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
     }
 
     private static MeasurementSession measurementSession(MeasurementStatus status) {

@@ -125,6 +125,8 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
         Runnable hardwareRequest = switch (currentStatus) {
             case READY_FOR_PHOTO -> () -> measurementHardwareClient.requestPhotoCapture(
                     measurementSession.getId(), authorizationHeader);
+            case READY_FOR_ENVIRONMENT -> () -> measurementHardwareClient.requestEnvironmentMeasurement(
+                    measurementSession.getId(), authorizationHeader);
             case READY_FOR_PRESSURE -> () -> measurementHardwareClient.requestPressureAndEnvironmentMeasurement(
                     measurementSession.getId(), authorizationHeader);
             default -> null;

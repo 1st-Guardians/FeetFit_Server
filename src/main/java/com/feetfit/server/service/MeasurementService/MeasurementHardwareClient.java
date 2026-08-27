@@ -48,15 +48,38 @@ public class MeasurementHardwareClient {
                 "pressure-environment-measurement",
                 pressureEnvironmentMeasurementUrl,
                 measurementSessionId,
-                authorizationHeader
+                authorizationHeader,
+                "PRESSURE_MEASUREMENT"
+        );
+    }
+
+    public void requestEnvironmentMeasurement(Long measurementSessionId, String authorizationHeader) {
+        requestHardwareTask(
+                "environment-measurement",
+                pressureEnvironmentMeasurementUrl,
+                measurementSessionId,
+                authorizationHeader,
+                "ENVIRONMENT_MEASUREMENT"
         );
     }
 
     private void requestHardwareTask(String taskName, String requestUrl, Long measurementSessionId, String authorizationHeader) {
+        requestHardwareTask(taskName, requestUrl, measurementSessionId, authorizationHeader, null);
+    }
+
+    private void requestHardwareTask(
+            String taskName,
+            String requestUrl,
+            Long measurementSessionId,
+            String authorizationHeader,
+            String hardwareTaskType) {
         boolean hasAuthorization = StringUtils.hasText(authorizationHeader);
         String authorizationPreview = hasAuthorization
                 ? authorizationHeader.substring(0, Math.min(authorizationHeader.length(), 12))
                 : null;
+        Map<String, Object> body = StringUtils.hasText(hardwareTaskType)
+                ? Map.of("measurementSessionId", measurementSessionId, "task", hardwareTaskType)
+                : Map.of("measurementSessionId", measurementSessionId);
 
         log.info("Hardware task request sending. taskName={}, url={}, measurementSessionId={}, hasAuthorization={}, authorizationPreview={}, body={}",
                 taskName,
@@ -64,7 +87,7 @@ public class MeasurementHardwareClient {
                 measurementSessionId,
                 hasAuthorization,
                 authorizationPreview,
-                Map.of("measurementSessionId", measurementSessionId)
+                body
         );
 
         WebClient.RequestBodySpec requestSpec = webClient.post()
@@ -78,7 +101,7 @@ public class MeasurementHardwareClient {
 
         try {
             ResponseEntity<Void> response = requestSpec
-                    .bodyValue(Map.of("measurementSessionId", measurementSessionId))
+                    .bodyValue(body)
                     .retrieve()
                     .toBodilessEntity()
                     .block(Duration.ofSeconds(10));
