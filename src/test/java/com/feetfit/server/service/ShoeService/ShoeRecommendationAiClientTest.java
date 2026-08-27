@@ -32,6 +32,8 @@ class ShoeRecommendationAiClientTest {
             "https://ai.internal.example/api/reports/shoe-recommendations";
     private static final String SUMMARY_URL =
             "https://ai.internal.example/api/shoes/summaries";
+    private static final String FOOT_TYPE_TEXT_URL =
+            "https://foot-type-ai.internal.example/api/reports/foot-type-text";
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @Test
@@ -49,6 +51,14 @@ class ShoeRecommendationAiClientTest {
         assertThatThrownBy(() -> client(BATCH_URL, "relative/path", 30, "key", true))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("ai.shoe-recommendation.summary-url");
+    }
+
+    @Test
+    void configuredFootTypeEndpointMustBeAnAbsoluteHttpUrl() {
+        assertThatThrownBy(() -> client(
+                BATCH_URL, SUMMARY_URL, "relative/foot-type-text", 30, "key", true))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("ai.foot-type-text.url");
     }
 
     @Test
@@ -153,6 +163,50 @@ class ShoeRecommendationAiClientTest {
     }
 
     @Test
+    void footTypeRequestUsesExplicitEndpointWhenConfigured() {
+        AtomicReference<ClientRequest> captured = new AtomicReference<>();
+        WebClient webClient = WebClient.builder()
+                .exchangeFunction(request -> {
+                    captured.set(request);
+                    return Mono.just(ClientResponse.create(HttpStatus.OK)
+                            .header(HttpHeaders.CONTENT_TYPE, "application/json")
+                            .body("""
+                                    {
+                                      "measurementSessionId": 21,
+                                      "factsHash": "%s",
+                                      "typeText": "아치를 안정적으로 받쳐주는 신발이 편안할 수 있어요.",
+                                      "evidenceId": "ARCH_LOW",
+                                      "source": "OPENAI"
+                                    }
+                                    """.formatted("a".repeat(64)))
+                            .build());
+                })
+                .build();
+        ShoeRecommendationAiClient client = client(
+                webClient,
+                BATCH_URL,
+                SUMMARY_URL,
+                FOOT_TYPE_TEXT_URL,
+                30,
+                "internal-key",
+                true);
+        FootTypeTextAiDTO.Request request = new FootTypeTextAiDTO.Request(
+                21L,
+                MeasurementStatus.COMPLETED,
+                "a".repeat(64),
+                new FootTypeTextAiDTO.Analysis(
+                        253.0f, 248.0f, 85.0f, 70.0f,
+                        46.0f, 54.0f,
+                        "발바닥 중앙부 접촉 면적이 넓게 나타납니다."
+                )
+        );
+
+        client.requestFootTypeText(request, "service-jwt");
+
+        assertThat(captured.get().url().toString()).isEqualTo(FOOT_TYPE_TEXT_URL);
+    }
+
+    @Test
     void nonSuccessResponseIsNotSilentlyRetriedOrAccepted() {
         WebClient webClient = WebClient.builder()
                 .exchangeFunction(request -> Mono.just(
@@ -187,7 +241,24 @@ class ShoeRecommendationAiClientTest {
             String internalKey,
             boolean enabled) {
         return new ShoeRecommendationAiClient(
-                WEB_CLIENT, batchUrl, summaryUrl, timeoutSeconds, internalKey, enabled);
+                WEB_CLIENT, batchUrl, summaryUrl, "", timeoutSeconds, internalKey, enabled);
+    }
+
+    private static ShoeRecommendationAiClient client(
+            String batchUrl,
+            String summaryUrl,
+            String footTypeTextUrl,
+            long timeoutSeconds,
+            String internalKey,
+            boolean enabled) {
+        return new ShoeRecommendationAiClient(
+                WEB_CLIENT,
+                batchUrl,
+                summaryUrl,
+                footTypeTextUrl,
+                timeoutSeconds,
+                internalKey,
+                enabled);
     }
 
     private static ShoeRecommendationAiClient client(
@@ -198,7 +269,25 @@ class ShoeRecommendationAiClientTest {
             String internalKey,
             boolean enabled) {
         return new ShoeRecommendationAiClient(
-                webClient, batchUrl, summaryUrl, timeoutSeconds, internalKey, enabled);
+                webClient, batchUrl, summaryUrl, "", timeoutSeconds, internalKey, enabled);
+    }
+
+    private static ShoeRecommendationAiClient client(
+            WebClient webClient,
+            String batchUrl,
+            String summaryUrl,
+            String footTypeTextUrl,
+            long timeoutSeconds,
+            String internalKey,
+            boolean enabled) {
+        return new ShoeRecommendationAiClient(
+                webClient,
+                batchUrl,
+                summaryUrl,
+                footTypeTextUrl,
+                timeoutSeconds,
+                internalKey,
+                enabled);
     }
 
     private static String serializedBody(ClientRequest request) {

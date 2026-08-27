@@ -22,15 +22,17 @@ environment variables:
 | INTERNAL_API_KEY | direct environment secret | yes | Shared Server/AI internal key; never log or commit it |
 | AI_SHOE_RECOMMENDATION_URL | ai.shoe-recommendation.url | yes when enabled | Absolute HTTP(S) batch endpoint, normally `/api/reports/shoe-recommendations` |
 | AI_SHOE_RECOMMENDATION_SUMMARY_URL | ai.shoe-recommendation.summary-url | yes when enabled | Absolute HTTP(S) on-demand Ollama endpoint, normally `/api/shoes/summaries` |
+| AI_FOOT_TYPE_TEXT_URL | ai.foot-type-text.url | no | Absolute HTTP(S) foot-type-text endpoint. When omitted, Server derives the sibling `/api/reports/foot-type-text` endpoint from the batch URL for backward compatibility |
 | AI_SHOE_RECOMMENDATION_TIMEOUT_SECONDS | ai.shoe-recommendation.timeout-seconds | no | Positive outer HTTP timeout; defaults to 1200 seconds |
 | AI_SHOE_RECOMMENDATION_ENABLED | ai.shoe-recommendation.enabled | no | Enables batch and summary triggers; defaults to true |
 
 The internal API interceptor and automation client read `INTERNAL_API_KEY`
 directly so a local YAML fallback cannot silently enable internal access with a
 development key. Server startup fails fast without that environment value. When
-automation is enabled it also fails fast without either
-AI URL, when a configured URL is not absolute HTTP(S), or when the timeout is not
-positive. Tests explicitly disable external automation.
+automation is enabled it also fails fast without either required shoe AI URL,
+when any configured URL (including the optional foot-type-text URL) is not
+absolute HTTP(S), or when the timeout is not positive. Tests explicitly disable
+external automation.
 
 The Server outer timeout is intentionally longer than the AI-to-Server callback
 timeout so paged context loading and BGE work do not consume the entire caller

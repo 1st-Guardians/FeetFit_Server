@@ -31,6 +31,8 @@ public class ShoeRecommendationAiClient {
             String endpoint,
             @Value("${ai.shoe-recommendation.summary-url:}")
             String summaryEndpoint,
+            @Value("${ai.foot-type-text.url:}")
+            String configuredFootTypeTextEndpoint,
             @Value("${ai.shoe-recommendation.timeout-seconds:1200}") long timeoutSeconds,
             // Read the deployment secret directly. This intentionally does not consume a
             // local application.yml fallback for internal.api-key.
@@ -43,6 +45,7 @@ public class ShoeRecommendationAiClient {
             validateOptionalHttpUrl(endpoint, "ai.shoe-recommendation.url");
             validateOptionalHttpUrl(summaryEndpoint, "ai.shoe-recommendation.summary-url");
         }
+        validateOptionalHttpUrl(configuredFootTypeTextEndpoint, "ai.foot-type-text.url");
         if (timeoutSeconds <= 0) {
             throw new IllegalArgumentException(
                     "ai.shoe-recommendation.timeout-seconds must be positive");
@@ -54,7 +57,9 @@ public class ShoeRecommendationAiClient {
         this.webClient = webClient;
         this.endpoint = endpoint;
         this.summaryEndpoint = summaryEndpoint;
-        this.footTypeTextEndpoint = enabled ? siblingEndpoint(endpoint, "foot-type-text") : "";
+        this.footTypeTextEndpoint = enabled
+                ? resolveFootTypeTextEndpoint(endpoint, configuredFootTypeTextEndpoint)
+                : "";
         this.timeout = Duration.ofSeconds(timeoutSeconds);
         this.internalApiKey = internalApiKey;
         this.enabled = enabled;
@@ -172,5 +177,13 @@ public class ShoeRecommendationAiClient {
                     "Could not derive foot-type-text endpoint from ai.shoe-recommendation.url",
                     exception);
         }
+    }
+
+    private static String resolveFootTypeTextEndpoint(
+            String batchEndpoint, String configuredFootTypeTextEndpoint) {
+        if (StringUtils.hasText(configuredFootTypeTextEndpoint)) {
+            return configuredFootTypeTextEndpoint;
+        }
+        return siblingEndpoint(batchEndpoint, "foot-type-text");
     }
 }
