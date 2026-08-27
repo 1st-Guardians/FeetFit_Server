@@ -33,6 +33,7 @@ class MeasurementCompletionServiceTest {
     @Mock MeasurementSessionRepository measurementSessionRepository;
     @Mock MeasurementSocketService measurementSocketService;
     @Mock ApplicationEventPublisher applicationEventPublisher;
+    @Mock MeasurementCareTipsGenerationService measurementCareTipsGenerationService;
     @InjectMocks MeasurementCompletionService service;
 
     @Test
@@ -51,6 +52,7 @@ class MeasurementCompletionServiceTest {
                 ArgumentCaptor.forClass(MeasurementCompletedEvent.class);
         verify(applicationEventPublisher).publishEvent(event.capture());
         assertThat(event.getValue()).isEqualTo(new MeasurementCompletedEvent(21L, 7L));
+        verify(measurementCareTipsGenerationService).generateAndSaveIfNeeded(session);
         verify(measurementSocketService).sendMeasurementStatusChanged(session);
     }
 
@@ -65,7 +67,11 @@ class MeasurementCompletionServiceTest {
 
         service.completeMeasurementIfReady(session, 180);
 
-        verifyNoInteractions(applicationEventPublisher, measurementSocketService);
+        verifyNoInteractions(
+                applicationEventPublisher,
+                measurementSocketService,
+                measurementCareTipsGenerationService
+        );
     }
 
     private static MeasurementSession session(MeasurementStatus status) {

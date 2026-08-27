@@ -47,6 +47,7 @@ public class MeasurementCompletionService {
     private final MeasurementSessionRepository measurementSessionRepository;
     private final MeasurementSocketService measurementSocketService;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final MeasurementCareTipsGenerationService measurementCareTipsGenerationService;
 
     public void initialize(MeasurementSession measurementSession) {
         findOrCreate(measurementSession);
@@ -239,6 +240,7 @@ public class MeasurementCompletionService {
                 resolveMeasurementDurationSec(lockedMeasurementSession, measurementDurationSec)
         );
         lockedMeasurementSession.clearFailure();
+        measurementCareTipsGenerationService.generateAndSaveIfNeeded(lockedMeasurementSession);
         measurementSocketService.sendMeasurementStatusChanged(lockedMeasurementSession);
         applicationEventPublisher.publishEvent(new MeasurementCompletedEvent(
                 lockedMeasurementSession.getId(),
