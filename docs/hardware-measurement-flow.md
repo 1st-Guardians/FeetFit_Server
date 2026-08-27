@@ -30,6 +30,32 @@ Content-Type: application/json
 - `measurementSessionId`: 이후 모든 측정 상태 변경과 AI 분석 결과 저장에 사용한다.
 - `Authorization`: 백엔드 상태 변경 API를 호출할 때 그대로 사용한다.
 
+프론트가 온습도 측정 준비 완료 상태를 보내면, 백엔드는 하드웨어 센서 API에 온습도 측정 작업을 요청한다.
+
+```http
+POST {HARDWARE_PRESSURE_ENVIRONMENT_MEASUREMENT_URL}
+Authorization: Bearer {accessToken}
+Content-Type: application/json
+
+{
+  "measurementSessionId": 123,
+  "task": "ENVIRONMENT_MEASUREMENT"
+}
+```
+
+프론트가 압력 측정 준비 완료 상태를 보내면, 백엔드는 같은 하드웨어 센서 API에 압력 측정 작업을 요청한다.
+
+```http
+POST {HARDWARE_PRESSURE_ENVIRONMENT_MEASUREMENT_URL}
+Authorization: Bearer {accessToken}
+Content-Type: application/json
+
+{
+  "measurementSessionId": 123,
+  "task": "PRESSURE_MEASUREMENT"
+}
+```
+
 ## 2. 하드웨어가 호출하는 상태 변경 API
 
 하드웨어는 측정 단계가 바뀔 때마다 아래 API를 호출한다.
@@ -60,14 +86,21 @@ curl -X PATCH \
 6. 하드웨어가 발 사진 촬영
 7. 하드웨어가 사진을 AI 서버로 전달
 8. AI 서버가 무지외반, 무좀 분석 결과를 백엔드에 저장
-9. 사진 측정 단계가 끝나면 하드웨어가 WAITING_FOR_PRESSURE PATCH 호출
-10. 프론트가 사용자에게 FSR 센서 판 조작과 재탑승을 안내
-11. 프론트가 사용자의 압력 측정 준비 완료를 확인하고 READY_FOR_PRESSURE PATCH 호출
-12. 압력 측정이 시작되면 하드웨어가 MEASURING_PRESSURE PATCH 호출
-13. 하드웨어가 압력, 온습도, 냄새 등 센서 데이터 측정
-14. 하드웨어 또는 AI 서버가 분석 결과를 백엔드에 저장
-15. 필요한 분석 결과 저장이 끝나면 COMPLETED PATCH 호출
-16. 백엔드가 프론트에 MEASUREMENT_COMPLETED 소켓 메시지 발행
+9. 사진 측정 단계가 끝나면 하드웨어가 WAITING_FOR_ENVIRONMENT PATCH 호출
+10. 프론트가 사용자에게 온습도 측정을 위해 기기 가까이 이동하라고 안내
+11. 프론트가 사용자의 온습도 측정 준비 완료를 확인하고 READY_FOR_ENVIRONMENT PATCH 호출
+12. 백엔드가 하드웨어 센서 API에 task=ENVIRONMENT_MEASUREMENT로 온습도 측정 요청
+13. 온습도 측정이 시작되면 하드웨어가 MEASURING_ENVIRONMENT PATCH 호출
+14. 하드웨어가 온습도 측정값을 AI 서버로 전달하고, AI 서버 또는 연동 주체가 환경 분석 결과를 백엔드에 저장
+15. 온습도 측정 단계가 끝나면 하드웨어가 WAITING_FOR_PRESSURE PATCH 호출
+16. 프론트가 사용자에게 FSR 센서 판 조작과 재탑승을 안내
+17. 프론트가 사용자의 압력 측정 준비 완료를 확인하고 READY_FOR_PRESSURE PATCH 호출
+18. 백엔드가 하드웨어 센서 API에 task=PRESSURE_MEASUREMENT로 압력 측정 요청
+19. 압력 측정이 시작되면 하드웨어가 MEASURING_PRESSURE PATCH 호출
+20. 하드웨어가 압력 센서 데이터를 측정하고 AI 서버로 전달
+21. 하드웨어 또는 AI 서버가 분석 결과를 백엔드에 저장
+22. 필요한 분석 결과 저장이 끝나면 COMPLETED PATCH 호출
+23. 백엔드가 프론트에 MEASUREMENT_COMPLETED 소켓 메시지 발행
 ```
 
 ## 4. 상태별 의미와 호출 주체
@@ -77,13 +110,16 @@ curl -X PATCH \
 | `WAITING_FOR_PHOTO` | 사진 촬영 준비 대기 | 백엔드 |
 | `READY_FOR_PHOTO` | 사용자가 사진 촬영 준비를 완료함 | 프론트 |
 | `CAPTURING_PHOTO` | 하드웨어가 사진 촬영을 시작함 | 하드웨어 |
-| `WAITING_FOR_PRESSURE` | 사진 촬영이 끝났고 압력 측정 준비가 필요함 | 하드웨어 |
+| `WAITING_FOR_ENVIRONMENT` | 사진 촬영이 끝났고 온습도 측정을 위해 사용자가 기기 가까이 이동해야 함 | 하드웨어 |
+| `READY_FOR_ENVIRONMENT` | 사용자가 온습도 측정 준비를 완료함 | 프론트 |
+| `MEASURING_ENVIRONMENT` | 하드웨어가 온습도를 측정 중임 | 하드웨어 |
+| `WAITING_FOR_PRESSURE` | 온습도 측정이 끝났고 압력 측정 준비가 필요함 | 하드웨어 |
 | `READY_FOR_PRESSURE` | 사용자가 압력 측정 준비를 완료함 | 프론트 |
 | `MEASURING_PRESSURE` | 하드웨어가 압력 측정을 시작함 | 하드웨어 |
 | `COMPLETED` | 모든 필수 분석 결과 저장 완료 | 하드웨어 또는 AI 연동 주체 |
 | `FAILED` | 측정 실패 | 하드웨어 또는 AI 연동 주체 |
 
-`READY_FOR_PHOTO`, `READY_FOR_PRESSURE`는 사용자가 앱에서 준비 완료 버튼을 눌렀다는 신호다. 하드웨어가 이 준비 완료 상태를 직접 알아야 한다면, 별도의 백엔드 -> 하드웨어 단계별 명령 API가 필요하다. 현재 하드웨어는 WebSocket을 구독하지 않으므로, WebSocket 메시지를 직접 수신하는 구조가 아니다.
+`READY_FOR_PHOTO`, `READY_FOR_ENVIRONMENT`, `READY_FOR_PRESSURE`는 사용자가 앱에서 준비 완료 버튼을 눌렀다는 신호다. 백엔드는 이 상태를 받은 뒤 하드웨어 단계별 명령 API를 호출한다. 현재 하드웨어는 WebSocket을 구독하지 않으므로, WebSocket 메시지를 직접 수신하는 구조가 아니다.
 
 ## 5. 하드웨어 상태 변경 예시
 
@@ -95,7 +131,23 @@ curl -X PATCH \
   -H "Authorization: Bearer {accessToken}"
 ```
 
-사진 촬영 완료 후 압력 측정 준비 요청:
+사진 촬영 완료 후 온습도 측정 안내 요청:
+
+```bash
+curl -X PATCH \
+  "http://34.209.169.111/api/measurement-sessions/123/status?status=WAITING_FOR_ENVIRONMENT" \
+  -H "Authorization: Bearer {accessToken}"
+```
+
+온습도 측정 시작:
+
+```bash
+curl -X PATCH \
+  "http://34.209.169.111/api/measurement-sessions/123/status?status=MEASURING_ENVIRONMENT" \
+  -H "Authorization: Bearer {accessToken}"
+```
+
+온습도 측정 완료 후 압력 측정 준비 요청:
 
 ```bash
 curl -X PATCH \
@@ -210,7 +262,9 @@ curl -X PATCH \
 - 백엔드 start 요청에서 받은 `measurementSessionId`를 저장한다.
 - 백엔드 start 요청에서 받은 `Authorization` 헤더를 저장한다.
 - 사진 촬영 시작 시 `CAPTURING_PHOTO`를 호출한다.
-- 사진 촬영 완료 후 사용자가 압력 센서를 준비해야 하면 `WAITING_FOR_PRESSURE`를 호출한다.
+- 사진 촬영 완료 후 온습도 측정을 위해 사용자가 기기 가까이 이동해야 하면 `WAITING_FOR_ENVIRONMENT`를 호출한다.
+- 온습도 측정 시작 시 `MEASURING_ENVIRONMENT`를 호출한다.
+- 온습도 측정 완료 후 사용자가 압력 센서를 준비해야 하면 `WAITING_FOR_PRESSURE`를 호출한다.
 - 압력 측정 시작 시 `MEASURING_PRESSURE`를 호출한다.
 - AI 또는 백엔드 저장 API 호출이 실패하면 `FAILED`와 실패 원인을 호출한다.
 - 필수 분석 결과 저장 후 `COMPLETED`를 호출한다.

@@ -84,8 +84,11 @@ public class MeasurementSocketService {
             case WAITING_FOR_PHOTO -> "촬영 전 온습도를 측정하고 있습니다. 안내에 따라 FSR 센서 판을 올리고 유리판 위에 올라와 주세요.";
             case READY_FOR_PHOTO -> "사진 촬영 준비가 완료되었습니다. 촬영을 시작합니다.";
             case CAPTURING_PHOTO -> "사진을 촬영하고 있습니다. 잠시 움직이지 말아 주세요.";
-            case WAITING_FOR_PRESSURE -> "촬영이 완료되었습니다. 내려온 뒤 FSR 센서 판을 내리고 다시 올라와 주세요.";
-            case READY_FOR_PRESSURE -> "압력 및 온습도 측정 준비가 완료되었습니다. 측정을 시작합니다.";
+            case WAITING_FOR_ENVIRONMENT -> "사진 촬영이 완료되었습니다. 온습도 측정을 위해 기기 가까이 이동해 주세요.";
+            case READY_FOR_ENVIRONMENT -> "온습도 측정 준비가 완료되었습니다. 측정을 시작합니다.";
+            case MEASURING_ENVIRONMENT -> "온습도를 측정하고 있습니다. 잠시 기다려 주세요.";
+            case WAITING_FOR_PRESSURE -> "온습도 측정이 완료되었습니다. 내려온 뒤 FSR 센서 판을 내리고 다시 올라와 주세요.";
+            case READY_FOR_PRESSURE -> "압력 측정 준비가 완료되었습니다. 측정을 시작합니다.";
             case MEASURING_PRESSURE -> "발 압력을 측정하고 있습니다. 잠시 움직이지 말아 주세요.";
             case ANALYZING -> "측정이 완료되었습니다. 결과를 분석하고 있습니다.";
             case TRANSFERRING -> "측정이 완료되었습니다. 결과를 분석하고 있습니다.";
