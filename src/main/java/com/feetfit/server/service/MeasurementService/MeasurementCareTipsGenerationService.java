@@ -3,16 +3,13 @@ package com.feetfit.server.service.MeasurementService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.feetfit.server.domain.DailyFootAnalysis;
-import com.feetfit.server.domain.HalluxValgusAnalysis;
 import com.feetfit.server.domain.MeasurementSession;
 import com.feetfit.server.domain.MetricAnalysisResult;
 import com.feetfit.server.domain.Report;
-import com.feetfit.server.domain.TinaPedisAnalysis;
+import com.feetfit.server.domain.enums.MetricType;
 import com.feetfit.server.repository.DailyFootAnalysisRepository;
-import com.feetfit.server.repository.HalluxValgusAnalysisRepository;
 import com.feetfit.server.repository.MetricAnalysisResultRepository;
 import com.feetfit.server.repository.ReportRepository;
-import com.feetfit.server.repository.TinaPedisAnalysisRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,8 +22,11 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -35,14 +35,21 @@ public class MeasurementCareTipsGenerationService {
 
     private static final String OPENAI_CHAT_COMPLETIONS_URL = "https://api.openai.com/v1/chat/completions";
     private static final String DEFAULT_MODEL = "gpt-4.1-mini";
+    private static final int MAX_CARE_TIPS_REQUEST_ATTEMPTS = 2;
 
     private final WebClient webClient;
     private final ObjectMapper objectMapper;
     private final DailyFootAnalysisRepository dailyFootAnalysisRepository;
-    private final HalluxValgusAnalysisRepository halluxValgusAnalysisRepository;
-    private final TinaPedisAnalysisRepository tinaPedisAnalysisRepository;
     private final ReportRepository reportRepository;
     private final MetricAnalysisResultRepository metricAnalysisResultRepository;
+
+    private static final Set<MetricType> REQUIRED_METRIC_TYPES = EnumSet.of(
+            MetricType.PRESSURE_BALANCE,
+            MetricType.HALLUX_VALGUS,
+            MetricType.ATHLETES_FOOT,
+            MetricType.SKIN_IRRITATION,
+            MetricType.FOOT_ENVIRONMENT
+    );
 
     @Value("${openai.api-key:${OPENAI_API_KEY:}}")
     private String openAiApiKey;
@@ -70,8 +77,9 @@ public class MeasurementCareTipsGenerationService {
                 return;
             }
 
-            CareTipsGenerationResult generated = requestCareTips(measurementSession, analysis);
-            analysis.updateCareTips(generated.careTips(), generated.typeText());
+            String prompt = buildPrompt(measurementSession);
+            List<String> generatedCareTips = requestCareTipsWithRetry(measurementSession.getId(), prompt);
+            analysis.updateCareTips(generatedCareTips);
             dailyFootAnalysisRepository.save(analysis);
             log.info("Care tips generated and saved. measurementSessionId={}", measurementSession.getId());
         } catch (Exception e) {
@@ -82,19 +90,32 @@ public class MeasurementCareTipsGenerationService {
     private boolean hasGeneratedCareTips(DailyFootAnalysis analysis) {
         return analysis.getCareTips() != null
                 && analysis.getCareTips().size() == 3
-                && analysis.getCareTips().stream().allMatch(StringUtils::hasText)
-                && StringUtils.hasText(analysis.getTypeText());
+                && analysis.getCareTips().stream().allMatch(StringUtils::hasText);
     }
 
-    private CareTipsGenerationResult requestCareTips(
-            MeasurementSession measurementSession,
-            DailyFootAnalysis analysis) throws Exception {
+    private List<String> requestCareTipsWithRetry(Long measurementSessionId, String prompt) throws Exception {
+        Exception lastException = null;
+        for (int attempt = 1; attempt <= MAX_CARE_TIPS_REQUEST_ATTEMPTS; attempt++) {
+            try {
+                return requestCareTips(prompt);
+            } catch (Exception e) {
+                lastException = e;
+                if (attempt < MAX_CARE_TIPS_REQUEST_ATTEMPTS) {
+                    log.warn("Care tips generation request failed. Retrying once. measurementSessionId={}, attempt={}",
+                            measurementSessionId, attempt, e);
+                }
+            }
+        }
+        throw new IllegalStateException("Care tips generation request failed.", lastException);
+    }
+
+    private List<String> requestCareTips(String prompt) throws Exception {
         JsonNode response = webClient.post()
                 .uri(OPENAI_CHAT_COMPLETIONS_URL)
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + openAiApiKey)
                 .contentType(MediaType.APPLICATION_JSON)
                 .accept(MediaType.APPLICATION_JSON)
-                .bodyValue(buildOpenAiRequest(measurementSession, analysis))
+                .bodyValue(buildOpenAiRequest(prompt))
                 .retrieve()
                 .bodyToMono(JsonNode.class)
                 .block(Duration.ofSeconds(30));
@@ -109,9 +130,7 @@ public class MeasurementCareTipsGenerationService {
         return parseCareTips(content);
     }
 
-    private Map<String, Object> buildOpenAiRequest(
-            MeasurementSession measurementSession,
-            DailyFootAnalysis analysis) {
+    private Map<String, Object> buildOpenAiRequest(String prompt) {
         return Map.of(
                 "model", StringUtils.hasText(careTipsModel) ? careTipsModel : DEFAULT_MODEL,
                 "temperature", 0.4,
@@ -127,84 +146,61 @@ public class MeasurementCareTipsGenerationService {
                         ),
                         Map.of(
                                 "role", "user",
-                                "content", buildPrompt(measurementSession, analysis)
+                                "content", prompt
                         )
                 )
         );
     }
 
-    private String buildPrompt(MeasurementSession measurementSession, DailyFootAnalysis analysis) {
+    private String buildPrompt(MeasurementSession measurementSession) {
+        List<MetricAnalysisResult> metricResults = findRequiredMetricResults(measurementSession.getId());
         StringBuilder prompt = new StringBuilder();
         prompt.append("""
-                아래 측정 데이터를 바탕으로 careTips 3개와 typeText 1개를 생성해.
+                저장된 5개 지표의 advice를 바탕으로 careTips 3개를 생성해.
 
                 반환 형식:
                 {
-                  "careTips": ["문장1", "문장2", "문장3"],
-                  "typeText": "문장"
+                  "careTips": [
+                    "오른발 앞꿈치 스트레칭을 해주세요.",
+                    "신발은 착용 후 충분히 말려주세요.",
+                    "발볼이 좁은 신발은 피하는 것이 좋아요."
+                  ]
                 }
 
                 작성 규칙:
                 - careTips는 정확히 3개
                 - 각 careTip은 한국어 30~70자 정도의 실천형 문장
-                - typeText는 발 타입과 신발 선택 참고 문장 1개, 한국어 120자 이내
+                - careTips는 아래 5개 지표 advice 내용을 종합해서 중복 없이 작성
                 - 과장, 진단, 치료 확정 표현 금지
-                - 데이터가 부족하면 '경향'과 '참고' 표현 사용
+                - 질환명 단정 대신 '경향', '참고', '관리' 표현 사용
 
-                측정 데이터:
+                저장된 5개 지표 advice:
                 """);
 
         appendLine(prompt, "measurementSessionId", measurementSession.getId());
-        appendLine(prompt, "balanceScore", analysis.getBalanceScore());
-        appendLine(prompt, "balanceComment", analysis.getBalanceComment());
-        appendLine(prompt, "leftPressurePercent", analysis.getLeftPressurePercent());
-        appendLine(prompt, "rightPressurePercent", analysis.getRightPressurePercent());
-        appendLine(prompt, "plantarFootprintAnalysisText", analysis.getPlantarFootprintAnalysisText());
-        appendLine(prompt, "measuredLeftFootSizeMm", analysis.getMeasuredLeftFootSizeMm());
-        appendLine(prompt, "measuredRightFootSizeMm", analysis.getMeasuredRightFootSizeMm());
-        appendLine(prompt, "leftFootWidthMm", analysis.getLeftFootWidthMm());
-        appendLine(prompt, "rightFootWidthMm", analysis.getRightFootWidthMm());
-        appendLine(prompt, "avgTemperatureCelsius", analysis.getAvgTemperatureCelsius());
-        appendLine(prompt, "avgHumidityPercent", analysis.getAvgHumidityPercent());
-        appendLine(prompt, "footOdourPpm", analysis.getFootOdourPpm());
-        appendLine(prompt, "footOdourComment", analysis.getFootOdourComment());
-
-        halluxValgusAnalysisRepository.findByMeasurementSessionId(measurementSession.getId())
-                .ifPresent(hallux -> appendHalluxValgus(prompt, hallux));
-        tinaPedisAnalysisRepository.findByMeasurementSessionId(measurementSession.getId())
-                .ifPresent(tineaPedis -> appendTineaPedis(prompt, tineaPedis));
-        appendMetricResults(prompt, measurementSession.getId());
+        for (MetricAnalysisResult result : metricResults) {
+            appendLine(prompt, "metricType", result.getMetricType());
+            appendLine(prompt, "score", result.getScore());
+            appendLine(prompt, "status", result.getStatus());
+            appendLine(prompt, "advice", result.getAdvice());
+        }
 
         return prompt.toString();
     }
 
-    private void appendHalluxValgus(StringBuilder prompt, HalluxValgusAnalysis analysis) {
-        appendLine(prompt, "halluxLeftToeAngleDegree", analysis.getLeftToeAngleDegree());
-        appendLine(prompt, "halluxRightToeAngleDegree", analysis.getRightToeAngleDegree());
-        appendLine(prompt, "halluxRiskScore", analysis.getRiskScore());
-        appendLine(prompt, "halluxScoreAnalysisText", analysis.getScoreAnalysisText());
-    }
-
-    private void appendTineaPedis(StringBuilder prompt, TinaPedisAnalysis analysis) {
-        appendLine(prompt, "fungalSuspicionSafetyScore", analysis.getFungalSuspicionSafetyScore());
-        appendLine(prompt, "skinReactionSafetyScore", analysis.getSkinReactionSafetyScore());
-        appendLine(prompt, "fungalSuspicionSafetyDescription", analysis.getFungalSuspicionSafetyDescription());
-        appendLine(prompt, "skinReactionSafetyDescription", analysis.getSkinReactionSafetyDescription());
-        appendLine(prompt, "tineaPedisTotalScoreDescription", analysis.getTotalScoreDescription());
-    }
-
-    private void appendMetricResults(StringBuilder prompt, Long measurementSessionId) {
-        reportRepository.findByMeasurementSessionId(measurementSessionId)
-                .ifPresent(report -> {
-                    appendLine(prompt, "reportTotalScore", report.getTotalScore());
-                    List<MetricAnalysisResult> results = metricAnalysisResultRepository.findByReportId(report.getId());
-                    for (MetricAnalysisResult result : results) {
-                        appendLine(prompt, "metricType", result.getMetricType());
-                        appendLine(prompt, "metricScore", result.getScore());
-                        appendLine(prompt, "metricStatus", result.getStatus());
-                        appendLine(prompt, "metricAdvice", result.getAdvice());
-                    }
-                });
+    private List<MetricAnalysisResult> findRequiredMetricResults(Long measurementSessionId) {
+        Report report = reportRepository.findByMeasurementSessionId(measurementSessionId)
+                .orElseThrow(() -> new IllegalStateException("Report not found for care tips generation."));
+        List<MetricAnalysisResult> results = metricAnalysisResultRepository.findByReportId(report.getId());
+        Set<MetricType> savedMetricTypes = results.stream()
+                .map(MetricAnalysisResult::getMetricType)
+                .collect(Collectors.toSet());
+        if (!savedMetricTypes.containsAll(REQUIRED_METRIC_TYPES)) {
+            throw new IllegalStateException("Required metric results are missing for care tips generation.");
+        }
+        return results.stream()
+                .filter(result -> REQUIRED_METRIC_TYPES.contains(result.getMetricType()))
+                .toList();
     }
 
     private void appendLine(StringBuilder prompt, String key, Object value) {
@@ -217,7 +213,7 @@ public class MeasurementCareTipsGenerationService {
         prompt.append("- ").append(key).append(": ").append(value).append('\n');
     }
 
-    private CareTipsGenerationResult parseCareTips(String content) throws Exception {
+    private List<String> parseCareTips(String content) throws Exception {
         JsonNode root = objectMapper.readTree(stripCodeFence(content));
         List<String> careTips = new ArrayList<>();
         JsonNode careTipsNode = root.path("careTips");
@@ -230,11 +226,10 @@ public class MeasurementCareTipsGenerationService {
             });
         }
 
-        String typeText = root.path("typeText").asText(null);
-        if (careTips.size() != 3 || !StringUtils.hasText(typeText)) {
+        if (careTips.size() != 3) {
             throw new IllegalStateException("OpenAI care tips response is invalid.");
         }
-        return new CareTipsGenerationResult(List.copyOf(careTips), typeText.trim());
+        return List.copyOf(careTips);
     }
 
     private String stripCodeFence(String content) {
@@ -246,8 +241,5 @@ public class MeasurementCareTipsGenerationService {
             return trimmed.substring(3, trimmed.length() - 3).trim();
         }
         return trimmed;
-    }
-
-    private record CareTipsGenerationResult(List<String> careTips, String typeText) {
     }
 }

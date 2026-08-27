@@ -157,4 +157,8 @@ public class DailyFootAnalysis extends BaseEntity {
         this.careTips = careTips;
         this.typeText = typeText;
     }
+
+    public void updateCareTips(List<String> careTips) {
+        this.careTips = careTips;
+    }
 }
