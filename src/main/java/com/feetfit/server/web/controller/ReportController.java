@@ -468,32 +468,6 @@ public class ReportController {
         return ApiResponse.onSuccess(reportQueryService.getTinaPedisAnalysis(userId, date));
     }
 
-    @PostMapping("/daily-foot-analysis/condition")
-    @Operation(
-            summary = "종합 발 분석 - 오늘의 발 컨디션 저장 [민지]",
-            description = """
-                오늘의 발 상태 레벨과 코멘트를 저장합니다.
-                Authorization 헤더에 Bearer accessToken이 필요합니다.
-                - 같은 측정 세션 ID에 이미 저장된 데이터가 있으면 해당 파트만 덮어씁니다 (upsert).
-                - 측정 세션의 status와 무관하게 저장할 수 있습니다.
-                """
-    )
-    @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200",
-                    content = @Content(examples = @ExampleObject(value = DAILY_FOOT_ANALYSIS_SUCCESS_RESPONSE))),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401",
-                    content = @Content(examples = @ExampleObject(value = UNAUTHORIZED_RESPONSE))),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403",
-                    content = @Content(examples = @ExampleObject(value = MEASUREMENT_FORBIDDEN_RESPONSE))),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404",
-                    content = @Content(examples = @ExampleObject(value = MEASUREMENT_NOT_FOUND_RESPONSE)))
-    })
-    public ApiResponse<ReportResponseDTO.DailyFootAnalysisResultDTO> saveConditionPart(
-            @RequestBody @Valid ReportRequestDTO.ConditionPartDTO request) {
-        Long userId = findLoginUser.getCurrentUserId();
-        return ApiResponse.onSuccess(reportCommandService.saveConditionPart(userId, request));
-    }
-
     @PostMapping("/daily-foot-analysis/balance")
     @Operation(
             summary = "종합 발 분석 - 자세 균형 저장 [민지]",
@@ -1173,11 +1147,6 @@ public class ReportController {
               "result": {
                 "id": 1,
                 "measurementSessionId": 1,
-                "conditionLevel": "ATTENTION_NEEDED",
-                "conditionComments": [
-                  "오른발에 압력이 조금 더 실려 있어요.",
-                  "발 냄새 위험도는 낮은 편이에요."
-                ],
                 "balanceScore": 72.0,
                 "balanceComment": "자세 균형에 대한 내용을 적을겁니다.",
                 "balanceScoreDiff": 4.0,
