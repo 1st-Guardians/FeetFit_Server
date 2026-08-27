@@ -62,4 +62,4 @@ hardware:
     pressure-environment-measurement-url: ${HARDWARE_PRESSURE_ENVIRONMENT_MEASUREMENT_URL:https://98a3-2001-e60-217e-e32c-da3a-ddff-fee8-b506.ngrok-free.app/measurement/sensor/start}
 
 internal:
-  api-key: feetfit-local-secret-2026
+  api-key: ${INTERNAL_API_KEY:feetfit-local-secret-2026}

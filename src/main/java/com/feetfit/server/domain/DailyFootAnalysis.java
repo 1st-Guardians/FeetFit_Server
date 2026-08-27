@@ -1,7 +1,6 @@
 package com.feetfit.server.domain;
 
 import com.feetfit.server.domain.common.BaseEntity;
-import com.feetfit.server.domain.enums.GaugeStatus;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
@@ -23,15 +22,6 @@ public class DailyFootAnalysis extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "measurement_id", nullable = false)
     private MeasurementSession measurementSession;
-
-    // 종합 상태
-    @Enumerated(EnumType.STRING)
-    @Column
-    private GaugeStatus conditionLevel;
-
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(columnDefinition = "JSON")
-    private List<String> conditionComments;
 
     // 자세 균형
     @Column
@@ -114,11 +104,6 @@ public class DailyFootAnalysis extends BaseEntity {
     // 신발 리스트 페이지용 발 타입 텍스트
     @Column(columnDefinition = "TEXT")
     private String typeText;
-
-    public void updateCondition(GaugeStatus conditionLevel, List<String> conditionComments) {
-        this.conditionLevel = conditionLevel;
-        this.conditionComments = conditionComments;
-    }
 
     public void updateBalance(Float balanceScore, String balanceComment) {
         this.balanceScore = balanceScore;
