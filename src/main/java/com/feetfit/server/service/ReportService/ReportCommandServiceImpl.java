@@ -168,15 +168,6 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     // ─── 종합 발 분석 파트별 저장 ────────────────────────────────────────────────
 
     @Override
-    public ReportResponseDTO.DailyFootAnalysisResultDTO saveConditionPart(
-            Long userId, ReportRequestDTO.ConditionPartDTO request) {
-        MeasurementSession session = getValidatedReportWritableMeasurementSession(userId, request.getMeasurementSessionId());
-        DailyFootAnalysis analysis = findOrCreate(session);
-        analysis.updateCondition(request.getConditionLevel(), request.getConditionComments());
-        return buildDailyFootAnalysisResult(userId, analysis);
-    }
-
-    @Override
     public ReportResponseDTO.DailyFootAnalysisResultDTO saveBalancePart(
             Long userId, ReportRequestDTO.BalancePartDTO request) {
         MeasurementSession session = getValidatedReportWritableMeasurementSession(userId, request.getMeasurementSessionId());
@@ -750,7 +741,6 @@ public class ReportCommandServiceImpl implements ReportCommandService {
 
         dailyFootAnalysisRepository.findByMeasurementSessionId(measurementSession.getId())
                 .ifPresent(analysis -> {
-                    appendTexts(context, analysis.getConditionComments());
                     appendText(context, analysis.getBalanceComment());
                     appendText(context, analysis.getFootOdourComment());
                     appendText(context, analysis.getPlantarFootprintAnalysisText());

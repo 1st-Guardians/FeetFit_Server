@@ -185,15 +185,6 @@ public class ReportResponseDTO {
         @Schema(description = "측정 세션 ID", example = "1")
         private Long measurementSessionId;
 
-        // 오늘의 발 컨디션
-        @Schema(description = "종합 상태", example = "ATTENTION_NEEDED",
-                allowableValues = {"VERY_GOOD", "ATTENTION_NEEDED", "NEED_IMPROVEMENT"})
-        private GaugeStatus conditionLevel;
-
-        @Schema(description = "컨디션 코멘트 목록",
-                example = "[\"오른발에 압력이 조금 더 실려 있어요.\", \"발 냄새 위험도는 낮은 편이에요.\"]")
-        private List<String> conditionComments;
-
         // 자세 균형
         @Schema(description = "자세 균형 점수", example = "72.0")
         private Float balanceScore;

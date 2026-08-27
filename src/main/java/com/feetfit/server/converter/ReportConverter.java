@@ -219,8 +219,6 @@ public class ReportConverter {
         return ReportResponseDTO.DailyFootAnalysisResultDTO.builder()
                 .id(analysis.getId())
                 .measurementSessionId(analysis.getMeasurementSession().getId())
-                .conditionLevel(analysis.getConditionLevel())
-                .conditionComments(analysis.getConditionComments())
                 .balanceScore(analysis.getBalanceScore())
                 .balanceComment(analysis.getBalanceComment())
                 .balanceScoreDiff(balanceScoreDiff)

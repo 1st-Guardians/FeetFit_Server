@@ -133,25 +133,6 @@ public class ReportRequestDTO {
 
     @Getter
     @NoArgsConstructor
-    @Schema(description = "오늘의 발 컨디션 저장 요청 (POST /daily-foot-analysis/condition)")
-    public static class ConditionPartDTO {
-
-        @Schema(description = "측정 세션 ID", example = "1")
-        @NotNull(message = "측정 세션 ID는 필수입니다.")
-        private Long measurementSessionId;
-
-        @Schema(description = "종합 발 상태 레벨", example = "ATTENTION_NEEDED",
-                allowableValues = {"VERY_GOOD", "ATTENTION_NEEDED", "NEED_IMPROVEMENT"})
-        @NotNull(message = "오늘의 발 컨디션 레벨은 필수입니다.")
-        private GaugeStatus conditionLevel;
-
-        @Schema(description = "발 컨디션 코멘트 목록", example = "[\"오른발에 압력이 조금 더 실려 있어요.\", \"발 냄새 위험도는 낮은 편이에요.\"]")
-        @NotNull(message = "오늘의 발 컨디션 코멘트는 필수입니다.")
-        private List<String> conditionComments;
-    }
-
-    @Getter
-    @NoArgsConstructor
     @Schema(description = "자세 균형 저장 요청 (POST /daily-foot-analysis/balance)")
     public static class BalancePartDTO {
 

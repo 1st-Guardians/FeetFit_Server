@@ -25,9 +25,6 @@ public interface ReportCommandService {
     );
 
     // 종합 발 분석 — 파트별 저장
-    ReportResponseDTO.DailyFootAnalysisResultDTO saveConditionPart(
-            Long userId, ReportRequestDTO.ConditionPartDTO request);
-
     ReportResponseDTO.DailyFootAnalysisResultDTO saveBalancePart(
             Long userId, ReportRequestDTO.BalancePartDTO request);
 

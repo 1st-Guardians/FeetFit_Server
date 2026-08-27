@@ -55,7 +55,10 @@ public class MeasurementCompletionService {
     public void refreshCaptureCompletedByStatus(MeasurementSession measurementSession, MeasurementStatus status) {
         MeasurementAnalysisStatus analysisStatus = findOrCreateForUpdate(measurementSession);
 
-        if (status == MeasurementStatus.WAITING_FOR_PRESSURE
+        if (status == MeasurementStatus.WAITING_FOR_ENVIRONMENT
+                || status == MeasurementStatus.READY_FOR_ENVIRONMENT
+                || status == MeasurementStatus.MEASURING_ENVIRONMENT
+                || status == MeasurementStatus.WAITING_FOR_PRESSURE
                 || status == MeasurementStatus.READY_FOR_PRESSURE
                 || status == MeasurementStatus.MEASURING_PRESSURE
                 || status == MeasurementStatus.ANALYZING) {
