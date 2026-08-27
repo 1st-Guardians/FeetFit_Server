@@ -11,13 +11,13 @@ import java.util.concurrent.Executor;
 @Configuration
 public class AsyncConfig {
 
-    @Bean(name = "shoeRecommendationBatchTaskExecutor")
-    public Executor shoeRecommendationBatchTaskExecutor() {
+    @Bean(name = "measurementCompletionAutomationTaskExecutor")
+    public Executor measurementCompletionAutomationTaskExecutor() {
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
         executor.setCorePoolSize(1);
         executor.setMaxPoolSize(1);
         executor.setQueueCapacity(100);
-        executor.setThreadNamePrefix("shoe-recommendation-batch-");
+        executor.setThreadNamePrefix("measurement-completion-automation-");
         executor.setWaitForTasksToCompleteOnShutdown(false);
         executor.initialize();
         return executor;
@@ -35,15 +35,4 @@ public class AsyncConfig {
         return executor;
     }
 
-    @Bean(name = "footTypeTextTaskExecutor")
-    public Executor footTypeTextTaskExecutor() {
-        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(1);
-        executor.setMaxPoolSize(1);
-        executor.setQueueCapacity(100);
-        executor.setThreadNamePrefix("foot-type-text-");
-        executor.setWaitForTasksToCompleteOnShutdown(false);
-        executor.initialize();
-        return executor;
-    }
 }

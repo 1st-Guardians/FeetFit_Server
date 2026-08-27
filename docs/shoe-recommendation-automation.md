@@ -1,14 +1,18 @@
 # Shoe recommendation automation configuration
 
-When a measurement session transitions to COMPLETED, FeetFit_Server publishes an
-after-commit event and invokes Feetfit_AI asynchronously for every shoe in the
-Server database. Measurement completion is not rolled back when the AI request
-fails; the session-scoped SHOE_RECOMMENDATION_RUN is marked FAILED.
+When a measurement session transitions to COMPLETED, FeetFit_Server publishes one
+after-commit event and runs a single asynchronous workflow. The workflow first
+finishes the foot-type-text generation/save attempt and only then invokes
+Feetfit_AI for every shoe in the Server database. This ordering keeps the paged
+recommendation context stable while `DailyFootAnalysis.typeText` is updated.
+Foot-type-text failure does not block the recommendation step. Measurement
+completion is not rolled back when either AI request fails; a failed shoe batch
+marks the session-scoped SHOE_RECOMMENDATION_RUN as FAILED.
 
-Automatic batches use a dedicated single-worker executor so two users completing
-measurements at the same time do not invoke the GPU batch concurrently from one
-Server instance. Lazy detail summaries use a separate executor and therefore do
-not block the batch queue.
+The ordered completion workflows and explicit shoe-batch retries use a dedicated
+single-worker executor so two users completing measurements at the same time do
+not invoke the GPU batch concurrently from one Server instance. Lazy detail
+summaries use a separate executor and therefore do not block the batch queue.
 
 The application YAML remains local and ignored. Configure deployments with
 environment variables:

@@ -10,13 +10,15 @@ class AsyncConfigTest {
     private final AsyncConfig config = new AsyncConfig();
 
     @Test
-    void batchExecutorSerializesGpuBatchRequests() {
+    void measurementCompletionExecutorSerializesTheOrderedWorkflow() {
         ThreadPoolTaskExecutor executor = (ThreadPoolTaskExecutor)
-                config.shoeRecommendationBatchTaskExecutor();
+                config.measurementCompletionAutomationTaskExecutor();
         try {
             assertThat(executor.getCorePoolSize()).isEqualTo(1);
             assertThat(executor.getMaxPoolSize()).isEqualTo(1);
             assertThat(executor.getQueueCapacity()).isEqualTo(100);
+            assertThat(executor.getThreadNamePrefix())
+                    .isEqualTo("measurement-completion-automation-");
         } finally {
             executor.shutdown();
         }
@@ -29,20 +31,6 @@ class AsyncConfigTest {
         try {
             assertThat(executor.getThreadNamePrefix()).isEqualTo("shoe-summary-");
             assertThat(executor.getMaxPoolSize()).isEqualTo(2);
-        } finally {
-            executor.shutdown();
-        }
-    }
-
-    @Test
-    void footTypeTextUsesAnIndependentSerialExecutor() {
-        ThreadPoolTaskExecutor executor = (ThreadPoolTaskExecutor)
-                config.footTypeTextTaskExecutor();
-        try {
-            assertThat(executor.getCorePoolSize()).isEqualTo(1);
-            assertThat(executor.getMaxPoolSize()).isEqualTo(1);
-            assertThat(executor.getQueueCapacity()).isEqualTo(100);
-            assertThat(executor.getThreadNamePrefix()).isEqualTo("foot-type-text-");
         } finally {
             executor.shutdown();
         }
