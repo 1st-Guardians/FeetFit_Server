@@ -51,6 +51,50 @@ class ShoeRecommendationRunServiceImplTest {
     }
 
     @Test
+    void automaticClaimStartsPendingRunOnlyOnce() {
+        MeasurementSession session = completedSession();
+        ShoeRecommendationRun run = pendingRun(session, 338);
+        when(measurementSessionRepository.findByIdForUpdate(21L))
+                .thenReturn(Optional.of(session));
+        when(runRepository.findByMeasurementSessionIdForUpdate(21L))
+                .thenReturn(Optional.of(run));
+
+        assertThat(service.claimAutomaticRun(7L, 21L, 338)).isTrue();
+        assertThat(service.claimAutomaticRun(7L, 21L, 338)).isFalse();
+
+        assertThat(run.getStatus()).isEqualTo(ShoeRecommendationRunStatus.RUNNING);
+        assertThat(run.getExpectedCount()).isEqualTo(338);
+    }
+
+    @Test
+    void automaticRetryReclaimsFailedRun() {
+        MeasurementSession session = completedSession();
+        ShoeRecommendationRun run = pendingRun(session, 338);
+        run.fail("previous attempt failed");
+        when(measurementSessionRepository.findByIdForUpdate(21L))
+                .thenReturn(Optional.of(session));
+        when(runRepository.findByMeasurementSessionIdForUpdate(21L))
+                .thenReturn(Optional.of(run));
+
+        assertThat(service.claimAutomaticRetry(7L, 21L, 338)).isTrue();
+        assertThat(run.getStatus()).isEqualTo(ShoeRecommendationRunStatus.RUNNING);
+        assertThat(run.getFailureDetail()).isNull();
+        assertThat(run.getStartedAt()).isAfter(LocalDateTime.now().minusMinutes(1));
+    }
+
+    @Test
+    void automaticRetryDoesNotTakeOverActiveRunningRun() {
+        MeasurementSession session = completedSession();
+        ShoeRecommendationRun run = runningRun(session, 338);
+        when(measurementSessionRepository.findByIdForUpdate(21L))
+                .thenReturn(Optional.of(session));
+        when(runRepository.findByMeasurementSessionIdForUpdate(21L))
+                .thenReturn(Optional.of(run));
+
+        assertThat(service.claimAutomaticRetry(7L, 21L, 338)).isFalse();
+    }
+
+    @Test
     void completedRunRequiresExplicitRestart() {
         MeasurementSession session = completedSession();
         ShoeRecommendationRun run = runningRun(session, 1);

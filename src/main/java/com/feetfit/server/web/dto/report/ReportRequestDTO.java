@@ -328,26 +328,6 @@ public class ReportRequestDTO {
         private Float avgHumidityPercent;
     }
 
-    @Getter
-    @NoArgsConstructor
-    @Schema(description = "관리팁 저장 요청 (POST /daily-foot-analysis/care-tips)")
-    public static class CareTipsPartDTO {
-
-        @Schema(description = "측정 세션 ID", example = "1")
-        @NotNull(message = "측정 세션 ID는 필수입니다.")
-        private Long measurementSessionId;
-
-        @Schema(description = "관리 팁 목록 (정확히 3개)",
-                example = "[\"오른발 앞꿈치 스트레칭을 해주세요.\", \"신발은 착용 후 충분히 말려주세요.\", \"발볼이 좁은 신발은 피하는 것이 좋아요.\"]")
-        @NotNull(message = "관리 팁은 필수입니다.")
-        @Size(min = 3, max = 3, message = "관리 팁은 3개여야 합니다.")
-        private List<String> careTips;
-
-        @Schema(description = "발 타입 텍스트", example = "발의 아치가 낮아 발바닥이 넓게 닿는 편이에요. 오래 걷거나 서 있으면 피로가 커질 수 있어 아치를 잘 받쳐주는 신발이 더 편안할 수 있어요.")
-        @NotBlank(message = "발 타입 텍스트는 필수입니다.")
-        private String typeText;
-    }
-
     // ─── 기타 DTO ─────────────────────────────────────────────────────────────
 
     @Getter

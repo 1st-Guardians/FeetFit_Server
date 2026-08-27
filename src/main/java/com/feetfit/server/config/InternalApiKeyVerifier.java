@@ -11,7 +11,7 @@ public class InternalApiKeyVerifier {
 
     private final String configuredApiKey;
 
-    public InternalApiKeyVerifier(@Value("${internal.api-key:}") String configuredApiKey) {
+    public InternalApiKeyVerifier(@Value("${INTERNAL_API_KEY:}") String configuredApiKey) {
         this.configuredApiKey = configuredApiKey;
     }
 

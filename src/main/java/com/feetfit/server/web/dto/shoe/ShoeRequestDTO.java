@@ -164,5 +164,9 @@ public class ShoeRequestDTO {
 
         @NotBlank(message = "reviewSummary는 필수입니다.")
         private String reviewSummary;
+
+        @NotNull(message = "reviewIds는 필수입니다.")
+        @Size(max = 3, message = "각 reason에는 리뷰를 최대 3개까지 연결할 수 있습니다.")
+        private List<@NotNull Long> reviewIds;
     }
 }

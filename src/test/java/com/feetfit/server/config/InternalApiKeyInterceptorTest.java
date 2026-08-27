@@ -11,6 +11,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class InternalApiKeyInterceptorTest {
 
     @Test
+    void missingEnvironmentSecretFailsFast() {
+        assertThatThrownBy(() -> new InternalApiKeyInterceptor(" "))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("INTERNAL_API_KEY");
+    }
+
+    @Test
     void rejectsMissingServiceCredentialBeforeControllerInvocation() {
         InternalApiKeyInterceptor interceptor = new InternalApiKeyInterceptor("service-secret");
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/shoes/recommendations");

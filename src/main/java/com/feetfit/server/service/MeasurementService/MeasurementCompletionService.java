@@ -10,8 +10,10 @@ import com.feetfit.server.domain.Report;
 import com.feetfit.server.domain.enums.FootSide;
 import com.feetfit.server.domain.enums.MeasurementStatus;
 import com.feetfit.server.domain.enums.MetricType;
+import com.feetfit.server.event.MeasurementCompletedEvent;
 import com.feetfit.server.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,6 +46,7 @@ public class MeasurementCompletionService {
     private final MetricAnalysisResultRepository metricAnalysisResultRepository;
     private final MeasurementSessionRepository measurementSessionRepository;
     private final MeasurementSocketService measurementSocketService;
+    private final ApplicationEventPublisher applicationEventPublisher;
     private final MeasurementCareTipsGenerationService measurementCareTipsGenerationService;
 
     public void initialize(MeasurementSession measurementSession) {
@@ -239,6 +242,10 @@ public class MeasurementCompletionService {
         lockedMeasurementSession.clearFailure();
         measurementCareTipsGenerationService.generateAndSaveIfNeeded(lockedMeasurementSession);
         measurementSocketService.sendMeasurementStatusChanged(lockedMeasurementSession);
+        applicationEventPublisher.publishEvent(new MeasurementCompletedEvent(
+                lockedMeasurementSession.getId(),
+                lockedMeasurementSession.getUser().getId()
+        ));
     }
 
     private Integer resolveMeasurementDurationSec(MeasurementSession measurementSession, Integer requestedDurationSec) {

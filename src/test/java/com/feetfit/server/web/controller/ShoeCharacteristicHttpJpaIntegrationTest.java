@@ -24,7 +24,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 @TestPropertySource(properties = {
-        "spring.flyway.enabled=false",
         "spring.jpa.hibernate.ddl-auto=create-drop",
         "spring.jpa.database-platform=org.hibernate.dialect.H2Dialect",
         "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect",
@@ -33,7 +32,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.datasource.username=sa",
         "spring.datasource.password=",
         "spring.datasource.hikari.connection-init-sql=",
-        "internal.api-key=test-service-key",
+        "INTERNAL_API_KEY=test-service-key",
         "jwt.secret=dGhpcy1pcy1hLXZlcnktbG9uZy10ZXN0LXNlY3JldC0zMi1ieXRlcw=="
 })
 class ShoeCharacteristicHttpJpaIntegrationTest {

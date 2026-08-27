@@ -3,6 +3,7 @@ package com.feetfit.server.web.controller;
 import com.feetfit.server.apiPayload.ApiResponse;
 import com.feetfit.server.jwt.FindLoginUser;
 import com.feetfit.server.service.ShoeService.ShoeRecommendationRunService;
+import com.feetfit.server.service.ShoeService.ShoeRecommendationAutomationDispatcher;
 import com.feetfit.server.web.dto.shoe.ShoeRecommendationRunRequestDTO;
 import com.feetfit.server.web.dto.shoe.ShoeRecommendationRunResponseDTO;
 import jakarta.validation.Valid;
@@ -19,6 +20,7 @@ public class ShoeRecommendationRunController {
 
     private final ShoeRecommendationRunService runService;
     private final FindLoginUser findLoginUser;
+    private final ShoeRecommendationAutomationDispatcher automationDispatcher;
 
     @PostMapping("/{measurementSessionId}/prepare")
     public ApiResponse<ShoeRecommendationRunResponseDTO.RunResultDTO> prepare(
@@ -57,5 +59,13 @@ public class ShoeRecommendationRunController {
             @PathVariable @Min(1) Long measurementSessionId) {
         return ApiResponse.onSuccess(runService.getRun(
                 findLoginUser.getCurrentUserId(), measurementSessionId));
+    }
+
+    @PostMapping("/{measurementSessionId}/retry-automatic")
+    public ApiResponse<Void> retryAutomatic(
+            @PathVariable @Min(1) Long measurementSessionId) {
+        automationDispatcher.retry(
+                findLoginUser.getCurrentUserId(), measurementSessionId);
+        return ApiResponse.onSuccess(null);
     }
 }

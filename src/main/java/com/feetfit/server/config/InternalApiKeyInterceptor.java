@@ -13,7 +13,11 @@ public class InternalApiKeyInterceptor implements HandlerInterceptor {
 
     private final InternalApiKeyVerifier internalApiKeyVerifier;
 
-    public InternalApiKeyInterceptor(@Value("${internal.api-key:}") String configuredApiKey) {
+    public InternalApiKeyInterceptor(@Value("${INTERNAL_API_KEY:}") String configuredApiKey) {
+        if (configuredApiKey == null || configuredApiKey.isBlank()) {
+            throw new IllegalStateException(
+                    "INTERNAL_API_KEY must be configured for internal Server APIs");
+        }
         this.internalApiKeyVerifier = new InternalApiKeyVerifier(configuredApiKey);
     }
 

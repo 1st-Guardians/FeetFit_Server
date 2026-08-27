@@ -52,9 +52,6 @@ public interface ReportCommandService {
     ReportResponseDTO.DailyFootAnalysisResultDTO saveEnvironmentPart(
             Long userId, ReportRequestDTO.EnvironmentPartDTO request);
 
-    ReportResponseDTO.DailyFootAnalysisResultDTO saveCareTipsPart(
-            Long userId, ReportRequestDTO.CareTipsPartDTO request);
-
     // 지표별 리포트 개별 저장 (단일 지표 upsert)
     ReportResponseDTO.SaveMetricResultResultDTO saveMetricResult(
             Long userId, ReportRequestDTO.SaveMetricResultDTO request);
