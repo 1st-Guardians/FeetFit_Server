@@ -91,6 +91,18 @@ public class DailyFootAnalysis extends BaseEntity {
 
     // 환경
     @Column
+    private Float beforeTemperatureCelsius;
+
+    @Column
+    private Float beforeHumidityPercent;
+
+    @Column
+    private Float afterTemperatureCelsius;
+
+    @Column
+    private Float afterHumidityPercent;
+
+    @Column
     private Float avgTemperatureCelsius;
 
     @Column
@@ -148,7 +160,21 @@ public class DailyFootAnalysis extends BaseEntity {
         this.footOdourComment = footOdourComment;
     }
 
-    public void updateEnvironment(Float avgTemperatureCelsius, Float avgHumidityPercent) {
+    public void updateEnvironment(Float beforeTemperatureCelsius, Float beforeHumidityPercent,
+                                  Float afterTemperatureCelsius, Float afterHumidityPercent,
+                                  Float avgTemperatureCelsius, Float avgHumidityPercent) {
+        if (beforeTemperatureCelsius != null) {
+            this.beforeTemperatureCelsius = beforeTemperatureCelsius;
+        }
+        if (beforeHumidityPercent != null) {
+            this.beforeHumidityPercent = beforeHumidityPercent;
+        }
+        if (afterTemperatureCelsius != null) {
+            this.afterTemperatureCelsius = afterTemperatureCelsius;
+        }
+        if (afterHumidityPercent != null) {
+            this.afterHumidityPercent = afterHumidityPercent;
+        }
         this.avgTemperatureCelsius = avgTemperatureCelsius;
         this.avgHumidityPercent = avgHumidityPercent;
     }

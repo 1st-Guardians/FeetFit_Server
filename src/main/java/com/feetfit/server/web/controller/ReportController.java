@@ -711,7 +711,9 @@ public class ReportController {
     @Operation(
             summary = "종합 발 분석 - 환경 상태 저장 [민지]",
             description = """
-                발 환경의 평균 온도·습도를 저장합니다.
+                발을 넣기 전/후 온도·습도를 저장합니다.
+                이전/이후 온습도 4개 값이 전달되면 평균 온도·습도는 서버에서 계산합니다.
+                하위 호환을 위해 평균 온도·습도만 전달하는 기존 요청도 허용합니다.
                 Authorization 헤더에 Bearer accessToken이 필요합니다.
                 """
     )
@@ -1142,7 +1144,11 @@ public class ReportController {
                 "rightFootSizeDiff": -2.0,
                 "leftFootWidthMm": 85.0,
                 "rightFootWidthMm": 70.0,
-                "avgTemperatureCelsius": 34.0,
+                "beforeTemperatureCelsius": 28.0,
+                "beforeHumidityPercent": 45.0,
+                "afterTemperatureCelsius": 34.0,
+                "afterHumidityPercent": 55.0,
+                "avgTemperatureCelsius": 31.0,
                 "avgHumidityPercent": 50.0,
                 "careTips": [
                   "오른발 앞꿈치 스트레칭을 해주세요.",

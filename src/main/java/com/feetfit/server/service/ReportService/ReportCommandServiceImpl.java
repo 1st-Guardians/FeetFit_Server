@@ -285,9 +285,25 @@ public class ReportCommandServiceImpl implements ReportCommandService {
             Long userId, ReportRequestDTO.EnvironmentPartDTO request) {
         MeasurementSession session = getValidatedReportWritableMeasurementSession(userId, request.getMeasurementSessionId());
         DailyFootAnalysis analysis = findOrCreate(session);
-        analysis.updateEnvironment(request.getAvgTemperatureCelsius(), request.getAvgHumidityPercent());
+        analysis.updateEnvironment(
+                request.getBeforeTemperatureCelsius(),
+                request.getBeforeHumidityPercent(),
+                request.getAfterTemperatureCelsius(),
+                request.getAfterHumidityPercent(),
+                resolveAverage(request.getAvgTemperatureCelsius(),
+                        request.getBeforeTemperatureCelsius(), request.getAfterTemperatureCelsius()),
+                resolveAverage(request.getAvgHumidityPercent(),
+                        request.getBeforeHumidityPercent(), request.getAfterHumidityPercent())
+        );
         measurementCompletionService.refreshEnvironmentAnalysisCompleted(session);
         return buildDailyFootAnalysisResult(userId, analysis);
+    }
+
+    private Float resolveAverage(Float requestedAverage, Float beforeValue, Float afterValue) {
+        if (beforeValue != null && afterValue != null) {
+            return (beforeValue + afterValue) / 2.0f;
+        }
+        return requestedAverage;
     }
 
     private DailyFootAnalysis findOrCreate(MeasurementSession session) {
