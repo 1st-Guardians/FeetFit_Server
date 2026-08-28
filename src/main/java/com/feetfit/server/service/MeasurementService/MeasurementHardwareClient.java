@@ -27,8 +27,11 @@ public class MeasurementHardwareClient {
     @Value("${hardware.measurement.photo-capture-url}")
     private String photoCaptureUrl;
 
-    @Value("${hardware.measurement.pressure-environment-measurement-url}")
-    private String pressureEnvironmentMeasurementUrl;
+    @Value("${hardware.measurement.environment-measurement-url}")
+    private String environmentMeasurementUrl;
+
+    @Value("${hardware.measurement.pressure-measurement-url}")
+    private String pressureMeasurementUrl;
 
     public void requestPhotoCapture(Long measurementSessionId, String authorizationHeader) {
         requestHardwareTask("photo-capture", photoCaptureUrl, measurementSessionId, authorizationHeader);
@@ -43,43 +46,30 @@ public class MeasurementHardwareClient {
         );
     }
 
-    public void requestPressureAndEnvironmentMeasurement(Long measurementSessionId, String authorizationHeader) {
+    public void requestPressureMeasurement(Long measurementSessionId, String authorizationHeader) {
         requestHardwareTask(
-                "pressure-environment-measurement",
-                pressureEnvironmentMeasurementUrl,
+                "pressure-measurement",
+                pressureMeasurementUrl,
                 measurementSessionId,
-                authorizationHeader,
-                "PRESSURE_MEASUREMENT"
+                authorizationHeader
         );
     }
 
     public void requestEnvironmentMeasurement(Long measurementSessionId, String authorizationHeader) {
         requestHardwareTask(
                 "environment-measurement",
-                pressureEnvironmentMeasurementUrl,
+                environmentMeasurementUrl,
                 measurementSessionId,
-                authorizationHeader,
-                "ENVIRONMENT_MEASUREMENT"
+                authorizationHeader
         );
     }
 
     private void requestHardwareTask(String taskName, String requestUrl, Long measurementSessionId, String authorizationHeader) {
-        requestHardwareTask(taskName, requestUrl, measurementSessionId, authorizationHeader, null);
-    }
-
-    private void requestHardwareTask(
-            String taskName,
-            String requestUrl,
-            Long measurementSessionId,
-            String authorizationHeader,
-            String hardwareTaskType) {
         boolean hasAuthorization = StringUtils.hasText(authorizationHeader);
         String authorizationPreview = hasAuthorization
                 ? authorizationHeader.substring(0, Math.min(authorizationHeader.length(), 12))
                 : null;
-        Map<String, Object> body = StringUtils.hasText(hardwareTaskType)
-                ? Map.of("measurementSessionId", measurementSessionId, "task", hardwareTaskType)
-                : Map.of("measurementSessionId", measurementSessionId);
+        Map<String, Object> body = Map.of("measurementSessionId", measurementSessionId);
 
         log.info("Hardware task request sending. taskName={}, url={}, measurementSessionId={}, hasAuthorization={}, authorizationPreview={}, body={}",
                 taskName,
