@@ -1,5 +1,6 @@
 package com.feetfit.server.web.dto.report;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.feetfit.server.domain.enums.GaugeStatus;
 import com.feetfit.server.domain.enums.MetricType;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -319,13 +320,66 @@ public class ReportRequestDTO {
         @NotNull(message = "측정 세션 ID는 필수입니다.")
         private Long measurementSessionId;
 
-        @Schema(description = "평균 온도(°C)", example = "34.0")
-        @NotNull(message = "평균 온도는 필수입니다.")
+        @Schema(description = "발을 넣기 전 온도(°C)", example = "28.0")
+        private Float beforeTemperatureCelsius;
+
+        @Schema(description = "발을 넣기 전 습도(%)", example = "45.0")
+        private Float beforeHumidityPercent;
+
+        @Schema(description = "발을 넣은 후 온도(°C)", example = "34.0")
+        private Float afterTemperatureCelsius;
+
+        @Schema(description = "발을 넣은 후 습도(%)", example = "55.0")
+        private Float afterHumidityPercent;
+
+        @Schema(description = "평균 온도(°C). 이전/이후 온도가 있으면 서버에서 계산합니다.", example = "31.0")
         private Float avgTemperatureCelsius;
 
-        @Schema(description = "평균 습도(%)", example = "50.0")
-        @NotNull(message = "평균 습도는 필수입니다.")
+        @Schema(description = "평균 습도(%). 이전/이후 습도가 있으면 서버에서 계산합니다.", example = "50.0")
         private Float avgHumidityPercent;
+
+        @JsonIgnore
+        @Schema(hidden = true)
+        @AssertTrue(message = "이전/이후 온습도 값 또는 평균 온습도 값은 필수입니다.")
+        public boolean isRequiredEnvironmentValuesPresent() {
+            return hasBeforeAfterEnvironmentValues() || hasAverageEnvironmentValues();
+        }
+
+        @JsonIgnore
+        @Schema(hidden = true)
+        @AssertTrue(message = "이전/이후 온습도 값은 모두 함께 전달해야 합니다.")
+        public boolean isBeforeAfterEnvironmentValuesComplete() {
+            return !hasAnyBeforeAfterEnvironmentValue() || hasBeforeAfterEnvironmentValues();
+        }
+
+        @JsonIgnore
+        @Schema(hidden = true)
+        @AssertTrue(message = "평균 온습도 값은 모두 함께 전달해야 합니다.")
+        public boolean isAverageEnvironmentValuesComplete() {
+            return !hasAnyAverageEnvironmentValue() || hasAverageEnvironmentValues();
+        }
+
+        private boolean hasBeforeAfterEnvironmentValues() {
+            return beforeTemperatureCelsius != null
+                    && beforeHumidityPercent != null
+                    && afterTemperatureCelsius != null
+                    && afterHumidityPercent != null;
+        }
+
+        private boolean hasAverageEnvironmentValues() {
+            return avgTemperatureCelsius != null && avgHumidityPercent != null;
+        }
+
+        private boolean hasAnyBeforeAfterEnvironmentValue() {
+            return beforeTemperatureCelsius != null
+                    || beforeHumidityPercent != null
+                    || afterTemperatureCelsius != null
+                    || afterHumidityPercent != null;
+        }
+
+        private boolean hasAnyAverageEnvironmentValue() {
+            return avgTemperatureCelsius != null || avgHumidityPercent != null;
+        }
     }
 
     // ─── 기타 DTO ─────────────────────────────────────────────────────────────

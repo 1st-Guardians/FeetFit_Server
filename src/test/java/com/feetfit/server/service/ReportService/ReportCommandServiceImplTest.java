@@ -1,6 +1,7 @@
 package com.feetfit.server.service.ReportService;
 
 import com.feetfit.server.apiPayload.exception.handler.MeasurementHandler;
+import com.feetfit.server.domain.DailyFootAnalysis;
 import com.feetfit.server.domain.Report;
 import com.feetfit.server.domain.UserFootCareTodo;
 import com.feetfit.server.domain.UserFootCareTodoAssignment;
@@ -15,6 +16,7 @@ import com.feetfit.server.domain.enums.SocialType;
 import com.feetfit.server.domain.enums.UserStatus;
 import com.feetfit.server.repository.DailyFootAnalysisRepository;
 import com.feetfit.server.repository.MetricAnalysisResultRepository;
+import com.feetfit.server.repository.PlantarFootprintRepository;
 import com.feetfit.server.repository.ReportRepository;
 import com.feetfit.server.repository.UserRepository;
 import com.feetfit.server.repository.UserFootCareTodoAssignmentRepository;
@@ -81,6 +83,9 @@ class ReportCommandServiceImplTest {
     private UserFootCareTodoAssignmentRepository userFootCareTodoAssignmentRepository;
 
     @Mock
+    private PlantarFootprintRepository plantarFootprintRepository;
+
+    @Mock
     private ImageUploadService imageUploadService;
 
     @Mock
@@ -91,6 +96,37 @@ class ReportCommandServiceImplTest {
 
     @InjectMocks
     private ReportCommandServiceImpl reportCommandService;
+
+    @Test
+    void saveEnvironmentPart_withBeforeAfterValues_savesValuesAndCalculatedAverage() {
+        MeasurementSession measurementSession = measurementSession(MeasurementStatus.TRANSFERRING);
+        DailyFootAnalysis analysis = DailyFootAnalysis.builder()
+                .id(1L)
+                .measurementSession(measurementSession)
+                .build();
+        ReflectionTestUtils.setField(analysis, "createdAt", LocalDateTime.of(2026, 5, 20, 9, 0));
+        ReflectionTestUtils.setField(analysis, "updatedAt", LocalDateTime.of(2026, 5, 20, 9, 0));
+
+        given(measurementSessionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(measurementSession));
+        given(dailyFootAnalysisRepository.findByMeasurementSessionId(1L)).willReturn(Optional.of(analysis));
+        given(userRepository.findById(1L)).willReturn(Optional.of(user()));
+        given(dailyFootAnalysisRepository.findTopByMeasurementSessionUserIdAndCreatedAtLessThanOrderByCreatedAtDesc(
+                eq(1L), any(LocalDateTime.class)
+        )).willReturn(Optional.empty());
+        given(plantarFootprintRepository.findTopByMeasurementSessionIdOrderByRecordedAtDesc(1L))
+                .willReturn(Optional.empty());
+
+        ReportResponseDTO.DailyFootAnalysisResultDTO response =
+                reportCommandService.saveEnvironmentPart(1L, environmentRequest());
+
+        assertThat(response.getBeforeTemperatureCelsius()).isEqualTo(28.0f);
+        assertThat(response.getBeforeHumidityPercent()).isEqualTo(45.0f);
+        assertThat(response.getAfterTemperatureCelsius()).isEqualTo(34.0f);
+        assertThat(response.getAfterHumidityPercent()).isEqualTo(55.0f);
+        assertThat(response.getAvgTemperatureCelsius()).isEqualTo(31.0f);
+        assertThat(response.getAvgHumidityPercent()).isEqualTo(50.0f);
+        verify(measurementCompletionService).refreshEnvironmentAnalysisCompleted(measurementSession);
+    }
 
     @Test
     void saveTinaPedisAnalysis_completedOwnMeasurement_savesAnalysis() {
@@ -265,6 +301,16 @@ class ReportCommandServiceImplTest {
 
     private static ReportRequestDTO.SaveTinaPedisAnalysisDTO tinaPedisRequest() {
         return tinaPedisRequest(82, 76);
+    }
+
+    private static ReportRequestDTO.EnvironmentPartDTO environmentRequest() {
+        ReportRequestDTO.EnvironmentPartDTO request = new ReportRequestDTO.EnvironmentPartDTO();
+        ReflectionTestUtils.setField(request, "measurementSessionId", 1L);
+        ReflectionTestUtils.setField(request, "beforeTemperatureCelsius", 28.0f);
+        ReflectionTestUtils.setField(request, "beforeHumidityPercent", 45.0f);
+        ReflectionTestUtils.setField(request, "afterTemperatureCelsius", 34.0f);
+        ReflectionTestUtils.setField(request, "afterHumidityPercent", 55.0f);
+        return request;
     }
 
     private static ReportRequestDTO.SaveTinaPedisAnalysisDTO tinaPedisRequest(Integer fungalScore, Integer skinScore) {

@@ -252,6 +252,18 @@ public class ReportResponseDTO {
         private Float rightFootWidthMm;
 
         // 발 환경 상태
+        @Schema(description = "발을 넣기 전 온도 (°C)", example = "28.0")
+        private Float beforeTemperatureCelsius;
+
+        @Schema(description = "발을 넣기 전 습도 (%)", example = "45.0")
+        private Float beforeHumidityPercent;
+
+        @Schema(description = "발을 넣은 후 온도 (°C)", example = "34.0")
+        private Float afterTemperatureCelsius;
+
+        @Schema(description = "발을 넣은 후 습도 (%)", example = "55.0")
+        private Float afterHumidityPercent;
+
         @Schema(description = "평균 온도 (°C)", example = "34.0")
         private Float avgTemperatureCelsius;
 
