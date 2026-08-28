@@ -127,7 +127,7 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
                     measurementSession.getId(), authorizationHeader);
             case READY_FOR_ENVIRONMENT -> () -> measurementHardwareClient.requestEnvironmentMeasurement(
                     measurementSession.getId(), authorizationHeader);
-            case READY_FOR_PRESSURE -> () -> measurementHardwareClient.requestPressureAndEnvironmentMeasurement(
+            case READY_FOR_PRESSURE -> () -> measurementHardwareClient.requestPressureMeasurement(
                     measurementSession.getId(), authorizationHeader);
             default -> null;
         };
