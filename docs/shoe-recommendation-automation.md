@@ -11,32 +11,38 @@ marks the session-scoped SHOE_RECOMMENDATION_RUN as FAILED.
 
 The ordered completion workflows and explicit shoe-batch retries use a dedicated
 single-worker executor so two users completing measurements at the same time do
-not invoke the GPU batch concurrently from one Server instance. Lazy detail
-summaries use a separate executor and therefore do not block the batch queue.
+not invoke the GPU batch concurrently from one Server instance. When a detail
+response is missing summaries, Server reads the recommendation context, calls
+the AI direct-generation endpoint synchronously, saves the returned summaries,
+and performs a fresh read before responding. This request path does not use the
+batch executor and its AI wait is bounded by the dedicated summary timeout.
 
 The application YAML remains local and ignored. Configure deployments with
 environment variables:
 
 | Environment variable | Spring property | Required | Purpose |
 | --- | --- | --- | --- |
-| INTERNAL_API_KEY | direct environment secret | yes | Shared Server/AI internal key; never log or commit it |
+| INTERNAL_API_KEY | internal.api-key | yes | Shared Server/AI internal key; deployment YAML may map this environment secret to the canonical Spring property; never log or commit it |
 | AI_SHOE_RECOMMENDATION_URL | ai.shoe-recommendation.url | yes when enabled | Absolute HTTP(S) batch endpoint, normally `/api/reports/shoe-recommendations` |
 | AI_SHOE_RECOMMENDATION_SUMMARY_URL | ai.shoe-recommendation.summary-url | yes when enabled | Absolute HTTP(S) on-demand Ollama endpoint, normally `/api/shoes/summaries` |
 | AI_FOOT_TYPE_TEXT_URL | ai.foot-type-text.url | no | Absolute HTTP(S) foot-type-text endpoint. When omitted, Server derives the sibling `/api/reports/foot-type-text` endpoint from the batch URL for backward compatibility |
 | AI_SHOE_RECOMMENDATION_TIMEOUT_SECONDS | ai.shoe-recommendation.timeout-seconds | no | Positive outer HTTP timeout; defaults to 1200 seconds |
+| AI_SHOE_RECOMMENDATION_SUMMARY_TIMEOUT_SECONDS | ai.shoe-recommendation.summary-timeout-seconds | no | Detail summary AI timeout from 1 to 10 seconds; defaults to 10 seconds |
 | AI_SHOE_RECOMMENDATION_ENABLED | ai.shoe-recommendation.enabled | no | Enables batch and summary triggers; defaults to true |
 
-The internal API interceptor and automation client read `INTERNAL_API_KEY`
-directly so a local YAML fallback cannot silently enable internal access with a
-development key. Server startup fails fast without that environment value. When
+The internal API interceptor and automation client both read the canonical
+`internal.api-key` Spring property. Deployment YAML can resolve it from
+`INTERNAL_API_KEY`, while a local ignored YAML may provide a development
+fallback. Server startup fails fast when the resolved value is blank. When
 automation is enabled it also fails fast without either required shoe AI URL,
 when any configured URL (including the optional foot-type-text URL) is not
-absolute HTTP(S), or when the timeout is not positive. Tests explicitly disable
-external automation.
+absolute HTTP(S), or when a timeout is outside its accepted range. Tests
+explicitly disable external automation.
 
-The Server outer timeout is intentionally longer than the AI-to-Server callback
+The Server batch timeout is intentionally longer than the AI-to-Server callback
 timeout so paged context loading and BGE work do not consume the entire caller
-budget before callbacks finish. Keep this ordering when overriding timeouts.
+budget before callbacks finish. Detail generation instead uses its separate,
+at-most-10-second timeout before the save and fresh read complete.
 
 There is no blind HTTP retry. A timeout can make the remote commit outcome
 uncertain, so failures are recorded and must be retriggered deliberately. The

@@ -39,9 +39,7 @@ public class ShoeRecommendationAiClient {
             @Value("${ai.shoe-recommendation.timeout-seconds:1200}") long timeoutSeconds,
             @Value("${ai.shoe-recommendation.summary-timeout-seconds:10}")
             long summaryTimeoutSeconds,
-            // Read the deployment secret directly. This intentionally does not consume a
-            // local application.yml fallback for internal.api-key.
-            @Value("${INTERNAL_API_KEY:}") String internalApiKey,
+            @Value("${internal.api-key:}") String internalApiKey,
             @Value("${ai.shoe-recommendation.enabled:true}") boolean enabled) {
         if (enabled) {
             requireHttpUrl(endpoint, "ai.shoe-recommendation.url");
