@@ -10,6 +10,7 @@ import com.feetfit.server.domain.MeasurementSession;
 import com.feetfit.server.domain.ShoeClickHistory;
 import com.feetfit.server.domain.ShoeRecommendation;
 import com.feetfit.server.domain.ShoeRecommendationReason;
+import com.feetfit.server.domain.ShoeRecommendationReasonReview;
 import com.feetfit.server.domain.ShoeRecommendationRun;
 import com.feetfit.server.domain.ShoeReview;
 import com.feetfit.server.domain.User;
@@ -232,7 +233,9 @@ public class ShoeCommandServiceImpl implements ShoeCommandService {
                         .collect(Collectors.toMap(
                                 ShoeRecommendationReason::getReasonType,
                                 reason -> reason));
-        Map<ReasonType, List<ShoeReview>> selectedReviewsByType =
+        Map<ReasonType, List<ShoeRecommendationReasonReview>> candidateLinksByType =
+                new java.util.EnumMap<>(ReasonType.class);
+        Map<ReasonType, Set<Long>> selectedReviewIdsByType =
                 new java.util.EnumMap<>(ReasonType.class);
         for (ShoeRequestDTO.ShoeReasonSummaryDTO summary : request.getReasons()) {
             ShoeRecommendationReason reason = reasonsByType.get(summary.getReasonType());
@@ -240,35 +243,36 @@ public class ShoeCommandServiceImpl implements ShoeCommandService {
                 throw invalidRecommendationRequest(
                         "저장된 추천에 " + summary.getReasonType() + " 근거가 없습니다.");
             }
-            Set<Long> candidateReviewIds = shoeRecommendationReasonReviewRepository
-                    .findByReasonId(reason.getId()).stream()
+            List<ShoeRecommendationReasonReview> candidateLinks =
+                    shoeRecommendationReasonReviewRepository.findByReasonId(reason.getId());
+            Set<Long> candidateReviewIds = candidateLinks.stream()
                     .map(reasonReview -> reasonReview.getReview().getId())
                     .collect(Collectors.toSet());
             if (!candidateReviewIds.containsAll(summary.getReviewIds())) {
                 throw invalidRecommendationRequest(
                         summary.getReasonType() + " reviewIds는 기존 BGE 후보의 subset이어야 합니다.");
             }
-            Map<Long, ShoeReview> validatedReviews =
-                    findReviewsBelongingToShoe(recommendation.getShoe(), summary.getReviewIds());
-            selectedReviewsByType.put(
-                    summary.getReasonType(),
-                    summary.getReviewIds().stream().map(validatedReviews::get).toList());
+            findReviewsBelongingToShoe(recommendation.getShoe(), summary.getReviewIds());
+            candidateLinksByType.put(summary.getReasonType(), candidateLinks);
+            selectedReviewIdsByType.put(
+                    summary.getReasonType(), Set.copyOf(summary.getReviewIds()));
         }
 
         // 모든 reason/review 계약을 먼저 검증한 뒤에만 변경하여 invalid callback을 fail-closed로 처리한다.
         recommendation.updatePointSummary(request.getPointSummary());
+        List<ShoeRecommendationReasonReview> unselectedLinks = new ArrayList<>();
         for (ShoeRequestDTO.ShoeReasonSummaryDTO summary : request.getReasons()) {
             ShoeRecommendationReason reason = reasonsByType.get(summary.getReasonType());
             reason.updateReviewSummary(summary.getReviewSummary());
-            shoeRecommendationReasonReviewRepository.deleteByReasonId(reason.getId());
-            // 같은 (reason, review) 후보를 최종 선택으로 유지할 수 있으므로 INSERT 전에
-            // 기존 링크 DELETE를 확정해 unique constraint 충돌을 막는다.
-            shoeRecommendationReasonReviewRepository.flush();
-            shoeRecommendationReasonReviewRepository.saveAll(
-                    selectedReviewsByType.get(summary.getReasonType()).stream()
-                            .map(review -> ShoeConverter.toShoeRecommendationReasonReview(
-                                    reason, review))
-                            .toList());
+            Set<Long> selectedReviewIds = selectedReviewIdsByType.get(summary.getReasonType());
+            candidateLinksByType.get(summary.getReasonType()).stream()
+                    .filter(link -> !selectedReviewIds.contains(link.getReview().getId()))
+                    .forEach(unselectedLinks::add);
+        }
+        // 선택된 후보 링크는 이미 존재하므로 유지하고 탈락한 링크만 제거한다. 동일 payload를
+        // 재처리해도 INSERT가 발생하지 않아 uq_reason_review 충돌 없이 멱등적으로 동작한다.
+        if (!unselectedLinks.isEmpty()) {
+            shoeRecommendationReasonReviewRepository.deleteAll(unselectedLinks);
         }
     }
 

@@ -3,6 +3,7 @@ package com.feetfit.server.service.ShoeService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.feetfit.server.domain.*;
 import com.feetfit.server.domain.enums.MeasurementStatus;
+import com.feetfit.server.domain.enums.ReasonType;
 import com.feetfit.server.domain.enums.ShoeReviewSource;
 import com.feetfit.server.domain.enums.SocialType;
 import com.feetfit.server.repository.*;
@@ -15,8 +16,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.transaction.annotation.Transactional;
+import jakarta.persistence.EntityManager;
 
 import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -52,6 +56,7 @@ class ShoeRecommendationSessionServiceJpaIntegrationTest {
     @Autowired ShoeRecommendationReasonRepository reasonRepository;
     @Autowired ShoeRecommendationReasonReviewRepository reasonReviewRepository;
     @Autowired ShoeReviewRepository shoeReviewRepository;
+    @Autowired EntityManager entityManager;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private User user;
@@ -200,7 +205,7 @@ class ShoeRecommendationSessionServiceJpaIntegrationTest {
     }
 
     @Test
-    void completedSessionSummaryReplacesLinksWithBgeCandidateSubset() throws Exception {
+    void completedSessionSummaryReplayKeepsSelectedLinksWithoutDuplicateInsert() throws Exception {
         Shoe secondShoe = shoeRepository.save(shoe("selected-goods-2", "selected-model-2"));
         Shoe thirdShoe = shoeRepository.save(shoe("selected-goods-3", "selected-model-3"));
         ShoeReview firstReview = shoeReviewRepository.save(review("review-1", "hash-1"));
@@ -225,6 +230,12 @@ class ShoeRecommendationSessionServiceJpaIntegrationTest {
         save(firstSession, thirdShoe, 60);
         runService.completeRun(user.getId(), firstSession.getId());
 
+        ShoeRecommendation recommendationBefore = recommendationRepository
+                .findByMeasurementSessionIdAndShoeId(firstSession.getId(), shoe.getId())
+                .orElseThrow();
+        Map<ReasonType, Map<Long, Long>> candidateLinkIds =
+                linkIdsByType(recommendationBefore.getId());
+
         ShoeRequestDTO.SaveShoeSummariesDTO selected = objectMapper.readValue("""
                 {"measurementSessionId":%d,"pointSummary":"ollama point","reasons":[
                   {"reasonType":"FOREFOOT","reviewSummary":"forefoot final","reviewIds":[%d]},
@@ -236,6 +247,11 @@ class ShoeRecommendationSessionServiceJpaIntegrationTest {
                         firstReview.getId(), secondReview.getId()),
                 ShoeRequestDTO.SaveShoeSummariesDTO.class);
         shoeCommandService.saveShoeSummaries(user.getId(), shoe.getId(), selected);
+        entityManager.flush();
+        entityManager.clear();
+        shoeCommandService.saveShoeSummaries(user.getId(), shoe.getId(), selected);
+        entityManager.flush();
+        entityManager.clear();
 
         ShoeRecommendation recommendation = recommendationRepository
                 .findByMeasurementSessionIdAndShoeId(firstSession.getId(), shoe.getId())
@@ -254,6 +270,13 @@ class ShoeRecommendationSessionServiceJpaIntegrationTest {
         assertThat(links.get(com.feetfit.server.domain.enums.ReasonType.HEEL)).isEmpty();
         assertThat(links.get(com.feetfit.server.domain.enums.ReasonType.INSOLE))
                 .containsExactly(firstReview.getId(), secondReview.getId());
+        Map<ReasonType, Map<Long, Long>> retainedLinkIds = linkIdsByType(recommendation.getId());
+        assertThat(retainedLinkIds.get(ReasonType.FOREFOOT).get(secondReview.getId()))
+                .isEqualTo(candidateLinkIds.get(ReasonType.FOREFOOT).get(secondReview.getId()));
+        assertThat(retainedLinkIds.get(ReasonType.INSOLE).get(firstReview.getId()))
+                .isEqualTo(candidateLinkIds.get(ReasonType.INSOLE).get(firstReview.getId()));
+        assertThat(retainedLinkIds.get(ReasonType.INSOLE).get(secondReview.getId()))
+                .isEqualTo(candidateLinkIds.get(ReasonType.INSOLE).get(secondReview.getId()));
     }
 
     @Test
@@ -386,5 +409,15 @@ class ShoeRecommendationSessionServiceJpaIntegrationTest {
                   {"reasonType":"INSOLE","reviewSummary":"insole summary","reviewIds":[]}
                 ]}
                 """.formatted(sessionId), ShoeRequestDTO.SaveShoeSummariesDTO.class);
+    }
+
+    private Map<ReasonType, Map<Long, Long>> linkIdsByType(Long recommendationId) {
+        return reasonRepository.findByShoeRecommendationId(recommendationId).stream()
+                .collect(Collectors.toMap(
+                        ShoeRecommendationReason::getReasonType,
+                        reason -> reasonReviewRepository.findByReasonId(reason.getId()).stream()
+                                .collect(Collectors.toMap(
+                                        link -> link.getReview().getId(),
+                                        ShoeRecommendationReasonReview::getId))));
     }
 }
