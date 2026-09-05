@@ -10,14 +10,11 @@ import com.feetfit.server.repository.*;
 import com.feetfit.server.web.dto.shoe.ShoeResponseDTO;
 import com.feetfit.server.web.dto.shoe.ShoeSearchResponseDTO;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.task.TaskRejectedException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -26,7 +23,6 @@ import java.util.stream.Collectors;
 @Service
 @Transactional
 @RequiredArgsConstructor
-@Slf4j
 public class ShoeSearchQueryServiceImpl implements ShoeSearchQueryService {
 
     private final ShoeRepository shoeRepository;
@@ -35,7 +31,6 @@ public class ShoeSearchQueryServiceImpl implements ShoeSearchQueryService {
     private final ShoeRecommendationReasonRepository shoeRecommendationReasonRepository;
     private final ShoeRecommendationRepository shoeRecommendationRepository;
     private final ShoeRecommendationSessionResolver recommendationSessionResolver;
-    private final ShoeSummaryGenerationTrigger shoeSummaryGenerationTrigger;
 
     private static final int MAX_HISTORY_COUNT = 10;
 
@@ -137,23 +132,7 @@ public class ShoeSearchQueryServiceImpl implements ShoeSearchQueryService {
 
         // reason 조회 (연관된 리뷰 3개 포함)
         List<ShoeRecommendationReason> reasons = shoeRecommendationReasonRepository
-                .findByShoeRecommendationId(recommendation.getId());
-
-        boolean summaryMissing = !StringUtils.hasText(recommendation.getPointSummary())
-                || reasons.stream().anyMatch(
-                        reason -> !StringUtils.hasText(reason.getReviewSummary()));
-        if (summaryMissing) {
-            try {
-                shoeSummaryGenerationTrigger.trigger(
-                        userId, scope.measurementSessionId(), shoeId);
-            } catch (TaskRejectedException exception) {
-                // Lazy summary generation is optional to this read. Queue saturation must not
-                // turn an otherwise valid shoe detail response into an HTTP failure.
-                log.warn(
-                        "Shoe summary generation scheduling rejected. measurementSessionId={}, shoeId={}",
-                        scope.measurementSessionId(), shoeId, exception);
-            }
-        }
+                .findDetailByShoeRecommendationId(recommendation.getId());
 
         List<ShoeResponseDTO.ReasonResultDTO> reasonResultDTOs = reasons.stream()
                 .map(ShoeConverter::toReasonResultDTO)

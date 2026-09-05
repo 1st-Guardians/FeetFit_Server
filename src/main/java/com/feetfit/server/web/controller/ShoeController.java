@@ -4,6 +4,7 @@ import com.feetfit.server.apiPayload.ApiResponse;
 import com.feetfit.server.domain.enums.ShoeSort;
 import com.feetfit.server.jwt.FindLoginUser;
 import com.feetfit.server.service.ShoeService.ShoeCommandService;
+import com.feetfit.server.service.ShoeService.ShoeDetailService;
 import com.feetfit.server.service.ShoeService.ShoeQueryService;
 import com.feetfit.server.service.ShoeService.ShoeSearchQueryService;
 import com.feetfit.server.web.dto.shoe.ShoeRequestDTO;
@@ -32,6 +33,7 @@ public class ShoeController {
     private final ShoeQueryService shoeQueryService;
     private final ShoeCommandService shoeCommandService;
     private final ShoeSearchQueryService shoeSearchQueryService;
+    private final ShoeDetailService shoeDetailService;
     private final FindLoginUser findLoginUser;
 
     @GetMapping
@@ -91,6 +93,7 @@ public class ShoeController {
                     - 유효한 Bearer accessToken이 있으면 로그인한 유저의 fitScore를 함께 반환합니다.
                     - 측정 이력이 없는 유저는 fitScore, pointSummary(착용 포인트)가 null로 반환됩니다.
                     - 부위별(발볼/뒤꿈치/깔창) AI가 선택한 리뷰 3개씩 반환합니다.
+                    - 추천은 있지만 요약이 비어 있으면 AI 자연어 요약을 생성·저장한 뒤 같은 응답에 반환합니다.
                     - 추천 데이터가 없는 유저는 reasons(발볼, 뒤꿈치, 깔창에 대한 내용)가 빈 배열로 반환됩니다.
                     """
     )
@@ -121,7 +124,7 @@ public class ShoeController {
             @RequestParam(required = false) @Min(1) Long measurementSessionId
     ) {
         Long userId = findLoginUser.getCurrentUserId();
-        return ApiResponse.onSuccess(shoeSearchQueryService.getShoeDetail(
+        return ApiResponse.onSuccess(shoeDetailService.getShoeDetail(
                 userId, shoeId, measurementSessionId));
     }
 
