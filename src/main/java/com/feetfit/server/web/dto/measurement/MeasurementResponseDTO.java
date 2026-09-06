@@ -80,6 +80,18 @@ public class MeasurementResponseDTO {
         @Schema(description = "삭제한 측정 세션 ID", example = "2")
         private Long measurementSessionId;
 
+        @Schema(description = "shoe_recommendation_reason_review 삭제 건수", example = "3")
+        private int deletedShoeRecommendationReasonReviewCount;
+
+        @Schema(description = "shoe_recommendation_reason 삭제 건수", example = "3")
+        private int deletedShoeRecommendationReasonCount;
+
+        @Schema(description = "shoe_recommendation 삭제 건수", example = "1")
+        private int deletedShoeRecommendationCount;
+
+        @Schema(description = "shoe_recommendation_run 삭제 건수", example = "1")
+        private int deletedShoeRecommendationRunCount;
+
         @Schema(description = "metric_analysis_result 삭제 건수", example = "5")
         private int deletedMetricAnalysisResultCount;
 

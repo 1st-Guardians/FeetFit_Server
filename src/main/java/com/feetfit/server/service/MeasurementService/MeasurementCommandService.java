@@ -12,5 +12,5 @@ public interface MeasurementCommandService {
             MeasurementRequestDTO.UpdateMeasurementStatusDTO request,
             String authorizationHeader);
 
-    MeasurementResponseDTO.DeleteMeasurementRecordsResultDTO deleteMeasurementRecords(Long measurementSessionId);
+    MeasurementResponseDTO.DeleteMeasurementRecordsResultDTO deleteMeasurementRecords(Long userId, Long measurementSessionId);
 }

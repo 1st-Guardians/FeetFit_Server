@@ -148,11 +148,34 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
     }
 
     @Override
-    public MeasurementResponseDTO.DeleteMeasurementRecordsResultDTO deleteMeasurementRecords(Long measurementSessionId) {
-        if (!measurementSessionRepository.existsById(measurementSessionId)) {
-            throw new MeasurementHandler(ErrorStatus.MEASUREMENT_NOT_FOUND);
-        }
+    public MeasurementResponseDTO.DeleteMeasurementRecordsResultDTO deleteMeasurementRecords(Long userId, Long measurementSessionId) {
+        getOwnedMeasurementSession(userId, measurementSessionId);
 
+        int deletedShoeRecommendationReasonReviewCount = executeMeasurementDelete("""
+                DELETE FROM shoe_recommendation_reason_review
+                WHERE reason_id IN (
+                    SELECT id FROM shoe_recommendation_reason
+                    WHERE shoe_recommendation_id IN (
+                        SELECT id FROM shoe_recommendation
+                        WHERE measurement_session_id = :measurementSessionId
+                    )
+                )
+                """, measurementSessionId);
+        int deletedShoeRecommendationReasonCount = executeMeasurementDelete("""
+                DELETE FROM shoe_recommendation_reason
+                WHERE shoe_recommendation_id IN (
+                    SELECT id FROM shoe_recommendation
+                    WHERE measurement_session_id = :measurementSessionId
+                )
+                """, measurementSessionId);
+        int deletedShoeRecommendationCount = executeMeasurementDelete("""
+                DELETE FROM shoe_recommendation
+                WHERE measurement_session_id = :measurementSessionId
+                """, measurementSessionId);
+        int deletedShoeRecommendationRunCount = executeMeasurementDelete("""
+                DELETE FROM shoe_recommendation_run
+                WHERE measurement_session_id = :measurementSessionId
+                """, measurementSessionId);
         int deletedMetricAnalysisResultCount = executeMeasurementDelete("""
                 DELETE FROM metric_analysis_result
                 WHERE report_id IN (
@@ -220,6 +243,10 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
 
         return MeasurementResponseDTO.DeleteMeasurementRecordsResultDTO.builder()
                 .measurementSessionId(measurementSessionId)
+                .deletedShoeRecommendationReasonReviewCount(deletedShoeRecommendationReasonReviewCount)
+                .deletedShoeRecommendationReasonCount(deletedShoeRecommendationReasonCount)
+                .deletedShoeRecommendationCount(deletedShoeRecommendationCount)
+                .deletedShoeRecommendationRunCount(deletedShoeRecommendationRunCount)
                 .deletedMetricAnalysisResultCount(deletedMetricAnalysisResultCount)
                 .deletedReportCount(deletedReportCount)
                 .deletedHalluxValgusAnalysisCount(deletedHalluxValgusAnalysisCount)
