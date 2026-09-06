@@ -2,8 +2,6 @@ package com.feetfit.server.config;
 
 import com.feetfit.server.apiPayload.code.status.ErrorStatus;
 import com.feetfit.server.apiPayload.exception.GeneralException;
-import org.springframework.beans.factory.annotation.Value;
-
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 
@@ -11,7 +9,7 @@ public class InternalApiKeyVerifier {
 
     private final String configuredApiKey;
 
-    public InternalApiKeyVerifier(@Value("${INTERNAL_API_KEY:}") String configuredApiKey) {
+    public InternalApiKeyVerifier(String configuredApiKey) {
         this.configuredApiKey = configuredApiKey;
     }
 

@@ -12,8 +12,6 @@ public interface ShoeRecommendationReasonReviewRepository extends JpaRepository<
 
     List<ShoeRecommendationReasonReview> findByReasonId(Long reasonId);
 
-    void deleteByReasonId(Long reasonId);
-
     // 발 적합도 갱신 시 기존 reason들의 연결을 한 번의 DELETE로 정리 (건별 cascade 삭제 대신 사용)
     @Modifying(clearAutomatically = true)
     @Query("DELETE FROM ShoeRecommendationReasonReview rr WHERE rr.reason.id IN :reasonIds")

@@ -11,7 +11,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.core.task.TaskRejectedException;
 
 import java.time.LocalDateTime;
 import java.util.Arrays;
@@ -29,31 +28,31 @@ class ShoeSearchQueryServiceImplTest {
     @Mock ShoeRecommendationReasonRepository reasonRepository;
     @Mock ShoeRecommendationRepository recommendationRepository;
     @Mock ShoeRecommendationSessionResolver sessionResolver;
-    @Mock ShoeSummaryGenerationTrigger summaryGenerationTrigger;
     @InjectMocks ShoeSearchQueryServiceImpl service;
 
     @Test
-    void missingSummaryTriggersOnlyTheExplicitCompletedSession() {
+    void explicitCompletedSessionReturnsItsPendingDetailSnapshot() {
         Shoe shoe = shoe();
-        ShoeRecommendation recommendation = recommendation(shoe, null);
+        ShoeRecommendation pending = recommendation(shoe, null);
         when(shoeRepository.findById(11L)).thenReturn(Optional.of(shoe));
         when(sessionResolver.requireCompleted(7L, 21L))
                 .thenReturn(new ShoeRecommendationSessionResolver.ResolvedRecommendationSession(
                         31L, 21L, 7L));
         when(recommendationRepository.findByMeasurementSessionIdAndShoeId(21L, 11L))
-                .thenReturn(Optional.of(recommendation));
-        when(reasonRepository.findByShoeRecommendationId(41L))
-                .thenReturn(reasons(recommendation, null));
+                .thenReturn(Optional.of(pending));
+        when(reasonRepository.findDetailByShoeRecommendationId(41L))
+                .thenReturn(reasons(pending, null));
 
         var result = service.getShoeDetail(7L, 11L, 21L);
 
         assertThat(result.getMeasurementSessionId()).isEqualTo(21L);
-        verify(summaryGenerationTrigger).trigger(7L, 21L, 11L);
+        assertThat(result.getPointSummary()).isNull();
+        assertThat(result.getReasons()).hasSize(3);
         verify(sessionResolver, never()).resolveCurrentCompleted(anyLong());
     }
 
     @Test
-    void completeSummaryDoesNotTriggerOllamaAgain() {
+    void currentCompletedSessionReturnsItsCompleteSummary() {
         Shoe shoe = shoe();
         ShoeRecommendation recommendation = recommendation(shoe, "point summary");
         when(shoeRepository.findById(11L)).thenReturn(Optional.of(shoe));
@@ -63,34 +62,26 @@ class ShoeSearchQueryServiceImplTest {
                                 32L, 22L, 7L)));
         when(recommendationRepository.findByMeasurementSessionIdAndShoeId(22L, 11L))
                 .thenReturn(Optional.of(recommendation));
-        when(reasonRepository.findByShoeRecommendationId(41L))
+        when(reasonRepository.findDetailByShoeRecommendationId(41L))
                 .thenReturn(reasons(recommendation, "review summary"));
 
         var result = service.getShoeDetail(7L, 11L, null);
 
         assertThat(result.getMeasurementSessionId()).isEqualTo(22L);
-        verifyNoInteractions(summaryGenerationTrigger);
+        assertThat(result.getPointSummary()).isEqualTo("point summary");
     }
 
     @Test
-    void summaryQueueRejectionDoesNotBreakShoeDetail() {
+    void guestDetailSkipsRecommendationScope() {
         Shoe shoe = shoe();
-        ShoeRecommendation recommendation = recommendation(shoe, null);
         when(shoeRepository.findById(11L)).thenReturn(Optional.of(shoe));
-        when(sessionResolver.requireCompleted(7L, 21L))
-                .thenReturn(new ShoeRecommendationSessionResolver.ResolvedRecommendationSession(
-                        31L, 21L, 7L));
-        when(recommendationRepository.findByMeasurementSessionIdAndShoeId(21L, 11L))
-                .thenReturn(Optional.of(recommendation));
-        when(reasonRepository.findByShoeRecommendationId(41L))
-                .thenReturn(reasons(recommendation, null));
-        doThrow(new TaskRejectedException("queue full"))
-                .when(summaryGenerationTrigger).trigger(7L, 21L, 11L);
 
-        var result = service.getShoeDetail(7L, 11L, 21L);
+        var result = service.getShoeDetail(null, 11L, null);
 
-        assertThat(result.getMeasurementSessionId()).isEqualTo(21L);
-        assertThat(result.getFitScore()).isEqualTo(88f);
+        assertThat(result.getMeasurementSessionId()).isNull();
+        assertThat(result.getFitScore()).isNull();
+        assertThat(result.getPointSummary()).isNull();
+        verifyNoInteractions(sessionResolver, recommendationRepository, reasonRepository);
     }
 
     private static Shoe shoe() {

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.feetfit.server.domain.enums.MeasurementStatus;
 import com.feetfit.server.web.dto.report.FootTypeTextAiDTO;
+import com.feetfit.server.web.dto.shoe.ShoeRequestDTO;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -66,6 +67,69 @@ class ShoeRecommendationAiClientTest {
         assertThatThrownBy(() -> client(BATCH_URL, SUMMARY_URL, 0, "key", true))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("timeout-seconds");
+    }
+
+    @Test
+    void synchronousSummaryChildUrlHandlesTrailingSlashAndQuery() {
+        assertThat(ShoeRecommendationAiClient.childEndpoint(
+                "https://ai.internal.example/api/shoes/summaries/?tenant=feetfit",
+                "generate"))
+                .isEqualTo(
+                        "https://ai.internal.example/api/shoes/summaries/generate?tenant=feetfit");
+        assertThat(ShoeRecommendationAiClient.childEndpoint(
+                "https://ai.internal.example/api/shoes/summaries/generate",
+                "generate"))
+                .isEqualTo(
+                        "https://ai.internal.example/api/shoes/summaries/generate");
+    }
+
+    @Test
+    void synchronousSummaryRequestUsesChildEndpointAndReturnsExactSaveContract()
+            throws Exception {
+        AtomicReference<ClientRequest> captured = new AtomicReference<>();
+        WebClient webClient = WebClient.builder()
+                .exchangeFunction(request -> {
+                    captured.set(request);
+                    return Mono.just(ClientResponse.create(HttpStatus.OK)
+                            .header(HttpHeaders.CONTENT_TYPE, "application/json")
+                            .body("""
+                                    {
+                                      "measurementSessionId": 21,
+                                      "pointSummary": "자연스러운 착용 요약",
+                                      "reasons": [
+                                        {"reasonType":"FOREFOOT","reviewSummary":"발볼 요약","reviewIds":[1]},
+                                        {"reasonType":"HEEL","reviewSummary":"뒤꿈치 요약","reviewIds":[2]},
+                                        {"reasonType":"INSOLE","reviewSummary":"깔창 요약","reviewIds":[]}
+                                      ]
+                                    }
+                                    """)
+                            .build());
+                })
+                .build();
+        ShoeRecommendationAiClient client = client(
+                webClient,
+                BATCH_URL,
+                SUMMARY_URL + "/",
+                30,
+                "internal-key",
+                true);
+
+        ShoeRequestDTO.SaveShoeSummariesDTO response =
+                client.generateShoeSummary(11L, 21L, "service-jwt");
+
+        assertThat(captured.get().method()).isEqualTo(HttpMethod.POST);
+        assertThat(captured.get().url().toString()).isEqualTo(SUMMARY_URL + "/generate");
+        assertThat(captured.get().headers().getFirst(HttpHeaders.AUTHORIZATION))
+                .isEqualTo("Bearer service-jwt");
+        assertThat(captured.get().headers().getFirst(
+                ShoeRecommendationAiClient.INTERNAL_API_KEY_HEADER))
+                .isEqualTo("internal-key");
+        JsonNode body = OBJECT_MAPPER.readTree(serializedBody(captured.get()));
+        assertThat(body.path("shoeId").asLong()).isEqualTo(11L);
+        assertThat(body.path("measurementSessionId").asLong()).isEqualTo(21L);
+        assertThat(response.getMeasurementSessionId()).isEqualTo(21L);
+        assertThat(response.getPointSummary()).isEqualTo("자연스러운 착용 요약");
+        assertThat(response.getReasons()).hasSize(3);
     }
 
     @Test
@@ -241,7 +305,7 @@ class ShoeRecommendationAiClientTest {
             String internalKey,
             boolean enabled) {
         return new ShoeRecommendationAiClient(
-                WEB_CLIENT, batchUrl, summaryUrl, "", timeoutSeconds, internalKey, enabled);
+                WEB_CLIENT, batchUrl, summaryUrl, "", timeoutSeconds, 10, internalKey, enabled);
     }
 
     private static ShoeRecommendationAiClient client(
@@ -257,6 +321,7 @@ class ShoeRecommendationAiClientTest {
                 summaryUrl,
                 footTypeTextUrl,
                 timeoutSeconds,
+                10,
                 internalKey,
                 enabled);
     }
@@ -269,7 +334,7 @@ class ShoeRecommendationAiClientTest {
             String internalKey,
             boolean enabled) {
         return new ShoeRecommendationAiClient(
-                webClient, batchUrl, summaryUrl, "", timeoutSeconds, internalKey, enabled);
+                webClient, batchUrl, summaryUrl, "", timeoutSeconds, 10, internalKey, enabled);
     }
 
     private static ShoeRecommendationAiClient client(
@@ -286,6 +351,7 @@ class ShoeRecommendationAiClientTest {
                 summaryUrl,
                 footTypeTextUrl,
                 timeoutSeconds,
+                10,
                 internalKey,
                 enabled);
     }

@@ -1,7 +1,6 @@
 package com.feetfit.server.service.ShoeService;
 
 import com.feetfit.server.jwt.TokenProvider;
-import com.feetfit.server.repository.ShoeRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -14,19 +13,19 @@ public class ShoeRecommendationBatchOrchestrator {
 
     private static final int FAILURE_DETAIL_LIMIT = 4000;
 
-    private final ShoeRepository shoeRepository;
+    private final ShoeRecommendationEligibilityService eligibilityService;
     private final ShoeRecommendationRunService runService;
     private final ShoeRecommendationAiClient aiClient;
     private final TokenProvider tokenProvider;
     private final boolean enabled;
 
     public ShoeRecommendationBatchOrchestrator(
-            ShoeRepository shoeRepository,
+            ShoeRecommendationEligibilityService eligibilityService,
             ShoeRecommendationRunService runService,
             ShoeRecommendationAiClient aiClient,
             TokenProvider tokenProvider,
             @Value("${ai.shoe-recommendation.enabled:true}") boolean enabled) {
-        this.shoeRepository = shoeRepository;
+        this.eligibilityService = eligibilityService;
         this.runService = runService;
         this.aiClient = aiClient;
         this.tokenProvider = tokenProvider;
@@ -50,10 +49,10 @@ public class ShoeRecommendationBatchOrchestrator {
 
         boolean claimed = false;
         try {
-            long shoeCount = shoeRepository.count();
+            long shoeCount = eligibilityService.countEligibleShoes();
             if (shoeCount <= 0) {
                 log.warn(
-                        "Automatic shoe recommendation skipped because no shoes exist. measurementSessionId={}",
+                        "Automatic shoe recommendation skipped because no eligible shoes exist. measurementSessionId={}",
                         measurementSessionId);
                 return;
             }

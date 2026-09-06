@@ -1,6 +1,7 @@
 package com.feetfit.server.service.ShoeService;
 
 import com.feetfit.server.web.dto.report.FootTypeTextAiDTO;
+import com.feetfit.server.web.dto.shoe.ShoeRequestDTO;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -20,8 +21,10 @@ public class ShoeRecommendationAiClient {
     private final WebClient webClient;
     private final String endpoint;
     private final String summaryEndpoint;
+    private final String synchronousSummaryEndpoint;
     private final String footTypeTextEndpoint;
     private final Duration timeout;
+    private final Duration synchronousSummaryTimeout;
     private final String internalApiKey;
     private final boolean enabled;
 
@@ -34,9 +37,9 @@ public class ShoeRecommendationAiClient {
             @Value("${ai.foot-type-text.url:}")
             String configuredFootTypeTextEndpoint,
             @Value("${ai.shoe-recommendation.timeout-seconds:1200}") long timeoutSeconds,
-            // Read the deployment secret directly. This intentionally does not consume a
-            // local application.yml fallback for internal.api-key.
-            @Value("${INTERNAL_API_KEY:}") String internalApiKey,
+            @Value("${ai.shoe-recommendation.summary-timeout-seconds:10}")
+            long summaryTimeoutSeconds,
+            @Value("${internal.api-key:}") String internalApiKey,
             @Value("${ai.shoe-recommendation.enabled:true}") boolean enabled) {
         if (enabled) {
             requireHttpUrl(endpoint, "ai.shoe-recommendation.url");
@@ -50,6 +53,10 @@ public class ShoeRecommendationAiClient {
             throw new IllegalArgumentException(
                     "ai.shoe-recommendation.timeout-seconds must be positive");
         }
+        if (summaryTimeoutSeconds <= 0 || summaryTimeoutSeconds > 10) {
+            throw new IllegalArgumentException(
+                    "ai.shoe-recommendation.summary-timeout-seconds must be between 1 and 10");
+        }
         if (enabled && !StringUtils.hasText(internalApiKey)) {
             throw new IllegalStateException(
                     "INTERNAL_API_KEY must be configured when recommendation automation is enabled");
@@ -57,10 +64,16 @@ public class ShoeRecommendationAiClient {
         this.webClient = webClient;
         this.endpoint = endpoint;
         this.summaryEndpoint = summaryEndpoint;
+        this.synchronousSummaryEndpoint = StringUtils.hasText(summaryEndpoint)
+                ? childEndpoint(summaryEndpoint, "generate")
+                : "";
         this.footTypeTextEndpoint = enabled
                 ? resolveFootTypeTextEndpoint(endpoint, configuredFootTypeTextEndpoint)
                 : "";
         this.timeout = Duration.ofSeconds(timeoutSeconds);
+        // A shoe detail request must remain bounded even though the batch endpoint is
+        // intentionally allowed to run for much longer.
+        this.synchronousSummaryTimeout = Duration.ofSeconds(summaryTimeoutSeconds);
         this.internalApiKey = internalApiKey;
         this.enabled = enabled;
     }
@@ -99,6 +112,30 @@ public class ShoeRecommendationAiClient {
                 .retrieve()
                 .toBodilessEntity()
                 .block(timeout);
+    }
+
+    public ShoeRequestDTO.SaveShoeSummariesDTO generateShoeSummary(
+            Long shoeId, Long measurementSessionId, String accessToken) {
+        requireEnabled();
+        requireInternalApiKey();
+
+        ShoeRequestDTO.SaveShoeSummariesDTO response = webClient.post()
+                .uri(synchronousSummaryEndpoint)
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                .header(INTERNAL_API_KEY_HEADER, internalApiKey)
+                .bodyValue(Map.of(
+                        "shoeId", shoeId,
+                        "measurementSessionId", measurementSessionId
+                ))
+                .retrieve()
+                .bodyToMono(ShoeRequestDTO.SaveShoeSummariesDTO.class)
+                .block(synchronousSummaryTimeout);
+        if (response == null) {
+            throw new IllegalStateException("Feetfit_AI returned an empty shoe summary response");
+        }
+        return response;
     }
 
     public FootTypeTextAiDTO.Response requestFootTypeText(
@@ -176,6 +213,31 @@ public class ShoeRecommendationAiClient {
             throw new IllegalArgumentException(
                     "Could not derive foot-type-text endpoint from ai.shoe-recommendation.url",
                     exception);
+        }
+    }
+
+    static String childEndpoint(String value, String childPathSegment) {
+        URI uri = URI.create(value);
+        String path = uri.getPath();
+        while (path.endsWith("/") && path.length() > 1) {
+            path = path.substring(0, path.length() - 1);
+        }
+        if (!path.endsWith("/" + childPathSegment)) {
+            path = path + "/" + childPathSegment;
+        }
+        try {
+            return new URI(
+                    uri.getScheme(),
+                    uri.getUserInfo(),
+                    uri.getHost(),
+                    uri.getPort(),
+                    path,
+                    uri.getQuery(),
+                    uri.getFragment()
+            ).toString();
+        } catch (java.net.URISyntaxException exception) {
+            throw new IllegalArgumentException(
+                    "Could not derive child endpoint from configured URL", exception);
         }
     }
 

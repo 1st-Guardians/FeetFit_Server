@@ -2,6 +2,7 @@ package com.feetfit.server.repository;
 
 import com.feetfit.server.domain.ShoeRecommendationReason;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -12,6 +13,15 @@ import com.feetfit.server.domain.enums.ReasonType;
 
 public interface ShoeRecommendationReasonRepository extends JpaRepository<ShoeRecommendationReason, Long> {
     List<ShoeRecommendationReason> findByShoeRecommendationId(Long shoeRecommendationId);
+
+    @EntityGraph(attributePaths = {"reasonReviews", "reasonReviews.review"})
+    @Query("""
+            SELECT DISTINCT reason
+            FROM ShoeRecommendationReason reason
+            WHERE reason.shoeRecommendation.id = :shoeRecommendationId
+            """)
+    List<ShoeRecommendationReason> findDetailByShoeRecommendationId(
+            @Param("shoeRecommendationId") Long shoeRecommendationId);
 
     Optional<ShoeRecommendationReason> findByShoeRecommendationIdAndReasonType(
             Long shoeRecommendationId, ReasonType reasonType);
