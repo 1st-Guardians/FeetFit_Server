@@ -50,8 +50,6 @@ public class SecurityConfig {
 
                         .requestMatchers(HttpMethod.GET, "/api/shoes/*/characteristics").permitAll()
 
-                        .requestMatchers(HttpMethod.DELETE, "/api/measurement-sessions/*/records").permitAll()
-
                         .requestMatchers(
                                 "/api/auth/**",
                                 "/swagger-ui.html",

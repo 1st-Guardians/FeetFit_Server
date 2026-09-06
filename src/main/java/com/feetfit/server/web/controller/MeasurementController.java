@@ -200,8 +200,10 @@ public class MeasurementController {
             summary = "측정 세션 및 연관 기록 삭제 [은서]",
             description = """
                 개발/테스트용 API입니다.
-                Authorization 헤더 없이 호출 가능합니다.
-                measurementSessionId에 연결된 분석 결과, 센서 기록, 리포트, 측정 세션을 자식 테이블부터 순서대로 삭제합니다.
+                Authorization 헤더에 Bearer accessToken이 필요하며, 로그인한 사용자의 측정 세션만 삭제할 수 있습니다.
+                measurementSessionId에 연결된 신발 추천 리뷰 연결, 추천 사유, 추천 결과, 추천 실행 기록,
+                분석 결과, 센서 기록, 리포트, 측정 세션을 자식 테이블부터 순서대로 삭제합니다.
+                신발 원본 데이터와 리뷰 원문은 유지합니다.
                 """
     )
     @ApiResponses({
@@ -209,6 +211,16 @@ public class MeasurementController {
                     responseCode = "200",
                     description = "측정 세션 및 연관 기록 삭제 성공",
                     content = @Content(examples = @ExampleObject(value = DELETE_MEASUREMENT_RECORDS_SUCCESS_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = "Authorization 헤더 누락 또는 유효하지 않은 토큰",
+                    content = @Content(examples = @ExampleObject(value = UNAUTHORIZED_RESPONSE))
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "403",
+                    description = "본인의 측정 세션이 아님",
+                    content = @Content(examples = @ExampleObject(value = MEASUREMENT_FORBIDDEN_RESPONSE))
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "404",
@@ -224,7 +236,8 @@ public class MeasurementController {
     public ApiResponse<MeasurementResponseDTO.DeleteMeasurementRecordsResultDTO> deleteMeasurementRecords(
             @PathVariable Long measurementSessionId
     ) {
-        return ApiResponse.onSuccess(measurementCommandService.deleteMeasurementRecords(measurementSessionId));
+        Long userId = findLoginUser.getCurrentUserId();
+        return ApiResponse.onSuccess(measurementCommandService.deleteMeasurementRecords(userId, measurementSessionId));
     }
 
     private static final String MEASUREMENT_BAD_REQUEST_RESPONSE = """
@@ -243,6 +256,10 @@ public class MeasurementController {
               "message": "성공입니다.",
               "result": {
                 "measurementSessionId": 2,
+                "deletedShoeRecommendationReasonReviewCount": 3,
+                "deletedShoeRecommendationReasonCount": 3,
+                "deletedShoeRecommendationCount": 1,
+                "deletedShoeRecommendationRunCount": 1,
                 "deletedMetricAnalysisResultCount": 5,
                 "deletedReportCount": 1,
                 "deletedHalluxValgusAnalysisCount": 1,
