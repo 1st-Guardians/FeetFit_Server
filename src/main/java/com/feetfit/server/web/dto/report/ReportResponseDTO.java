@@ -209,9 +209,6 @@ public class ReportResponseDTO {
         @Schema(description = "오른발 압력 분포 이미지 URL", example = "https://example.com/right-pressure.jpg")
         private String rightPressureImageUrl;
 
-        @Schema(description = "발 눌림 영역 세그먼테이션 결과 이미지 URL", example = "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/plantar-footprint/7ac068ed-a203-4b95-a280-257a37ce3053.png")
-        private String plantarFootprintImageUrl;
-
         @Schema(description = "왼발 압력 히트맵 이미지 URL", example = "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/pressure-heatmap-left/7ac068ed-a203-4b95-a280-257a37ce3053.png")
         private String leftPressureHeatmapImageUrl;
 
