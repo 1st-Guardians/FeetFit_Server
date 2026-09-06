@@ -53,7 +53,6 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     private final UserFootCareTodoAssignmentRepository userFootCareTodoAssignmentRepository;
     private final HealthArticleRepository healthArticleRepository;
     private final UserHealthArticleRepository userHealthArticleRepository;
-    private final PlantarFootprintRepository plantarFootprintRepository;
     private final PressureSensorReadingRepository pressureSensorReadingRepository;
     private final MeasurementAnalysisStatusRepository measurementAnalysisStatusRepository;
     private final ImageUploadService imageUploadService;
@@ -355,13 +354,9 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                 .findTopByMeasurementSessionUserIdAndCreatedAtLessThanOrderByCreatedAtDesc(
                         userId, analysis.getCreatedAt().toLocalDate().atStartOfDay())
                 .orElse(null);
-        String plantarFootprintImageUrl = plantarFootprintRepository
-                .findTopByMeasurementSessionIdOrderByRecordedAtDesc(analysis.getMeasurementSession().getId())
-                .map(PlantarFootprint::getPlantarFootprintImageImage)
-                .orElse(null);
 
         return ReportConverter.toDailyFootAnalysisResultDTO(
-                analysis, user.getFootSize(), previousAnalysis, plantarFootprintImageUrl);
+                analysis, user.getFootSize(), previousAnalysis);
     }
 
     @Override

@@ -16,7 +16,6 @@ import com.feetfit.server.domain.enums.SocialType;
 import com.feetfit.server.domain.enums.UserStatus;
 import com.feetfit.server.repository.DailyFootAnalysisRepository;
 import com.feetfit.server.repository.MetricAnalysisResultRepository;
-import com.feetfit.server.repository.PlantarFootprintRepository;
 import com.feetfit.server.repository.ReportRepository;
 import com.feetfit.server.repository.UserRepository;
 import com.feetfit.server.repository.UserFootCareTodoAssignmentRepository;
@@ -83,9 +82,6 @@ class ReportCommandServiceImplTest {
     private UserFootCareTodoAssignmentRepository userFootCareTodoAssignmentRepository;
 
     @Mock
-    private PlantarFootprintRepository plantarFootprintRepository;
-
-    @Mock
     private ImageUploadService imageUploadService;
 
     @Mock
@@ -113,8 +109,6 @@ class ReportCommandServiceImplTest {
         given(dailyFootAnalysisRepository.findTopByMeasurementSessionUserIdAndCreatedAtLessThanOrderByCreatedAtDesc(
                 eq(1L), any(LocalDateTime.class)
         )).willReturn(Optional.empty());
-        given(plantarFootprintRepository.findTopByMeasurementSessionIdOrderByRecordedAtDesc(1L))
-                .willReturn(Optional.empty());
 
         ReportResponseDTO.DailyFootAnalysisResultDTO response =
                 reportCommandService.saveEnvironmentPart(1L, environmentRequest());

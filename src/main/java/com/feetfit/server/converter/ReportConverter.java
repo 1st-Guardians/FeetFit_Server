@@ -197,8 +197,7 @@ public class ReportConverter {
     public static ReportResponseDTO.DailyFootAnalysisResultDTO toDailyFootAnalysisResultDTO(
             DailyFootAnalysis analysis,
             Integer userFootSize,
-            DailyFootAnalysis previousAnalysis,
-            String plantarFootprintImageUrl) {
+            DailyFootAnalysis previousAnalysis) {
 
         // 이전 측정 대비 균형 점수 변화
         Float balanceScoreDiff = (previousAnalysis != null
@@ -226,7 +225,6 @@ public class ReportConverter {
                 .rightPressurePercent(analysis.getRightPressurePercent())
                 .leftPressureImageUrl(analysis.getLeftPressureImageUrl())
                 .rightPressureImageUrl(analysis.getRightPressureImageUrl())
-                .plantarFootprintImageUrl(plantarFootprintImageUrl)
                 .leftPressureHeatmapImageUrl(analysis.getLeftPressureHeatmapImageUrl())
                 .rightPressureHeatmapImageUrl(analysis.getRightPressureHeatmapImageUrl())
                 .leftPlantarFootprintImageUrl(analysis.getLeftPlantarFootprintImageUrl())

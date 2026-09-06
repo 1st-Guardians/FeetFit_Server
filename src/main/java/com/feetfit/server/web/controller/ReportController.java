@@ -1131,7 +1131,6 @@ public class ReportController {
                 "rightPressurePercent": 54.0,
                 "leftPressureImageUrl": "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/pressure-left/7ac068ed-a203-4b95-a280-257a37ce3053.png",
                 "rightPressureImageUrl": "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/pressure-right/e245c3c1-930c-41c1-8423-e60268fe3f17.png",
-                "plantarFootprintImageUrl": "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/plantar-footprint/df4b3137-2432-4a85-a47d-1bb39a8dbf80.png",
                 "leftPressureHeatmapImageUrl": "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/pressure-heatmap-left/df4b3137-2432-4a85-a47d-1bb39a8dbf80.png",
                 "rightPressureHeatmapImageUrl": "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/pressure-heatmap-right/e245c3c1-930c-41c1-8423-e60268fe3f17.png",
                 "leftPlantarFootprintImageUrl": "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/plantar-footprint-left/7ac068ed-a203-4b95-a280-257a37ce3053.png",
