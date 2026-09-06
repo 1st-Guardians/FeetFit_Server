@@ -31,12 +31,18 @@ public class FootCareTodoController {
     @GetMapping
     @Operation(
             summary = "발 관리 투두 조회 [은서]",
-            description = "로그인한 사용자의 오늘 날짜 발 관리 투두 목록을 todoDate 오름차순으로 조회합니다."
+            description = """
+                    최근 발 분석으로 연결된 투두를 todoDate 오름차순으로 조회합니다.
+                    오늘 측정이 없어도 기존 목록과 완료 체크를 유지합니다.
+                    새 측정의 필수 지표 5개가 모두 저장되면 추천 목록을 교체하고 완료 체크를 새로 시작합니다.
+                    동일 측정의 재전송이나 과거 측정의 늦은 결과로는 목록을 초기화하지 않습니다.
+                    hasTodayTodos는 호환용 필드명이며 현재 연결된 투두가 있으면 true입니다.
+                    """
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
-                    description = "발 관리 투두 조회 성공. 오늘 투두가 없어도 빈 배열로 성공 응답합니다.",
+                    description = "발 관리 투두 조회 성공. 연결된 투두가 없으면 빈 배열로 성공 응답합니다.",
                     content = @Content(examples = {
                             @ExampleObject(name = "투두 목록 있음", value = FOOT_CARE_TODO_LIST_SUCCESS_RESPONSE),
                             @ExampleObject(name = "투두 목록 없음", value = FOOT_CARE_TODO_LIST_EMPTY_RESPONSE)
@@ -118,7 +124,7 @@ public class FootCareTodoController {
               "result": {
                 "totalCount": 1,
                 "hasTodayTodos": true,
-                "message": "오늘 발 관리 투두입니다.",
+                "message": "최근 발 분석 기반 발 관리 투두입니다.",
                 "todos": [
                   {
                     "todoId": 1,
@@ -142,7 +148,7 @@ public class FootCareTodoController {
               "result": {
                 "totalCount": 0,
                 "hasTodayTodos": false,
-                "message": "오늘 발 관리 투두가 없습니다.",
+                "message": "연결된 발 관리 투두가 없습니다.",
                 "todos": []
               }
             }

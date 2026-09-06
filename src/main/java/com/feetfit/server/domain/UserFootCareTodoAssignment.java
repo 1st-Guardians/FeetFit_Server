@@ -51,6 +51,10 @@ public class UserFootCareTodoAssignment extends BaseEntity {
     @JoinColumn(name = "user_foot_care_todo_id", nullable = false)
     private UserFootCareTodo footCareTodo;
 
+    // Snapshot source, not an FK: recommendations remain usable after measurement deletion.
+    @Column(name = "source_measurement_session_id")
+    private Long sourceMeasurementSessionId;
+
     @Column(nullable = false)
     @Builder.Default
     private Boolean isCompleted = false;

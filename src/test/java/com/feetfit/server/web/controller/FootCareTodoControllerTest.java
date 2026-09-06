@@ -59,7 +59,7 @@ class FootCareTodoControllerTest {
                 .andExpect(jsonPath("$.code").value("COMMON200"))
                 .andExpect(jsonPath("$.result.totalCount").value(1))
                 .andExpect(jsonPath("$.result.hasTodayTodos").value(true))
-                .andExpect(jsonPath("$.result.message").value("오늘 발 관리 투두입니다."))
+                .andExpect(jsonPath("$.result.message").value("최근 발 분석 기반 발 관리 투두입니다."))
                 .andExpect(jsonPath("$.result.todos[0].todoId").value(1L))
                 .andExpect(jsonPath("$.result.todos[0].title").value("수건으로 발 당기기"))
                 .andExpect(jsonPath("$.result.todos[0].healthType").value("POSTURE"))
@@ -125,7 +125,7 @@ class FootCareTodoControllerTest {
         return FootCareTodoResponseDTO.FootCareTodoListResponseDTO.builder()
                 .totalCount(1)
                 .hasTodayTodos(true)
-                .message("오늘 발 관리 투두입니다.")
+                .message("최근 발 분석 기반 발 관리 투두입니다.")
                 .todos(List.of(todoInfoResponse(false)))
                 .build();
     }

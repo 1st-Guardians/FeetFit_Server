@@ -449,13 +449,13 @@ public class ReportResponseDTO {
         @Schema(description = "투두가 매칭된 건강 타입. 미완성 시 null", nullable = true)
         private List<HealthType> matchedHealthTypes;
 
-        @Schema(description = "새로 매칭된 발 관리 투두 개수. 미완성 시 null", example = "3", nullable = true)
+        @Schema(description = "현재 연결된 발 관리 투두 개수. 기존 추천 유지 시에도 해당 개수를 반환하며, 지표 미완성 시 null", example = "3", nullable = true)
         private Integer matchedTodoCount;
 
         @Schema(description = "건강 뉴스가 매칭된 건강 타입. 미완성 시 null", nullable = true)
         private List<HealthType> matchedArticleHealthTypes;
 
-        @Schema(description = "새로 매칭된 건강 뉴스 개수. 미완성 시 null", example = "4", nullable = true)
+        @Schema(description = "현재 연결된 건강 뉴스 개수. 기존 추천 유지 시에도 해당 개수를 반환하며, 지표 미완성 시 null", example = "4", nullable = true)
         private Integer matchedArticleCount;
 
         @Schema(description = "측정 완료에 필요한 분석 결과가 모두 저장되었는지 여부", example = "true")

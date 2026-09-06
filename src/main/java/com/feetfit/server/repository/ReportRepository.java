@@ -1,6 +1,7 @@
 package com.feetfit.server.repository;
 
 import com.feetfit.server.domain.Report;
+import com.feetfit.server.domain.enums.MeasurementStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -32,6 +33,21 @@ public interface ReportRepository extends JpaRepository<Report, Long> {
             @Param("endDate") LocalDateTime endDate);
 
     Optional<Report> findTopByMeasurementSessionIdOrderByReportDateDescIdDesc(Long measurementSessionId);
+
+    @Query("""
+            SELECT COUNT(r) > 0 FROM Report r
+            JOIN r.measurementSession session
+            WHERE r.user.id = :userId
+              AND r.totalScore IS NOT NULL
+              AND session.status <> :excludedStatus
+              AND (session.measuredAt > :measuredAt
+                   OR (session.measuredAt = :measuredAt AND session.id > :measurementSessionId))
+            """)
+    boolean existsNewerAnalyzedMeasurement(
+            @Param("userId") Long userId,
+            @Param("measuredAt") LocalDateTime measuredAt,
+            @Param("measurementSessionId") Long measurementSessionId,
+            @Param("excludedStatus") MeasurementStatus excludedStatus);
 
     default Optional<Report> findByMeasurementSessionId(Long measurementSessionId) {
         return findTopByMeasurementSessionIdOrderByReportDateDescIdDesc(measurementSessionId);

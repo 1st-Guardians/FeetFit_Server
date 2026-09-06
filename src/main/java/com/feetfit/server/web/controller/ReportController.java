@@ -823,7 +823,9 @@ public class ReportController {
                 - 측정 세션의 status와 무관하게 저장할 수 있습니다.
                 - 본인의 측정 세션 ID만 사용 가능합니다.
                 - advice는 정확히 2개여야 합니다.
-                - 5개 지표가 모두 저장 완료되면 totalScore(단순 평균)를 계산하고 발 관리 투두를 매칭합니다.
+                - 5개 지표가 모두 저장 완료되면 totalScore(단순 평균)를 계산합니다.
+                - 새 측정의 지표가 처음 완성될 때 발 관리 투두와 건강 뉴스를 갱신합니다. 그 전까지는 이전 추천을 유지합니다.
+                - 동일 측정의 재전송이나 더 오래된 측정의 늦은 결과는 현재 추천을 초기화하지 않습니다.
                 - allMetricsComplete: 5개 지표 모두 저장 완료 여부
                 - missingMetrics: 아직 저장되지 않은 지표 목록 (완료 시 빈 리스트)
                 - totalScore, matchedHealthTypes, matchedTodoCount: 완료 시에만 반환 (미완료 시 null)
