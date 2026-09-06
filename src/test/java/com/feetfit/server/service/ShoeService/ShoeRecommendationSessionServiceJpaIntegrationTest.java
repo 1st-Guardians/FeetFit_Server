@@ -133,6 +133,30 @@ class ShoeRecommendationSessionServiceJpaIntegrationTest {
     }
 
     @Test
+    void batchProvidedNaturalSummariesAreAvailableOnTheFirstDetailRead() throws Exception {
+        Shoe secondShoe = shoeRepository.save(shoe("batch-summary-goods-2", "batch-summary-model-2"));
+        Shoe thirdShoe = shoeRepository.save(shoe("batch-summary-goods-3", "batch-summary-model-3"));
+        shoeCommandService.saveShoeRecommendations(
+                user.getId(), completeRecommendationRequest(firstSession.getId(), shoe.getId()));
+        save(firstSession, secondShoe, 70);
+        save(firstSession, thirdShoe, 60);
+        runService.completeRun(user.getId(), firstSession.getId());
+
+        ShoeResponseDTO.ShoeDetailResultDTO detail = shoeSearchQueryService.getShoeDetail(
+                user.getId(), shoe.getId(), firstSession.getId());
+
+        assertThat(detail.getPointSummary()).isEqualTo(
+                "발볼이 넓다면 반 사이즈 업을 고려할 수 있고, 정사이즈는 안정적인 핏입니다.");
+        assertThat(detail.getReasons())
+                .hasSize(3)
+                .extracting(ShoeResponseDTO.ReasonResultDTO::getReviewSummary)
+                .containsExactlyInAnyOrder(
+                        "전족부 하중과 제품의 발볼 공간을 함께 보면 사이즈 선택에 주의가 필요합니다.",
+                        "뒤꿈치 하중과 제품의 지지 특성을 함께 보면 안정적인 착화가 예상됩니다.",
+                        "깔창 두께와 압력 분포를 함께 보면 장시간 착용 시 피로에 주의가 필요합니다.");
+    }
+
+    @Test
     void summarySaveChangesOnlyExplicitSession() throws Exception {
         Shoe secondShoe = shoeRepository.save(shoe("summary-goods-2", "summary-model-2"));
         Shoe thirdShoe = shoeRepository.save(shoe("summary-goods-3", "summary-model-3"));
@@ -398,6 +422,25 @@ class ShoeRecommendationSessionServiceJpaIntegrationTest {
                   ]
                 }]}
                 """.formatted(sessionId, shoeId, score),
+                ShoeRequestDTO.SaveShoeRecommendationDTO.class);
+    }
+
+    private ShoeRequestDTO.SaveShoeRecommendationDTO completeRecommendationRequest(
+            Long sessionId, Long shoeId) throws Exception {
+        return objectMapper.readValue("""
+                {"measurementSessionId":%d,"recommendations":[{
+                  "shoeId":%d,"fitScore":88,
+                  "pointSummary":"발볼이 넓다면 반 사이즈 업을 고려할 수 있고, 정사이즈는 안정적인 핏입니다.",
+                  "reasons":[
+                    {"reasonType":"FOREFOOT","title":"발볼 적합도 주의","riskLevel":"HIGH",
+                     "reviewSummary":"전족부 하중과 제품의 발볼 공간을 함께 보면 사이즈 선택에 주의가 필요합니다.","reviewIds":[]},
+                    {"reasonType":"HEEL","title":"뒤꿈치 적합도 좋음","riskLevel":"LOW",
+                     "reviewSummary":"뒤꿈치 하중과 제품의 지지 특성을 함께 보면 안정적인 착화가 예상됩니다.","reviewIds":[]},
+                    {"reasonType":"INSOLE","title":"깔창 적합도 보통","riskLevel":"MEDIUM",
+                     "reviewSummary":"깔창 두께와 압력 분포를 함께 보면 장시간 착용 시 피로에 주의가 필요합니다.","reviewIds":[]}
+                  ]
+                }]}
+                """.formatted(sessionId, shoeId),
                 ShoeRequestDTO.SaveShoeRecommendationDTO.class);
     }
 
