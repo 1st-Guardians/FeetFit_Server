@@ -26,7 +26,7 @@ public class FootCareTodoConverter {
 
     public static FootCareTodoResponseDTO.FootCareTodoListResponseDTO toFootCareTodoListResponseDTO(
             List<UserFootCareTodoAssignment> assignments,
-            Boolean hasTodayTodos
+            Boolean hasTodos
     ) {
         List<FootCareTodoResponseDTO.FootCareTodoInfoResponseDTO> todoResponses = assignments.stream()
                 .map(FootCareTodoConverter::toFootCareTodoInfoResponseDTO)
@@ -34,10 +34,10 @@ public class FootCareTodoConverter {
 
         return FootCareTodoResponseDTO.FootCareTodoListResponseDTO.builder()
                 .totalCount(todoResponses.size())
-                .hasTodayTodos(hasTodayTodos)
+                .hasTodayTodos(hasTodos)
                 .message(todoResponses.isEmpty()
-                        ? "오늘 발 관리 투두가 없습니다."
-                        : "오늘 발 관리 투두입니다.")
+                        ? "연결된 발 관리 투두가 없습니다."
+                        : "최근 발 분석 기반 발 관리 투두입니다.")
                 .todos(todoResponses)
                 .build();
     }

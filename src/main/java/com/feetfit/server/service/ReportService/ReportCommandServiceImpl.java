@@ -23,7 +23,6 @@ import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
@@ -366,6 +365,9 @@ public class ReportCommandServiceImpl implements ReportCommandService {
         MeasurementSession measurementSession = getValidatedReportWritableMeasurementSession(
                 userId, request.getMeasurementSessionId());
 
+        // Lock before inserting reports to serialize this user's concurrent analysis callbacks.
+        userRepository.findByIdForUpdate(userId)
+                .orElseThrow(() -> new UserHandler(ErrorStatus.USER_NOT_FOUND));
         Report report = findOrCreateReport(measurementSession);
 
         // 해당 metricType의 결과를 upsert
@@ -407,15 +409,26 @@ public class ReportCommandServiceImpl implements ReportCommandService {
         Integer matchedArticleCount = null;
 
         if (allComplete) {
+            boolean firstAnalysisCompletion = report.getTotalScore() == null;
             totalScore = calculateSimpleTotalScore(allResults);
             report.updateTotalScore(totalScore);
             report.updateReportDate(LocalDateTime.now());
             // clearAutomatically = true 로 세션이 초기화되기 전에 명시적으로 flush
             reportRepository.saveAndFlush(report);
-            String recommendationContext = buildRecommendationContext(measurementSession, allResults);
-
-            List<UserFootCareTodo> matchedTodos = replaceTodayTodoAssignments(
-                    measurementSession.getUser(), allResults, LocalDate.now(), recommendationContext);
+            boolean updateRecommendations = firstAnalysisCompletion
+                    && !reportRepository.existsNewerAnalyzedMeasurement(
+                            userId, measurementSession.getMeasuredAt(), measurementSession.getId(),
+                            MeasurementStatus.FAILED);
+            List<UserFootCareTodo> matchedTodos;
+            List<HealthArticle> matchedArticles;
+            if (updateRecommendations) {
+                String recommendationContext = buildRecommendationContext(measurementSession, allResults);
+                matchedTodos = replaceTodoAssignments(measurementSession, allResults, recommendationContext);
+                matchedArticles = replaceUserHealthArticles(measurementSession.getUser(), allResults, recommendationContext);
+            } else {
+                matchedTodos = currentTodos(userId);
+                matchedArticles = currentHealthArticles(userId);
+            }
             matchedHealthTypes = matchedTodos.stream()
                     .map(UserFootCareTodo::getHealthType)
                     .collect(Collectors.collectingAndThen(
@@ -424,8 +437,6 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                     ));
             matchedTodoCount = matchedTodos.size();
 
-            List<HealthArticle> matchedArticles = replaceUserHealthArticles(
-                    measurementSession.getUser(), allResults, recommendationContext);
             matchedArticleHealthTypes = matchedArticles.stream()
                     .map(HealthArticle::getHealthType)
                     .collect(Collectors.collectingAndThen(
@@ -495,18 +506,24 @@ public class ReportCommandServiceImpl implements ReportCommandService {
         return measurementSession;
     }
 
-    private List<UserFootCareTodo> replaceTodayTodoAssignments(
-            User user,
+    private List<UserFootCareTodo> currentTodos(Long userId) {
+        return userFootCareTodoAssignmentRepository.findLatestAssignmentsByUserId(userId).stream()
+                .map(UserFootCareTodoAssignment::getFootCareTodo)
+                .toList();
+    }
+
+    private List<HealthArticle> currentHealthArticles(Long userId) {
+        return userHealthArticleRepository.findAllByUserIdWithArticle(userId).stream()
+                .map(UserHealthArticle::getHealthArticle)
+                .toList();
+    }
+
+    private List<UserFootCareTodo> replaceTodoAssignments(
+            MeasurementSession measurementSession,
             List<MetricAnalysisResult> metricResults,
-            LocalDate reportDate,
             String recommendationContext
     ) {
-        LocalDateTime startOfDay = reportDate.atStartOfDay();
-        LocalDateTime startOfNextDay = reportDate.plusDays(1).atStartOfDay();
-
-        userFootCareTodoAssignmentRepository.deleteByUserIdAndCreatedAtBetween(
-                user.getId(), startOfDay, startOfNextDay);
-
+        User user = measurementSession.getUser();
         List<WeightedMetric> weightedMetrics = metricResults.stream()
                 .map(result -> new WeightedMetric(
                         metricToHealthType(result.getMetricType()),
@@ -544,18 +561,16 @@ public class ReportCommandServiceImpl implements ReportCommandService {
         );
         selectedTodos = distinctTodosById(selectedTodos);
         if (selectedTodos.isEmpty()) {
-            return selectedTodos;
+            return currentTodos(user.getId());
         }
 
-        Set<Long> selectedTodoIds = selectedTodos.stream()
-                .map(UserFootCareTodo::getId)
-                .collect(Collectors.toCollection(LinkedHashSet::new));
-        userFootCareTodoAssignmentRepository.deleteByUserIdAndTodoIdIn(user.getId(), selectedTodoIds);
+        userFootCareTodoAssignmentRepository.deleteByUserId(user.getId());
 
         List<UserFootCareTodoAssignment> assignments = selectedTodos.stream()
                 .map(todo -> UserFootCareTodoAssignment.builder()
                         .user(user)
                         .footCareTodo(todo)
+                        .sourceMeasurementSessionId(measurementSession.getId())
                         .isCompleted(false)
                         .build())
                 .toList();
@@ -582,8 +597,6 @@ public class ReportCommandServiceImpl implements ReportCommandService {
             List<MetricAnalysisResult> metricResults,
             String recommendationContext
     ) {
-        userHealthArticleRepository.deleteByUserId(user.getId());
-
         List<WeightedMetric> weightedMetrics = metricResults.stream()
                 .map(result -> new WeightedMetric(
                         metricToHealthType(result.getMetricType()),
@@ -619,9 +632,10 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                 4
         );
         if (selectedArticles.isEmpty()) {
-            return selectedArticles;
+            return currentHealthArticles(user.getId());
         }
 
+        userHealthArticleRepository.deleteByUserId(user.getId());
         List<UserHealthArticle> userHealthArticles = selectedArticles.stream()
                 .map(article -> UserHealthArticle.builder()
                         .user(user)

@@ -13,9 +13,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.util.List;
 
 @Service
@@ -29,17 +26,9 @@ public class FootCareTodoServiceImpl implements FootCareTodoService {
     @Override
     public FootCareTodoResponseDTO.FootCareTodoListResponseDTO getMyFootCareTodos(Long userId) {
         validateUserExists(userId);
-        LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
-        LocalDateTime startOfDay = today.atStartOfDay();
-        LocalDateTime startOfNextDay = today.plusDays(1).atStartOfDay();
-
-        List<UserFootCareTodoAssignment> assignments = userFootCareTodoAssignmentRepository.findTodayAssignmentsByUserId(
-                userId,
-                startOfDay,
-                startOfNextDay
-        );
-        boolean hasTodayTodos = !assignments.isEmpty();
-        return FootCareTodoConverter.toFootCareTodoListResponseDTO(assignments, hasTodayTodos);
+        List<UserFootCareTodoAssignment> assignments =
+                userFootCareTodoAssignmentRepository.findLatestAssignmentsByUserId(userId);
+        return FootCareTodoConverter.toFootCareTodoListResponseDTO(assignments, !assignments.isEmpty());
     }
 
     @Override

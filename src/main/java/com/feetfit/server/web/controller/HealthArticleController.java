@@ -26,7 +26,7 @@ public class HealthArticleController {
     @GetMapping
     @Operation(
             summary = "헬스 아티클 조회 [은서]",
-            description = "로그인한 사용자에게 연결된 헬스 아티클 목록을 발행일 내림차순으로 조회합니다."
+            description = "로그인한 사용자에게 연결된 헬스 아티클을 발행일 내림차순으로 조회합니다. 오늘 측정이 없어도 기존 목록을 유지하며, 새 측정의 필수 지표 5개가 모두 저장되면 새 분석에 맞는 뉴스로 갱신합니다. 대체할 뉴스가 없으면 기존 목록을 유지합니다."
     )
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(

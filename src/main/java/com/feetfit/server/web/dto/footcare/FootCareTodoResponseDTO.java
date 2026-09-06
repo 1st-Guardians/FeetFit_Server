@@ -35,7 +35,7 @@ public class FootCareTodoResponseDTO {
         @Schema(description = "완료한 시각. 완료 전이면 null", example = "2026-05-20T10:30:00", nullable = true)
         private LocalDateTime completedAt;
 
-        @Schema(description = "투두 날짜", example = "2026-05-20T00:00:00")
+        @Schema(description = "투두가 연결된 시각. 오늘 날짜가 아니어도 계속 표시합니다.", example = "2026-05-20T00:00:00")
         private LocalDateTime todoDate;
     }
 
@@ -43,18 +43,18 @@ public class FootCareTodoResponseDTO {
     @Getter
     @NoArgsConstructor
     @AllArgsConstructor
-    @Schema(description = "오늘 발 관리 투두 목록 응답")
+    @Schema(description = "최근 발 분석 기반 발 관리 투두 목록 응답")
     public static class FootCareTodoListResponseDTO {
-        @Schema(description = "오늘 조회된 투두 개수", example = "3")
+        @Schema(description = "현재 연결된 투두 개수", example = "3")
         private Integer totalCount;
 
-        @Schema(description = "오늘 투두 존재 여부", example = "true")
+        @Schema(description = "현재 연결된 투두 존재 여부. 기존 호환을 위한 필드명이며, 오늘 측정이 없어도 이전 추천이 있으면 true입니다.", example = "true")
         private Boolean hasTodayTodos;
 
-        @Schema(description = "조회 결과 메시지", example = "오늘 발 관리 투두입니다.")
+        @Schema(description = "조회 결과 메시지", example = "최근 발 분석 기반 발 관리 투두입니다.")
         private String message;
 
-        @Schema(description = "오늘 발 관리 투두 목록")
+        @Schema(description = "새 측정의 지표 분석 완료 전까지 유지되는 발 관리 투두 목록")
         private List<FootCareTodoInfoResponseDTO> todos;
     }
 }

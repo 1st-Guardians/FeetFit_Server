@@ -25,8 +25,6 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 
 @ExtendWith(MockitoExtension.class)
@@ -44,11 +42,7 @@ class FootCareTodoServiceImplTest {
     @Test
     void getMyFootCareTodos_existingUser_returnsTodos() {
         given(userRepository.existsById(1L)).willReturn(true);
-        given(userFootCareTodoAssignmentRepository.findTodayAssignmentsByUserId(
-                eq(1L),
-                any(LocalDateTime.class),
-                any(LocalDateTime.class)
-        ))
+        given(userFootCareTodoAssignmentRepository.findLatestAssignmentsByUserId(1L))
                 .willReturn(List.of(footCareTodoAssignment(false)));
 
         FootCareTodoResponseDTO.FootCareTodoListResponseDTO response =
@@ -56,7 +50,7 @@ class FootCareTodoServiceImplTest {
 
         assertThat(response.getTotalCount()).isEqualTo(1);
         assertThat(response.getHasTodayTodos()).isTrue();
-        assertThat(response.getMessage()).isEqualTo("오늘 발 관리 투두입니다.");
+        assertThat(response.getMessage()).isEqualTo("최근 발 분석 기반 발 관리 투두입니다.");
         assertThat(response.getTodos()).hasSize(1);
         assertThat(response.getTodos().get(0).getTodoId()).isEqualTo(1L);
         assertThat(response.getTodos().get(0).getTitle()).isEqualTo("수건으로 발 당기기");
@@ -65,20 +59,16 @@ class FootCareTodoServiceImplTest {
     }
 
     @Test
-    void getMyFootCareTodos_noTodayMeasurement_returnsEmptyTodosWithMessage() {
+    void getMyFootCareTodos_noAssignments_returnsEmptyTodosWithMessage() {
         given(userRepository.existsById(1L)).willReturn(true);
-        given(userFootCareTodoAssignmentRepository.findTodayAssignmentsByUserId(
-                eq(1L),
-                any(LocalDateTime.class),
-                any(LocalDateTime.class)
-        )).willReturn(List.of());
+        given(userFootCareTodoAssignmentRepository.findLatestAssignmentsByUserId(1L)).willReturn(List.of());
 
         FootCareTodoResponseDTO.FootCareTodoListResponseDTO response =
                 footCareTodoService.getMyFootCareTodos(1L);
 
         assertThat(response.getTotalCount()).isZero();
         assertThat(response.getHasTodayTodos()).isFalse();
-        assertThat(response.getMessage()).isEqualTo("오늘 발 관리 투두가 없습니다.");
+        assertThat(response.getMessage()).isEqualTo("연결된 발 관리 투두가 없습니다.");
         assertThat(response.getTodos()).isEmpty();
     }
 
