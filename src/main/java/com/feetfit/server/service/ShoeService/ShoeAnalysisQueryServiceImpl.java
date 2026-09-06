@@ -30,7 +30,6 @@ import com.feetfit.server.repository.ShoeLabMetricRepository;
 import com.feetfit.server.repository.ShoeRecommendationReasonRepository;
 import com.feetfit.server.repository.ShoeRecommendationRepository;
 import com.feetfit.server.repository.ShoeRecommendationRunRepository;
-import com.feetfit.server.repository.ShoeRepository;
 import com.feetfit.server.repository.ShoeReviewRepository;
 import com.feetfit.server.repository.StaticPressureAnalysisRepository;
 import com.feetfit.server.repository.TinaPedisAnalysisRepository;
@@ -59,7 +58,7 @@ public class ShoeAnalysisQueryServiceImpl implements ShoeAnalysisQueryService {
     private final HalluxValgusAnalysisRepository halluxValgusAnalysisRepository;
     private final StaticPressureAnalysisRepository staticPressureAnalysisRepository;
     private final PressureSensorReadingRepository pressureSensorReadingRepository;
-    private final ShoeRepository shoeRepository;
+    private final ShoeRecommendationEligibilityService eligibilityService;
     private final ShoeReviewRepository shoeReviewRepository;
     private final ShoeLabMeasurementRepository shoeLabMeasurementRepository;
     private final ShoeLabMetricRepository shoeLabMetricRepository;
@@ -71,7 +70,7 @@ public class ShoeAnalysisQueryServiceImpl implements ShoeAnalysisQueryService {
     public ShoeAnalysisResponseDTO.RecommendationContext getRecommendationContext(
             Long userId, Long measurementSessionId, int page, int size) {
         MeasurementSession session = getOwnedCompletedSession(userId, measurementSessionId);
-        Page<Shoe> shoePage = shoeRepository.findAll(
+        Page<Shoe> shoePage = eligibilityService.findEligibleShoes(
                 PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "id")));
 
         DailyFootAnalysis daily = dailyFootAnalysisRepository

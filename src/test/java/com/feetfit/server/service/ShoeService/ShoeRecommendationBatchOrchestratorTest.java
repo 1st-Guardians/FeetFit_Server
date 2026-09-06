@@ -1,7 +1,6 @@
 package com.feetfit.server.service.ShoeService;
 
 import com.feetfit.server.jwt.TokenProvider;
-import com.feetfit.server.repository.ShoeRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -16,22 +15,22 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class ShoeRecommendationBatchOrchestratorTest {
 
-    @Mock ShoeRepository shoeRepository;
+    @Mock ShoeRecommendationEligibilityService eligibilityService;
     @Mock ShoeRecommendationRunService runService;
     @Mock ShoeRecommendationAiClient aiClient;
     @Mock TokenProvider tokenProvider;
 
     @Test
-    void generatesAllShoesAndCompletesOnlyAfterAiCallbackSucceeds() {
+    void generatesAllEligibleShoesAndCompletesOnlyAfterAiCallbackSucceeds() {
         ShoeRecommendationBatchOrchestrator orchestrator = orchestrator(true);
-        when(shoeRepository.count()).thenReturn(338L);
-        when(runService.claimAutomaticRun(7L, 21L, 338)).thenReturn(true);
+        when(eligibilityService.countEligibleShoes()).thenReturn(337L);
+        when(runService.claimAutomaticRun(7L, 21L, 337)).thenReturn(true);
         when(tokenProvider.createAccessToken(7L)).thenReturn("service-jwt");
 
         orchestrator.generateOrUpdateAll(7L, 21L);
 
         InOrder order = inOrder(runService, aiClient);
-        order.verify(runService).claimAutomaticRun(7L, 21L, 338);
+        order.verify(runService).claimAutomaticRun(7L, 21L, 337);
         order.verify(aiClient).requestAllShoeRecommendations(21L, "service-jwt");
         order.verify(runService).completeRun(7L, 21L);
         verify(runService, never()).failRun(anyLong(), anyLong(), anyString());
@@ -40,8 +39,8 @@ class ShoeRecommendationBatchOrchestratorTest {
     @Test
     void failureIsIsolatedAndRecordedWithoutCompletingRun() {
         ShoeRecommendationBatchOrchestrator orchestrator = orchestrator(true);
-        when(shoeRepository.count()).thenReturn(338L);
-        when(runService.claimAutomaticRun(7L, 21L, 338)).thenReturn(true);
+        when(eligibilityService.countEligibleShoes()).thenReturn(337L);
+        when(runService.claimAutomaticRun(7L, 21L, 337)).thenReturn(true);
         when(tokenProvider.createAccessToken(7L)).thenReturn("service-jwt");
         doThrow(new IllegalStateException("AI unavailable"))
                 .when(aiClient).requestAllShoeRecommendations(21L, "service-jwt");
@@ -57,8 +56,8 @@ class ShoeRecommendationBatchOrchestratorTest {
     @Test
     void duplicateAutomaticEventDoesNotCallAiAgain() {
         ShoeRecommendationBatchOrchestrator orchestrator = orchestrator(true);
-        when(shoeRepository.count()).thenReturn(338L);
-        when(runService.claimAutomaticRun(7L, 21L, 338)).thenReturn(false);
+        when(eligibilityService.countEligibleShoes()).thenReturn(337L);
+        when(runService.claimAutomaticRun(7L, 21L, 337)).thenReturn(false);
 
         orchestrator.generateOrUpdateAll(7L, 21L);
 
@@ -70,7 +69,8 @@ class ShoeRecommendationBatchOrchestratorTest {
     @Test
     void countFailureIsLoggedWithoutAttemptingToFailAnUnclaimedRun() {
         ShoeRecommendationBatchOrchestrator orchestrator = orchestrator(true);
-        when(shoeRepository.count()).thenThrow(new IllegalStateException("database unavailable"));
+        when(eligibilityService.countEligibleShoes())
+                .thenThrow(new IllegalStateException("database unavailable"));
 
         orchestrator.generateOrUpdateAll(7L, 21L);
 
@@ -80,7 +80,7 @@ class ShoeRecommendationBatchOrchestratorTest {
     @Test
     void emptyShoeDatabaseDoesNotCreateAZeroCountRun() {
         ShoeRecommendationBatchOrchestrator orchestrator = orchestrator(true);
-        when(shoeRepository.count()).thenReturn(0L);
+        when(eligibilityService.countEligibleShoes()).thenReturn(0L);
 
         orchestrator.generateOrUpdateAll(7L, 21L);
 
@@ -93,14 +93,14 @@ class ShoeRecommendationBatchOrchestratorTest {
 
         orchestrator.generateOrUpdateAll(7L, 21L);
 
-        verifyNoInteractions(shoeRepository, runService, aiClient, tokenProvider);
+        verifyNoInteractions(eligibilityService, runService, aiClient, tokenProvider);
     }
 
     @Test
     void claimFailureDoesNotAttemptToFailAProbablyRolledBackRun() {
         ShoeRecommendationBatchOrchestrator orchestrator = orchestrator(true);
-        when(shoeRepository.count()).thenReturn(338L);
-        when(runService.claimAutomaticRun(7L, 21L, 338))
+        when(eligibilityService.countEligibleShoes()).thenReturn(337L);
+        when(runService.claimAutomaticRun(7L, 21L, 337))
                 .thenThrow(new IllegalStateException("claim failed"));
 
         orchestrator.generateOrUpdateAll(7L, 21L);
@@ -112,9 +112,9 @@ class ShoeRecommendationBatchOrchestratorTest {
     @Test
     void explicitRetryUsesRetryClaim() {
         ShoeRecommendationBatchOrchestrator orchestrator = orchestrator(true);
-        when(shoeRepository.count()).thenReturn(338L);
+        when(eligibilityService.countEligibleShoes()).thenReturn(337L);
         when(runService.claimAutomaticRetry(
-                7L, 21L, 338))
+                7L, 21L, 337))
                 .thenReturn(true);
         when(tokenProvider.createAccessToken(7L)).thenReturn("service-jwt");
 
@@ -127,8 +127,8 @@ class ShoeRecommendationBatchOrchestratorTest {
     @Test
     void failurePersistenceFailureIsAlsoIsolatedFromMeasurementCompletion() {
         ShoeRecommendationBatchOrchestrator orchestrator = orchestrator(true);
-        when(shoeRepository.count()).thenReturn(338L);
-        when(runService.claimAutomaticRun(7L, 21L, 338)).thenReturn(true);
+        when(eligibilityService.countEligibleShoes()).thenReturn(337L);
+        when(runService.claimAutomaticRun(7L, 21L, 337)).thenReturn(true);
         when(tokenProvider.createAccessToken(7L)).thenReturn("service-jwt");
         doThrow(new IllegalStateException("AI unavailable"))
                 .when(aiClient).requestAllShoeRecommendations(21L, "service-jwt");
@@ -143,6 +143,6 @@ class ShoeRecommendationBatchOrchestratorTest {
 
     private ShoeRecommendationBatchOrchestrator orchestrator(boolean enabled) {
         return new ShoeRecommendationBatchOrchestrator(
-                shoeRepository, runService, aiClient, tokenProvider, enabled);
+                eligibilityService, runService, aiClient, tokenProvider, enabled);
     }
 }
