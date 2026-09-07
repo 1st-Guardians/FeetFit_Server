@@ -27,7 +27,7 @@ public class MeasurementResponseDTO {
         @Schema(description = "측정에 사용된 디바이스 ID", example = "1")
         private Long deviceId;
 
-        @Schema(description = "측정 상태", example = "WAITING_FOR_PHOTO", allowableValues = {"WAITING_FOR_PHOTO", "READY_FOR_PHOTO", "CAPTURING_PHOTO", "WAITING_FOR_ENVIRONMENT", "READY_FOR_ENVIRONMENT", "MEASURING_ENVIRONMENT", "WAITING_FOR_PRESSURE", "READY_FOR_PRESSURE", "MEASURING_PRESSURE", "ANALYZING", "COMPLETED", "FAILED", "PENDING", "MEASURING", "TRANSFERRING"})
+        @Schema(description = "측정 상태", example = "WAITING_FOR_PHOTO")
         private MeasurementStatus status;
 
         @Schema(description = "측정 시작 시각", example = "2026-05-20T09:00:00")
@@ -49,8 +49,18 @@ public class MeasurementResponseDTO {
         @Schema(description = "측정 세션 ID", example = "1")
         private Long id;
 
-        @Schema(description = "측정 상태", example = "COMPLETED", allowableValues = {"WAITING_FOR_PHOTO", "READY_FOR_PHOTO", "CAPTURING_PHOTO", "WAITING_FOR_ENVIRONMENT", "READY_FOR_ENVIRONMENT", "MEASURING_ENVIRONMENT", "WAITING_FOR_PRESSURE", "READY_FOR_PRESSURE", "MEASURING_PRESSURE", "ANALYZING", "COMPLETED", "FAILED", "PENDING", "MEASURING", "TRANSFERRING"})
+        @Schema(description = "측정 상태", example = "COMPLETED")
         private MeasurementStatus status;
+
+        @Schema(description = "현재 촬영 회차. 최초 0, 재촬영 1~3", example = "1")
+        private int photoCaptureAttempt;
+
+        @Schema(description = "앞으로 시작할 수 있는 재촬영 횟수", example = "2")
+        private int remainingPhotoRecaptures;
+
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        @Schema(description = "재촬영 대기 사유", example = "기준 ArUco 마커가 가려져 있습니다.")
+        private String detail;
 
         @Schema(description = "측정 소요 시간(초)", example = "180")
         private Integer measurementDurationSec;
@@ -218,6 +228,19 @@ public class MeasurementResponseDTO {
 
         @Schema(description = "측정 상태별 사용자 안내 문구", example = "FSR 센서 판을 올리고 유리판 위에 올라와 주세요.")
         private String statusMessage;
+
+        @Schema(description = "statusMessage와 동일한 사용자 안내 문구", example = "사진을 다시 촬영해야 합니다.")
+        private String message;
+
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        @Schema(description = "재촬영 대기 사유", example = "기준 ArUco 마커가 가려져 있습니다.")
+        private String detail;
+
+        @Schema(description = "현재 촬영 회차. 최초 0, 재촬영 1~3", example = "1")
+        private int photoCaptureAttempt;
+
+        @Schema(description = "앞으로 시작할 수 있는 재촬영 횟수", example = "2")
+        private int remainingPhotoRecaptures;
 
         @JsonInclude(JsonInclude.Include.NON_NULL)
         @Schema(description = "측정 실패 원인. eventType=MEASUREMENT_FAILED일 때 반환", example = "CAMERA_ERROR")

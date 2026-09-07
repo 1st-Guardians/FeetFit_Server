@@ -5,6 +5,7 @@ import com.feetfit.server.domain.enums.MeasurementFailureReason;
 import com.feetfit.server.domain.enums.MeasurementStatus;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.ColumnDefault;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -17,6 +18,8 @@ import java.util.List;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 public class MeasurementSession extends BaseEntity {
+
+    public static final int MAX_PHOTO_RECAPTURES = 3;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -47,6 +50,14 @@ public class MeasurementSession extends BaseEntity {
 
     @Column(name = "failure_detail", columnDefinition = "TEXT")
     private String failureDetail;
+
+    @Builder.Default
+    @Column(nullable = false)
+    @ColumnDefault("0")
+    private int photoRecaptureCount = 0;
+
+    @Column(columnDefinition = "TEXT")
+    private String recaptureDetail;
 
     @OneToMany(mappedBy = "measurementSession", cascade = CascadeType.ALL)
     @Builder.Default
@@ -100,5 +111,30 @@ public class MeasurementSession extends BaseEntity {
     public void clearFailure() {
         this.failureReason = null;
         this.failureDetail = null;
+    }
+
+    public void requirePhotoRecapture(String detail) {
+        this.status = MeasurementStatus.WAITING_FOR_RECAPTURE;
+        this.recaptureDetail = detail;
+        clearFailure();
+    }
+
+    public void startPhotoRecapture() {
+        this.photoRecaptureCount++;
+        this.recaptureDetail = null;
+    }
+
+    public void clearRecaptureDetail() {
+        this.recaptureDetail = null;
+    }
+
+    public int getRemainingPhotoRecaptures() {
+        return Math.max(0, MAX_PHOTO_RECAPTURES - photoRecaptureCount);
+    }
+
+    public boolean isPhotoRecaptureInProgress() {
+        return status == MeasurementStatus.WAITING_FOR_RECAPTURE
+                || status == MeasurementStatus.READY_FOR_RECAPTURE
+                || (photoRecaptureCount > 0 && status == MeasurementStatus.CAPTURING_PHOTO);
     }
 }

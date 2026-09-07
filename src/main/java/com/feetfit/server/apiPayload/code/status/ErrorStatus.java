@@ -42,6 +42,8 @@ public enum ErrorStatus implements BaseErrorCode {
     MEASUREMENT_ANALYSIS_NOT_READY(HttpStatus.BAD_REQUEST, "MEASUREMENT4005", "무지외반 또는 무좀 분석 결과가 아직 저장되지 않았습니다."),
     MEASUREMENT_NOT_TRANSFERRING(HttpStatus.BAD_REQUEST, "MEASUREMENT4006", "측정 진행 중인 세션이 아닙니다."),
     MEASUREMENT_ALREADY_FAILED(HttpStatus.CONFLICT, "MEASUREMENT4007", "이미 실패 처리된 측정 세션입니다."),
+    MEASUREMENT_INVALID_STATUS_TRANSITION(HttpStatus.CONFLICT, "MEASUREMENT4008", "현재 측정 단계에서는 요청한 상태로 변경할 수 없습니다."),
+    MEASUREMENT_STALE_PHOTO_CAPTURE(HttpStatus.CONFLICT, "MEASUREMENT4009", "촬영 회차가 누락되었거나 현재 촬영 회차와 다릅니다."),
     MEASUREMENT_HARDWARE_REQUEST_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "MEASUREMENT5001", "하드웨어 서버 측정 요청에 실패했습니다."),
 
     // Report

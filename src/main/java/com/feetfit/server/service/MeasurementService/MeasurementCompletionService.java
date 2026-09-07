@@ -53,7 +53,14 @@ public class MeasurementCompletionService {
         findOrCreate(measurementSession);
     }
 
+    public void resetPhotoAnalysisForRecapture(MeasurementSession measurementSession) {
+        findOrCreateForUpdate(measurementSession).resetPhotoAnalysisForRecapture();
+    }
+
     public void refreshCaptureCompletedByStatus(MeasurementSession measurementSession, MeasurementStatus status) {
+        if (measurementSession.isPhotoRecaptureInProgress()) {
+            return;
+        }
         MeasurementAnalysisStatus analysisStatus = findOrCreateForUpdate(measurementSession);
 
         if (status == MeasurementStatus.WAITING_FOR_ENVIRONMENT
@@ -74,6 +81,9 @@ public class MeasurementCompletionService {
     }
 
     public void refreshPhotoAnalysisCompleted(MeasurementSession measurementSession) {
+        if (measurementSession.isPhotoRecaptureInProgress()) {
+            return;
+        }
         MeasurementAnalysisStatus analysisStatus = findOrCreateForUpdate(measurementSession);
         refreshPhotoCaptureCompleted(measurementSession, analysisStatus);
         if (hasRequiredPhotoAnalysis(measurementSession.getId())) {
@@ -222,6 +232,7 @@ public class MeasurementCompletionService {
             MeasurementAnalysisStatus analysisStatus,
             Integer measurementDurationSec) {
         if (!analysisStatus.isReadyToComplete()
+                || measurementSession.isPhotoRecaptureInProgress()
                 || measurementSession.getStatus() == MeasurementStatus.COMPLETED
                 || measurementSession.getStatus() == MeasurementStatus.FAILED) {
             return;
@@ -230,7 +241,8 @@ public class MeasurementCompletionService {
         MeasurementSession lockedMeasurementSession = measurementSessionRepository
                 .findByIdForUpdate(measurementSession.getId())
                 .orElseThrow(() -> new MeasurementHandler(ErrorStatus.MEASUREMENT_NOT_FOUND));
-        if (lockedMeasurementSession.getStatus() == MeasurementStatus.COMPLETED
+        if (lockedMeasurementSession.isPhotoRecaptureInProgress()
+                || lockedMeasurementSession.getStatus() == MeasurementStatus.COMPLETED
                 || lockedMeasurementSession.getStatus() == MeasurementStatus.FAILED) {
             return;
         }

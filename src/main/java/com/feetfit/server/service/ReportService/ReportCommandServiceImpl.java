@@ -502,6 +502,9 @@ public class ReportCommandServiceImpl implements ReportCommandService {
             measurementSocketService.sendMeasurementStatusChanged(measurementSession);
             throw new MeasurementHandler(ErrorStatus.MEASUREMENT_ALREADY_FAILED);
         }
+        if (measurementSession.isPhotoRecaptureInProgress()) {
+            throw new MeasurementHandler(ErrorStatus.MEASUREMENT_INVALID_STATUS_TRANSITION);
+        }
 
         return measurementSession;
     }

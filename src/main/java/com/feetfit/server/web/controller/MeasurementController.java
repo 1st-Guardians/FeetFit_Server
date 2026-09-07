@@ -47,7 +47,7 @@ public class MeasurementController {
                     - 세션 생성 직후 WAITING_FOR_PHOTO 상태에서 하드웨어 측정 시작 API로 촬영 전 온습도 측정 요청을 보냅니다.
                     - 하드웨어 요청이 수락되면 프론트가 구독 중인 WebSocket topic으로 WAITING_FOR_PHOTO 상태 메시지를 발행합니다.
                     - 이후 하드웨어 작업 요청은 상태 업데이트 시점에 단계별 API로 전달합니다.
-                    - READY_FOR_PHOTO: 하드웨어 사진 촬영 API 호출
+                    - READY_FOR_PHOTO / READY_FOR_RECAPTURE: 하드웨어 사진 촬영 API 호출
                     - READY_FOR_ENVIRONMENT: 하드웨어 온습도 측정 API 호출
                     - READY_FOR_PRESSURE: 하드웨어 압력 측정 API 호출
                     - 하드웨어 요청에는 프론트가 보낸 Authorization 헤더 값을 그대로 전달합니다.
@@ -117,6 +117,14 @@ public class MeasurementController {
                 - WAITING_FOR_PHOTO: 사진 촬영 준비 대기. 세션 생성 직후 촬영 전 온습도 측정 요청이 함께 나가는 상태입니다.
                 - READY_FOR_PHOTO: 사진 촬영 준비 완료. 프론트가 사용자의 준비 완료 버튼 입력 후 보내는 상태입니다.
                 - CAPTURING_PHOTO: 발 사진 촬영 중. 사용자가 움직이지 않아야 하는 상태입니다.
+                - WAITING_FOR_RECAPTURE: 사용자의 발이 ArUco 마커를 가린 경우에만 사용하는 재촬영 대기 상태입니다. 소켓을 유지하며 요청의 failureDetail을 응답과 소켓의 detail로 전달합니다.
+                - READY_FOR_RECAPTURE: 재촬영 버튼 입력. 같은 세션으로 사진 촬영 API를 다시 호출합니다.
+                - 재촬영은 최초 촬영과 별도로 최대 3회입니다. 세 번째 재촬영도 실패하면 INVALID_CAPTURE_DATA 사유로 FAILED 처리합니다.
+                - 하드웨어/AI가 촬영 사전검증에서 발에 의한 마커 가림을 확인하면 FAILED 대신 WAITING_FOR_RECAPTURE를 보내야 합니다. 일반 INVALID_CAPTURE_DATA, 카메라 오류, AI 분석 오류는 자동 재촬영으로 변환하지 않습니다.
+                - 마커 가림 검증은 분석 대기열 등록/결과 저장 및 WAITING_FOR_ENVIRONMENT 상태 변경보다 먼저 완료해야 합니다.
+                - 재촬영 하드웨어 요청에는 photoCaptureAttempt(1~3)가 포함됩니다. 촬영 시작/성공/실패 콜백에서 같은 값을 전달해야 합니다.
+                - 최초 촬영의 photoCaptureAttempt는 0이며 생략 가능합니다. 재촬영 버튼에도 현재 회차를 전달하면 오래된 버튼 요청을 차단합니다.
+                - 재촬영 순서는 WAITING_FOR_RECAPTURE → READY_FOR_RECAPTURE → CAPTURING_PHOTO → WAITING_FOR_ENVIRONMENT입니다.
                 - WAITING_FOR_ENVIRONMENT: 사진 촬영 완료 후 온습도 측정을 위해 사용자가 기기 가까이 이동해야 하는 상태입니다.
                 - READY_FOR_ENVIRONMENT: 온습도 측정 준비 완료. 프론트가 사용자의 준비 완료 버튼 입력 후 보내는 상태입니다.
                 - MEASURING_ENVIRONMENT: 하드웨어가 온습도를 측정 중인 상태입니다.
@@ -126,7 +134,7 @@ public class MeasurementController {
                 - ANALYZING: 모든 측정 수집 완료 후 분석 중인 상태입니다.
                 - COMPLETED: 완료 조건 검사 요청입니다. 백엔드가 내부 완료 플래그를 확인해 모두 완료된 경우에만 최종 완료 처리합니다.
                 - FAILED: 측정 실패. 측정 중 오류가 발생한 상태입니다.
-                - READY_FOR_PHOTO 요청이 들어오면 백엔드는 트랜잭션 커밋 후 하드웨어 사진 촬영 API를 호출합니다.
+                - READY_FOR_PHOTO 또는 READY_FOR_RECAPTURE 요청이 들어오면 백엔드는 트랜잭션 커밋 후 하드웨어 사진 촬영 API를 호출합니다.
                 - READY_FOR_ENVIRONMENT 요청이 들어오면 백엔드는 트랜잭션 커밋 후 하드웨어 온습도 측정 API를 호출합니다.
                 - READY_FOR_PRESSURE 요청이 들어오면 백엔드는 트랜잭션 커밋 후 하드웨어 압력 측정 API를 호출합니다.
                 - ANALYZING 요청은 분석 중 상태만 갱신하며 하드웨어 API를 호출하지 않습니다.
@@ -165,6 +173,10 @@ public class MeasurementController {
                     content = @Content(examples = @ExampleObject(value = MEASUREMENT_NOT_FOUND_RESPONSE))
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "409",
+                    description = "허용되지 않은 상태 전이(MEASUREMENT4008) 또는 촬영 회차 누락/불일치(MEASUREMENT4009)"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "500",
                     description = "서버 내부 오류",
                     content = @Content(examples = @ExampleObject(value = INTERNAL_SERVER_ERROR_RESPONSE))
@@ -179,8 +191,10 @@ public class MeasurementController {
             @RequestParam(required = false) Integer measurementDurationSec,
             @Parameter(description = "측정 실패 원인. status=FAILED일 때 사용", example = "CAMERA_ERROR")
             @RequestParam(required = false) MeasurementFailureReason failureReason,
-            @Parameter(description = "측정 실패 상세 설명. status=FAILED일 때 사용", example = "Camera timeout")
-            @RequestParam(required = false) String failureDetail
+            @Parameter(description = "실패 또는 재촬영 대기 사유", example = "발이 기준 ArUco 마커를 가리고 있습니다. 발 위치를 조정한 뒤 다시 촬영해 주세요.")
+            @RequestParam(required = false) String failureDetail,
+            @Parameter(description = "촬영 회차. 최초 0은 생략 가능. 재촬영 콜백은 하드웨어 요청으로 받은 회차를 반드시 전달", example = "1")
+            @RequestParam(required = false) Integer photoCaptureAttempt
     ) {
         Long userId = findLoginUser.getCurrentUserId();
         MeasurementRequestDTO.UpdateMeasurementStatusDTO request =
@@ -188,7 +202,8 @@ public class MeasurementController {
                         status,
                         measurementDurationSec,
                         failureReason,
-                        failureDetail
+                        failureDetail,
+                        photoCaptureAttempt
                 );
         String authorizationHeader = httpRequest.getHeader(HttpHeaders.AUTHORIZATION);
         return ApiResponse.onSuccess(measurementCommandService.updateMeasurementStatus(

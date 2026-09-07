@@ -37,6 +37,11 @@ public class MeasurementHardwareClient {
         requestHardwareTask("photo-capture", photoCaptureUrl, measurementSessionId, authorizationHeader);
     }
 
+    public void requestPhotoCapture(Long measurementSessionId, String authorizationHeader, int photoCaptureAttempt) {
+        requestHardwareTask("photo-capture", photoCaptureUrl, measurementSessionId, authorizationHeader,
+                Map.of("measurementSessionId", measurementSessionId, "photoCaptureAttempt", photoCaptureAttempt));
+    }
+
     public void requestInitialEnvironmentMeasurement(Long measurementSessionId, String authorizationHeader) {
         requestHardwareTask(
                 "measurement-start",
@@ -65,12 +70,16 @@ public class MeasurementHardwareClient {
     }
 
     private void requestHardwareTask(String taskName, String requestUrl, Long measurementSessionId, String authorizationHeader) {
+        requestHardwareTask(taskName, requestUrl, measurementSessionId, authorizationHeader,
+                Map.of("measurementSessionId", measurementSessionId));
+    }
+
+    private void requestHardwareTask(String taskName, String requestUrl, Long measurementSessionId,
+                                     String authorizationHeader, Map<String, Object> body) {
         boolean hasAuthorization = StringUtils.hasText(authorizationHeader);
         String authorizationPreview = hasAuthorization
                 ? authorizationHeader.substring(0, Math.min(authorizationHeader.length(), 12))
                 : null;
-        Map<String, Object> body = Map.of("measurementSessionId", measurementSessionId);
-
         log.info("Hardware task request sending. taskName={}, url={}, measurementSessionId={}, hasAuthorization={}, authorizationPreview={}, body={}",
                 taskName,
                 requestUrl,
