@@ -57,6 +57,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     private final ImageUploadService imageUploadService;
     private final MeasurementCompletionService measurementCompletionService;
     private final MeasurementSocketService measurementSocketService;
+    private final MetricInsightGenerationService metricInsightGenerationService;
 
     @Override
     public ReportResponseDTO.SaveHalluxValgusResultDTO saveHalluxValgusAnalysis(
@@ -370,12 +371,21 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                 .orElseThrow(() -> new UserHandler(ErrorStatus.USER_NOT_FOUND));
         Report report = findOrCreateReport(measurementSession);
 
-        // 해당 metricType의 결과를 upsert
+        // 오늘 결과와 오늘을 제외한 최근 최대 10회 동일 지표를 비교하여 status/advice 생성
         GaugeStatus calculatedStatus = calculateGaugeStatus(request.getScore());
+        MetricInsightGenerationService.MetricInsight generatedInsight = metricInsightGenerationService.generate(
+                userId,
+                request.getMetricType(),
+                request.getScore(),
+                request.getAdvice(),
+                calculatedStatus);
+
+        // 해당 metricType의 결과를 upsert
         MetricAnalysisResult metricResult = metricAnalysisResultRepository
                 .findByReportIdAndMetricType(report.getId(), request.getMetricType())
                 .map(existing -> {
-                    existing.updateMetricResult(request.getScore(), calculatedStatus, request.getAdvice());
+                    existing.updateMetricResult(
+                            request.getScore(), generatedInsight.status(), generatedInsight.advice());
                     return existing;
                 })
                 .orElseGet(() -> metricAnalysisResultRepository.save(
@@ -383,8 +393,8 @@ public class ReportCommandServiceImpl implements ReportCommandService {
                                 .report(report)
                                 .metricType(request.getMetricType())
                                 .score(request.getScore())
-                                .status(calculatedStatus)
-                                .advice(request.getAdvice())
+                                .status(generatedInsight.status())
+                                .advice(generatedInsight.advice())
                                 .build()
                 ));
 

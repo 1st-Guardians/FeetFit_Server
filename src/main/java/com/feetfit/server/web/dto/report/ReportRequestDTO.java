@@ -397,6 +397,7 @@ public class ReportRequestDTO {
         @NotNull(message = "점수는 필수입니다.")
         private Float score;
 
+        @Schema(description = "오늘 원본 분석 설명. GPT 비교 분석의 입력 및 GPT 실패 시 대체 advice로 사용", example = "[\"현재 상태 설명\", \"관리 안내\"]")
         @NotNull(message = "어드바이스는 필수입니다.")
         @Size(min = 2, max = 2, message = "어드바이스는 2개여야 합니다.")
         private List<String> advice;

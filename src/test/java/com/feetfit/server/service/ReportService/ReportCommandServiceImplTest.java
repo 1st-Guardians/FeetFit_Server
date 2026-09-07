@@ -108,6 +108,9 @@ class ReportCommandServiceImplTest {
     @Mock
     private MeasurementCompletionService measurementCompletionService;
 
+    @Mock
+    private MetricInsightGenerationService metricInsightGenerationService;
+
     @InjectMocks
     private ReportCommandServiceImpl reportCommandService;
 

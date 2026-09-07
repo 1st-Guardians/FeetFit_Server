@@ -40,6 +40,7 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 
 @DataJpaTest(showSql = false, properties = {
@@ -65,12 +66,17 @@ class CareRecommendationJpaIntegrationTest {
     @MockBean private ImageUploadService imageUploadService;
     @MockBean private MeasurementCompletionService completionService;
     @MockBean private MeasurementSocketService socketService;
+    @MockBean private MetricInsightGenerationService metricInsightGenerationService;
 
     private User user;
     private Device device;
 
     @BeforeEach
     void setUp() {
+        doAnswer(invocation -> new MetricInsightGenerationService.MetricInsight(
+                invocation.getArgument(4), invocation.getArgument(3)))
+                .when(metricInsightGenerationService)
+                .generate(any(), any(), any(), any(), any());
         user = user("care-user");
         device = em.persist(Device.builder().deviceName("care-device").build());
     }
