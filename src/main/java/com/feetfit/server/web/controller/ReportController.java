@@ -54,7 +54,7 @@ public class ReportController {
                 - request 파트에는 무지외반 분석 JSON 데이터를 문자열로 넣습니다.
                 - leftFootImage 파트에는 왼발 키포인트+선분 추출 이미지를 넣습니다.
                 - rightFootImage 파트에는 오른발 키포인트+선분 추출 이미지를 넣습니다.
-                - 각 발의 각도(HVA) 기반으로 분석 텍스트를 서버에서 자동 생성합니다.
+                - 각 발의 엄지발가락 기울기 각도를 기반으로 분석 텍스트를 서버에서 자동 생성합니다.
                 - riskScore는 max(0, 100 - 2.5 × HVA) 공식으로 서버에서 계산합니다.
                 - 같은 측정 세션 ID에 이미 저장된 데이터가 있으면 덮어씁니다 (UPDATE).
                 - 같은 측정 세션 ID에 저장된 데이터가 없으면 새로 저장합니다 (INSERT).
@@ -282,10 +282,10 @@ public class ReportController {
                 "id": 1,
                 "measurementSessionId": 1,
                 "leftToeAngleDegree": 23.5,
-                "leftAnalysisText": "엄지발가락이 두 번째 발가락 쪽으로 기울어진 각도(HVA)가 23.5°로 측정되었습니다. 변형이 진행된 범위(20~40°)에 해당합니다.",
+                "leftAnalysisText": "엄지발가락이 두 번째 발가락 쪽으로 기울어진 각도가 23.5°로 측정되었습니다. 변형이 진행된 범위(20~40°)에 해당합니다.",
                 "leftImageUrl": "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/hallux-valgus-left/7f6a8f5e-8b9a-4b12-9f89-4ff7ad2e3a20.png",
                 "rightToeAngleDegree": 15.2,
-                "rightAnalysisText": "엄지발가락이 두 번째 발가락 쪽으로 기울어진 각도(HVA)가 15.2°로 측정되었습니다. 경미한 변형 범위(15~20°)에 해당합니다.",
+                "rightAnalysisText": "엄지발가락이 두 번째 발가락 쪽으로 기울어진 각도가 15.2°로 측정되었습니다. 경미한 변형 범위(15~20°)에 해당합니다.",
                 "rightImageUrl": "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/hallux-valgus-right/9d6c9a1f-5b54-41b8-a5dd-34b76dd77f11.png",
                 "riskScore": 75.4,
                 "scoreAnalysisText": "왼발 중심으로 무지외반 진행 가능성이 있어 관리가 필요합니다.",
