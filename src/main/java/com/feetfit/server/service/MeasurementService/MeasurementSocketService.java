@@ -7,6 +7,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDateTime;
 
@@ -57,6 +59,10 @@ public class MeasurementSocketService {
                         .deviceName(measurementSession.getDevice().getDeviceName())
                         .status(measurementSession.getStatus())
                         .statusMessage(resolveStatusMessage(measurementSession.getStatus()))
+                        .message(resolveStatusMessage(measurementSession.getStatus()))
+                        .detail(measurementSession.getRecaptureDetail())
+                        .photoCaptureAttempt(measurementSession.getPhotoRecaptureCount())
+                        .remainingPhotoRecaptures(measurementSession.getRemainingPhotoRecaptures())
                         .failureReason(measurementSession.getFailureReason())
                         .failureMessage(MeasurementFailureMessageResolver.resolve(measurementSession.getFailureReason()))
                         .failureDetail(measurementSession.getFailureDetail())
@@ -67,15 +73,33 @@ public class MeasurementSocketService {
         String measurementDestination = "/topic/measurements/" + measurementSession.getId();
         String userDestination = "/topic/users/" + measurementSession.getUser().getId() + "/measurements";
 
+        // Publish the immutable snapshot only after the status and retry counter commit.
+        if (TransactionSynchronizationManager.isActualTransactionActive()
+                && TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    publishMeasurementMessage(measurementDestination, userDestination, message);
+                }
+            });
+        } else {
+            publishMeasurementMessage(measurementDestination, userDestination, message);
+        }
+    }
+
+    private void publishMeasurementMessage(String measurementDestination, String userDestination,
+                                           MeasurementResponseDTO.MeasurementSocketMessageDTO message) {
         messagingTemplate.convertAndSend(measurementDestination, message);
         messagingTemplate.convertAndSend(userDestination, message);
-        log.info("Measurement socket message sent. eventType={}, measurementDestination={}, userDestination={}, measurementSessionId={}, status={}, shouldDisconnect={}",
-                eventType,
+        log.info("Measurement socket message sent. eventType={}, measurementDestination={}, userDestination={}, measurementSessionId={}, status={}, shouldDisconnect={}, photoCaptureAttempt={}, failureReason={}",
+                message.getEventType(),
                 measurementDestination,
                 userDestination,
-                measurementSession.getId(),
-                measurementSession.getStatus(),
-                shouldDisconnect
+                message.getMeasurementSessionId(),
+                message.getStatus(),
+                message.getShouldDisconnect(),
+                message.getPhotoCaptureAttempt(),
+                message.getFailureReason()
         );
     }
 
@@ -84,6 +108,8 @@ public class MeasurementSocketService {
             case WAITING_FOR_PHOTO -> "촬영 전 온습도를 측정하고 있습니다. 안내에 따라 FSR 센서 판을 올리고 유리판 위에 올라와 주세요.";
             case READY_FOR_PHOTO -> "사진 촬영 준비가 완료되었습니다. 촬영을 시작합니다.";
             case CAPTURING_PHOTO -> "사진을 촬영하고 있습니다. 잠시 움직이지 말아 주세요.";
+            case WAITING_FOR_RECAPTURE -> "사진을 다시 촬영해야 합니다.";
+            case READY_FOR_RECAPTURE -> "재촬영 준비가 완료되었습니다. 사진을 다시 촬영합니다.";
             case WAITING_FOR_ENVIRONMENT -> "사진 촬영이 완료되었습니다. 온습도 측정을 위해 기기 가까이 이동해 주세요.";
             case READY_FOR_ENVIRONMENT -> "온습도 측정 준비가 완료되었습니다. 측정을 시작합니다.";
             case MEASURING_ENVIRONMENT -> "온습도를 측정하고 있습니다. 잠시 기다려 주세요.";

@@ -30,6 +30,11 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class MeasurementCommandServiceImpl implements MeasurementCommandService {
 
+    private static final String RECAPTURE_DETAIL =
+            "발이 기준 ArUco 마커를 가리고 있습니다. 마커가 모두 보이도록 발 위치를 조정한 뒤 다시 촬영해 주세요.";
+    private static final String RECAPTURE_EXHAUSTED_DETAIL =
+            "기준 ArUco 마커를 반복적으로 인식하지 못했습니다. 재촬영 3회를 모두 사용했습니다.";
+
     private final MeasurementSessionRepository measurementSessionRepository;
     private final UserRepository userRepository;
     private final MeasurementSocketService measurementSocketService;
@@ -76,6 +81,10 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
 
         MeasurementSession measurementSession = getOwnedMeasurementSession(userId, measurementSessionId);
         MeasurementStatus previousStatus = measurementSession.getStatus();
+        if (request.getStatus() == null
+                || (request.getMeasurementDurationSec() != null && request.getMeasurementDurationSec() <= 0)) {
+            throw new MeasurementHandler(ErrorStatus._BAD_REQUEST);
+        }
 
         if (previousStatus == MeasurementStatus.FAILED) {
             measurementSocketService.sendMeasurementStatusChanged(measurementSession);
@@ -84,6 +93,18 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
             }
             throw new MeasurementHandler(ErrorStatus.MEASUREMENT_ALREADY_FAILED);
         }
+
+        if (previousStatus == MeasurementStatus.COMPLETED && request.getStatus() != MeasurementStatus.COMPLETED) {
+            throw new MeasurementHandler(ErrorStatus.MEASUREMENT_INVALID_STATUS_TRANSITION);
+        }
+        validatePhotoCaptureAttempt(measurementSession, request);
+
+        if (request.getStatus() == MeasurementStatus.WAITING_FOR_RECAPTURE) {
+            requirePhotoRecapture(measurementSession, request);
+            return MeasurementConverter.toUpdateMeasurementStatusResultDTO(measurementSession);
+        }
+
+        validateRecaptureTransition(measurementSession, request.getStatus());
 
         if (request.getStatus() == MeasurementStatus.COMPLETED) {
             measurementCompletionService.completeMeasurementIfReady(
@@ -103,6 +124,15 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
             return MeasurementConverter.toUpdateMeasurementStatusResultDTO(measurementSession);
         }
 
+        if (request.getStatus() == MeasurementStatus.READY_FOR_RECAPTURE) {
+            if (previousStatus == MeasurementStatus.READY_FOR_RECAPTURE) {
+                return MeasurementConverter.toUpdateMeasurementStatusResultDTO(measurementSession);
+            }
+            if (measurementSession.getRemainingPhotoRecaptures() == 0) {
+                throw new MeasurementHandler(ErrorStatus.MEASUREMENT_INVALID_STATUS_TRANSITION);
+            }
+            measurementSession.startPhotoRecapture();
+        }
         measurementSession.updateStatus(request.getStatus(), request.getMeasurementDurationSec());
         measurementSession.clearFailure();
         measurementCompletionService.refreshCaptureCompletedByStatus(measurementSession, request.getStatus());
@@ -125,6 +155,11 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
         Runnable hardwareRequest = switch (currentStatus) {
             case READY_FOR_PHOTO -> () -> measurementHardwareClient.requestPhotoCapture(
                     measurementSession.getId(), authorizationHeader);
+            case READY_FOR_RECAPTURE -> {
+                int attempt = measurementSession.getPhotoRecaptureCount();
+                yield () -> measurementHardwareClient.requestPhotoCapture(
+                        measurementSession.getId(), authorizationHeader, attempt);
+            }
             case READY_FOR_ENVIRONMENT -> () -> measurementHardwareClient.requestEnvironmentMeasurement(
                     measurementSession.getId(), authorizationHeader);
             case READY_FOR_PRESSURE -> () -> measurementHardwareClient.requestPressureMeasurement(
@@ -145,6 +180,76 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
                 hardwareRequest.run();
             }
         });
+    }
+
+    private boolean isPhotoCaptureStage(MeasurementStatus status) {
+        return status == MeasurementStatus.READY_FOR_PHOTO
+                || status == MeasurementStatus.CAPTURING_PHOTO
+                || status == MeasurementStatus.WAITING_FOR_RECAPTURE
+                || status == MeasurementStatus.READY_FOR_RECAPTURE;
+    }
+
+    private void validatePhotoCaptureAttempt(MeasurementSession session,
+                                             MeasurementRequestDTO.UpdateMeasurementStatusDTO request) {
+        Integer attempt = request.getPhotoCaptureAttempt();
+        if (attempt != null && attempt < 0) {
+            throw new MeasurementHandler(ErrorStatus._BAD_REQUEST);
+        }
+        boolean photoCallback = request.getStatus() == MeasurementStatus.CAPTURING_PHOTO
+                || request.getStatus() == MeasurementStatus.WAITING_FOR_ENVIRONMENT
+                || request.getStatus() == MeasurementStatus.WAITING_FOR_RECAPTURE
+                || (request.getStatus() == MeasurementStatus.FAILED
+                    && (request.getFailureReason() == MeasurementFailureReason.INVALID_CAPTURE_DATA
+                        || request.getFailureReason() == MeasurementFailureReason.CAMERA_ERROR));
+        if ((attempt != null && attempt != session.getPhotoRecaptureCount())
+                || (photoCallback && session.getPhotoRecaptureCount() > 0 && attempt == null)) {
+            throw new MeasurementHandler(ErrorStatus.MEASUREMENT_STALE_PHOTO_CAPTURE);
+        }
+    }
+
+    private void validateRecaptureTransition(MeasurementSession session, MeasurementStatus next) {
+        MeasurementStatus current = session.getStatus();
+        if (next == MeasurementStatus.FAILED) {
+            return;
+        }
+        boolean invalid = (next == MeasurementStatus.READY_FOR_RECAPTURE
+                && current != MeasurementStatus.WAITING_FOR_RECAPTURE && current != next)
+                || (current == MeasurementStatus.WAITING_FOR_RECAPTURE && next != MeasurementStatus.READY_FOR_RECAPTURE)
+                || (current == MeasurementStatus.READY_FOR_RECAPTURE
+                    && next != current && next != MeasurementStatus.CAPTURING_PHOTO)
+                || (session.getPhotoRecaptureCount() > 0 && next == MeasurementStatus.READY_FOR_PHOTO)
+                || (session.getPhotoRecaptureCount() > 0 && current == MeasurementStatus.CAPTURING_PHOTO
+                    && next != current && next != MeasurementStatus.WAITING_FOR_ENVIRONMENT)
+                || (session.getPhotoRecaptureCount() > 0 && next == MeasurementStatus.CAPTURING_PHOTO
+                    && current != next && current != MeasurementStatus.READY_FOR_RECAPTURE)
+                || (session.getPhotoRecaptureCount() > 0 && next == MeasurementStatus.WAITING_FOR_ENVIRONMENT
+                    && current != next && current != MeasurementStatus.CAPTURING_PHOTO);
+        if (invalid) {
+            throw new MeasurementHandler(ErrorStatus.MEASUREMENT_INVALID_STATUS_TRANSITION);
+        }
+    }
+
+    private void requirePhotoRecapture(MeasurementSession session,
+                                      MeasurementRequestDTO.UpdateMeasurementStatusDTO request) {
+        if (request.getFailureReason() != null
+                && request.getFailureReason() != MeasurementFailureReason.INVALID_CAPTURE_DATA) {
+            throw new MeasurementHandler(ErrorStatus._BAD_REQUEST);
+        }
+        if (!isPhotoCaptureStage(session.getStatus())) {
+            throw new MeasurementHandler(ErrorStatus.MEASUREMENT_INVALID_STATUS_TRANSITION);
+        }
+        if (session.getStatus() == MeasurementStatus.WAITING_FOR_RECAPTURE) {
+            return;
+        }
+        if (session.getRemainingPhotoRecaptures() == 0) {
+            failMeasurement(session, request.getMeasurementDurationSec(),
+                    MeasurementFailureReason.INVALID_CAPTURE_DATA, RECAPTURE_EXHAUSTED_DETAIL);
+            return;
+        }
+        String detail = request.getFailureDetail();
+        session.requirePhotoRecapture(detail != null && !detail.isBlank() ? detail : RECAPTURE_DETAIL);
+        measurementCompletionService.resetPhotoAnalysisForRecapture(session);
+        measurementSocketService.sendMeasurementStatusChanged(session);
     }
 
     @Override
@@ -288,6 +393,7 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
             Integer measurementDurationSec,
             MeasurementFailureReason failureReason,
             String failureDetail) {
+        measurementSession.clearRecaptureDetail();
         measurementSession.updateStatus(
                 MeasurementStatus.FAILED,
                 resolveMeasurementDurationSec(measurementSession, measurementDurationSec)

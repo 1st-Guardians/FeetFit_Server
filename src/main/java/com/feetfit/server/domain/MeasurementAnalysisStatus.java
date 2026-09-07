@@ -54,6 +54,12 @@ public class MeasurementAnalysisStatus extends BaseEntity {
         this.photoCaptureCompleted = true;
     }
 
+    public void resetPhotoAnalysisForRecapture() {
+        this.photoCaptureCompleted = false;
+        this.photoAnalysisCompleted = false;
+        this.metricReportCompleted = false;
+    }
+
     public void completePhotoAnalysis() {
         this.photoAnalysisCompleted = true;
     }

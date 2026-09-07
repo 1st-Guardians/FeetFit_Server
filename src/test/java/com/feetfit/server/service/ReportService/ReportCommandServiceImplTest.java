@@ -31,6 +31,8 @@ import com.feetfit.server.web.dto.report.ReportRequestDTO;
 import com.feetfit.server.web.dto.report.ReportResponseDTO;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -53,6 +55,22 @@ import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class ReportCommandServiceImplTest {
+
+    @ParameterizedTest
+    @EnumSource(value = MeasurementStatus.class, names = {"WAITING_FOR_RECAPTURE", "READY_FOR_RECAPTURE", "CAPTURING_PHOTO"})
+    void recaptureRejectsReportWritesUntilCaptureValidationSucceeds(MeasurementStatus status) {
+        MeasurementSession session = measurementSession(status);
+        session.startPhotoRecapture();
+        given(measurementSessionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(session));
+        var request = new ReportRequestDTO.BalancePartDTO();
+        ReflectionTestUtils.setField(request, "measurementSessionId", 1L);
+
+        assertThatThrownBy(() -> reportCommandService.saveBalancePart(1L, request))
+                .isInstanceOf(MeasurementHandler.class)
+                .satisfies(error -> assertThat(((MeasurementHandler) error).getCode()).isEqualTo(
+                        com.feetfit.server.apiPayload.code.status.ErrorStatus.MEASUREMENT_INVALID_STATUS_TRANSITION));
+        org.mockito.Mockito.verifyNoInteractions(dailyFootAnalysisRepository, measurementCompletionService);
+    }
 
     @Mock
     private HalluxValgusAnalysisRepository halluxValgusAnalysisRepository;

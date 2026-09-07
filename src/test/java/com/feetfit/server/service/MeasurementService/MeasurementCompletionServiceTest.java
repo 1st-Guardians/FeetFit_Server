@@ -8,6 +8,8 @@ import com.feetfit.server.event.MeasurementCompletedEvent;
 import com.feetfit.server.repository.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -81,6 +83,38 @@ class MeasurementCompletionServiceTest {
                 .status(status)
                 .measuredAt(LocalDateTime.now().minusMinutes(3))
                 .build();
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = MeasurementStatus.class, names = {"WAITING_FOR_RECAPTURE", "READY_FOR_RECAPTURE", "CAPTURING_PHOTO"})
+    void recaptureCannotCompleteEvenWhenOldFlagsWereReady(MeasurementStatus status) {
+        MeasurementSession session = session(status);
+        session.startPhotoRecapture();
+        when(measurementSessionRepository.findByIdForUpdate(21L)).thenReturn(Optional.of(session));
+        when(measurementAnalysisStatusRepository.findByMeasurementSessionIdForUpdate(21L))
+                .thenReturn(Optional.of(readyStatus(session)));
+
+        service.completeMeasurementIfReady(session, 180);
+
+        assertThat(session.getStatus()).isEqualTo(status);
+        verifyNoInteractions(applicationEventPublisher, measurementSocketService, measurementCareTipsGenerationService);
+    }
+
+    @Test
+    void recaptureResetsPhotoAndMetricFlagsButKeepsOtherMeasurements() {
+        MeasurementSession session = session(MeasurementStatus.WAITING_FOR_RECAPTURE);
+        MeasurementAnalysisStatus flags = readyStatus(session);
+        when(measurementSessionRepository.findByIdForUpdate(21L)).thenReturn(Optional.of(session));
+        when(measurementAnalysisStatusRepository.findByMeasurementSessionIdForUpdate(21L)).thenReturn(Optional.of(flags));
+
+        service.resetPhotoAnalysisForRecapture(session);
+
+        assertThat(flags.isPhotoCaptureCompleted()).isFalse();
+        assertThat(flags.isPhotoAnalysisCompleted()).isFalse();
+        assertThat(flags.isMetricReportCompleted()).isFalse();
+        assertThat(flags.isPressureCaptureCompleted()).isTrue();
+        assertThat(flags.isPressureAnalysisCompleted()).isTrue();
+        assertThat(flags.isEnvironmentAnalysisCompleted()).isTrue();
     }
 
     private static MeasurementAnalysisStatus readyStatus(MeasurementSession session) {

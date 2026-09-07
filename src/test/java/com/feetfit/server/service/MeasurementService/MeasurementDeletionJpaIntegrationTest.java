@@ -2,9 +2,12 @@ package com.feetfit.server.service.MeasurementService;
 
 import com.feetfit.server.apiPayload.code.status.ErrorStatus;
 import com.feetfit.server.apiPayload.exception.handler.MeasurementHandler;
+import com.feetfit.server.apiPayload.exception.handler.ReportHandler;
 import com.feetfit.server.domain.DailyFootAnalysis;
 import com.feetfit.server.domain.Device;
 import com.feetfit.server.domain.MeasurementSession;
+import com.feetfit.server.domain.MetricAnalysisResult;
+import com.feetfit.server.domain.Report;
 import com.feetfit.server.domain.Shoe;
 import com.feetfit.server.domain.ShoeRecommendation;
 import com.feetfit.server.domain.ShoeRecommendationReason;
@@ -13,10 +16,14 @@ import com.feetfit.server.domain.ShoeRecommendationRun;
 import com.feetfit.server.domain.ShoeReview;
 import com.feetfit.server.domain.User;
 import com.feetfit.server.domain.enums.MeasurementStatus;
+import com.feetfit.server.domain.enums.GaugeStatus;
+import com.feetfit.server.domain.enums.MetricType;
 import com.feetfit.server.domain.enums.ReasonType;
 import com.feetfit.server.domain.enums.RiskLevel;
 import com.feetfit.server.domain.enums.ShoeReviewSource;
 import com.feetfit.server.domain.enums.SocialType;
+import com.feetfit.server.service.ReportService.ReportQueryService;
+import com.feetfit.server.service.ReportService.ReportQueryServiceImpl;
 import com.feetfit.server.web.dto.measurement.MeasurementResponseDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,6 +36,8 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -38,7 +47,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
         "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect",
         "spring.jpa.show-sql=false"
 })
-@Import(MeasurementCommandServiceImpl.class)
+@Import({MeasurementCommandServiceImpl.class, ReportQueryServiceImpl.class})
 class MeasurementDeletionJpaIntegrationTest {
 
     @Autowired
@@ -46,6 +55,9 @@ class MeasurementDeletionJpaIntegrationTest {
 
     @Autowired
     private MeasurementCommandService measurementCommandService;
+
+    @Autowired
+    private ReportQueryService reportQueryService;
 
     @MockBean
     private MeasurementSocketService measurementSocketService;
@@ -181,6 +193,78 @@ class MeasurementDeletionJpaIntegrationTest {
                 .isInstanceOf(MeasurementHandler.class)
                 .satisfies(error -> assertThat(((MeasurementHandler) error).getCode())
                         .isEqualTo(ErrorStatus.MEASUREMENT_NOT_FOUND));
+    }
+
+    @Test
+    void deleteOnlyMeasurement_removesSummaryMetricsAndDailyAnalysis() {
+        MeasurementSession target = session();
+        Report report = report(target, 80f, LocalDate.now().atTime(12, 0));
+        DailyFootAnalysis analysis = analysis(target);
+        entityManager.flush();
+        entityManager.clear();
+        assertThat(reportQueryService.getReportSummary(user.getId()).getTotalScore()).isEqualTo(80);
+        assertThat(reportQueryService.getDailyFootAnalysis(user.getId(), LocalDate.now()).getMeasurementSessionId())
+                .isEqualTo(target.getId());
+        entityManager.clear();
+
+        var deleted = measurementCommandService.deleteMeasurementRecords(user.getId(), target.getId());
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(deleted.getDeletedReportCount()).isOne();
+        assertThat(deleted.getDeletedMetricAnalysisResultCount()).isEqualTo(5);
+        assertThat(deleted.getDeletedDailyFootAnalysisCount()).isOne();
+        assertThat(entityManager.find(Report.class, report.getId())).isNull();
+        assertThat(entityManager.find(DailyFootAnalysis.class, analysis.getId())).isNull();
+        assertThat(entityManager.getEntityManager().createQuery(
+                "SELECT COUNT(m) FROM MetricAnalysisResult m WHERE m.report.id = :reportId", Long.class)
+                .setParameter("reportId", report.getId()).getSingleResult()).isZero();
+        assertThatThrownBy(() -> reportQueryService.getReportSummary(user.getId()))
+                .isInstanceOf(ReportHandler.class)
+                .satisfies(error -> assertThat(((ReportHandler) error).getCode()).isEqualTo(ErrorStatus.REPORT_NOT_FOUND));
+        assertThatThrownBy(() -> reportQueryService.getDailyFootAnalysis(user.getId(), LocalDate.now()))
+                .isInstanceOf(ReportHandler.class)
+                .satisfies(error -> assertThat(((ReportHandler) error).getCode()).isEqualTo(ErrorStatus.REPORT_NOT_FOUND));
+    }
+
+    @Test
+    void deleteLatestMeasurement_summaryReturnsRemainingMeasurementFromSameDay() {
+        MeasurementSession previous = session();
+        Report previousReport = report(previous, 60f, LocalDate.now().atTime(10, 0));
+        analysis(previous);
+        MeasurementSession target = session();
+        Report targetReport = report(target, 90f, LocalDate.now().atTime(12, 0));
+        analysis(target);
+        entityManager.flush();
+        entityManager.clear();
+        assertThat(reportQueryService.getReportSummary(user.getId()).getTotalScore()).isEqualTo(90);
+        entityManager.clear();
+
+        measurementCommandService.deleteMeasurementRecords(user.getId(), target.getId());
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(entityManager.find(Report.class, targetReport.getId())).isNull();
+        assertThat(entityManager.find(Report.class, previousReport.getId())).isNotNull();
+        var summary = reportQueryService.getReportSummary(user.getId());
+        assertThat(summary.getTotalScore()).isEqualTo(60);
+        assertThat(summary.getMetricScores()).hasSize(5)
+                .allSatisfy(metric -> assertThat(metric.getScore()).isEqualTo(60f));
+        assertThat(summary.getMonthlyScores()).singleElement()
+                .satisfies(month -> assertThat(month.getAvgScore()).isEqualTo(60f));
+        assertThat(reportQueryService.getDailyFootAnalysis(user.getId(), LocalDate.now()).getMeasurementSessionId())
+                .isEqualTo(previous.getId());
+    }
+
+    private Report report(MeasurementSession session, float score, LocalDateTime reportDate) {
+        Report report = entityManager.persist(Report.builder()
+                .measurementSession(session).user(user).reportDate(reportDate).totalScore(Math.round(score)).build());
+        for (MetricType metric : List.of(MetricType.PRESSURE_BALANCE, MetricType.HALLUX_VALGUS,
+                MetricType.ATHLETES_FOOT, MetricType.SKIN_IRRITATION, MetricType.FOOT_ENVIRONMENT)) {
+            entityManager.persist(MetricAnalysisResult.builder().report(report).metricType(metric)
+                    .score(score).status(GaugeStatus.VERY_GOOD).advice(List.of("test advice")).build());
+        }
+        return report;
     }
 
     private MeasurementSession session() {

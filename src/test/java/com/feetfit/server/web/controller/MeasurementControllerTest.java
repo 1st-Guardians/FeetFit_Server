@@ -4,6 +4,7 @@ import com.feetfit.server.apiPayload.code.status.ErrorStatus;
 import com.feetfit.server.apiPayload.exception.ExceptionAdvice;
 import com.feetfit.server.apiPayload.exception.handler.UserHandler;
 import com.feetfit.server.domain.enums.MeasurementStatus;
+import com.feetfit.server.domain.enums.MeasurementFailureReason;
 import com.feetfit.server.jwt.FindLoginUser;
 import com.feetfit.server.jwt.TokenProvider;
 import com.feetfit.server.service.MeasurementService.MeasurementCommandService;
@@ -25,6 +26,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -159,6 +161,47 @@ class MeasurementControllerTest {
                         dailyStatus(LocalDate.of(2026, 5, 23), "SATURDAY", "토", false)
                 ))
                 .build();
+    }
+
+    @Test
+    void recaptureButtonUsesExistingQueryParameterEndpoint() throws Exception {
+        given(findLoginUser.getCurrentUserId()).willReturn(6L);
+        given(measurementCommandService.updateMeasurementStatus(eq(6L), eq(79L),
+                argThat(request -> request.getStatus() == MeasurementStatus.READY_FOR_RECAPTURE
+                        && request.getPhotoCaptureAttempt() == null), eq("Bearer test-token")))
+                .willReturn(MeasurementResponseDTO.UpdateMeasurementStatusResultDTO.builder()
+                        .id(79L).status(MeasurementStatus.READY_FOR_RECAPTURE)
+                        .photoCaptureAttempt(1).remainingPhotoRecaptures(2).build());
+
+        mockMvc.perform(patch("/api/measurement-sessions/79/status")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer test-token")
+                        .param("status", "READY_FOR_RECAPTURE"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result.status").value("READY_FOR_RECAPTURE"))
+                .andExpect(jsonPath("$.result.photoCaptureAttempt").value(1))
+                .andExpect(jsonPath("$.result.remainingPhotoRecaptures").value(2));
+    }
+
+    @Test
+    void markerOcclusionCallbackBindsReasonDetailAndAttempt() throws Exception {
+        given(findLoginUser.getCurrentUserId()).willReturn(6L);
+        given(measurementCommandService.updateMeasurementStatus(eq(6L), eq(79L),
+                argThat(request -> request.getStatus() == MeasurementStatus.WAITING_FOR_RECAPTURE
+                        && request.getFailureReason() == MeasurementFailureReason.INVALID_CAPTURE_DATA
+                        && request.getFailureDetail().equals("marker covered")
+                        && request.getPhotoCaptureAttempt().equals(1)), eq("Bearer test-token")))
+                .willReturn(MeasurementResponseDTO.UpdateMeasurementStatusResultDTO.builder()
+                        .id(79L).status(MeasurementStatus.WAITING_FOR_RECAPTURE).detail("marker covered")
+                        .photoCaptureAttempt(1).remainingPhotoRecaptures(2).build());
+
+        mockMvc.perform(patch("/api/measurement-sessions/79/status")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer test-token")
+                        .param("status", "WAITING_FOR_RECAPTURE").param("failureReason", "INVALID_CAPTURE_DATA")
+                        .param("failureDetail", "marker covered").param("photoCaptureAttempt", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result.status").value("WAITING_FOR_RECAPTURE"))
+                .andExpect(jsonPath("$.result.failureReason").doesNotExist())
+                .andExpect(jsonPath("$.result.detail").value("marker covered"));
     }
 
     private static MeasurementResponseDTO.TodayMeasurementStatusResultDTO todayMeasurementStatusResponse(
