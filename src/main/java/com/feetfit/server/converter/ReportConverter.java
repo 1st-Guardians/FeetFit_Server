@@ -15,31 +15,31 @@ public class ReportConverter {
     // HVA 각도 기반 분석 텍스트 생성
     /*
     - **1단계: 정상 범위** (15도 미만)
-        엄지발가락이 두 번째 발가락 쪽으로 기울어진 각도(HVA)가 00°로 측정되었습니다. 정상 기준(15° 이하)에 해당합니다.
+        엄지발가락이 두 번째 발가락 쪽으로 기울어진 각도가 00°로 측정되었습니다. 정상 기준(15° 이하)에 해당합니다.
     - **2단계: 경미한 변형 의심** (15~20도)
-        엄지발가락이 두 번째 발가락 쪽으로 기울어진 각도(HVA)가 00°로 측정되었습니다. 경미한 변형 범위(15~20°)에 해당합니다.
+        엄지발가락이 두 번째 발가락 쪽으로 기울어진 각도가 00°로 측정되었습니다. 경미한 변형 범위(15~20°)에 해당합니다.
     - **3단계: 변형 진행 단계** (20~40도)
-        엄지발가락이 두 번째 발가락 쪽으로 기울어진 각도(HVA)가 00°로 측정되었습니다. 변형이 진행된 범위(20~40°)에 해당합니다.
+        엄지발가락이 두 번째 발가락 쪽으로 기울어진 각도가 00°로 측정되었습니다. 변형이 진행된 범위(20~40°)에 해당합니다.
     - **4단계: 심한 변형 단계** (40도 이상)
-        엄지발가락이 두 번째 발가락 쪽으로 기울어진 각도(HVA)가 00°로 측정되었습니다. 심한 변형 범위(40° 이상)에 해당합니다.
+        엄지발가락이 두 번째 발가락 쪽으로 기울어진 각도가 00°로 측정되었습니다. 심한 변형 범위(40° 이상)에 해당합니다.
     */
     public static String generateHvaAnalysisText(Float toeAngleDegree) {
         if (toeAngleDegree == null) return null;
         if (toeAngleDegree <= 15) {
             return String.format(
-                    "엄지발가락이 두 번째 발가락 쪽으로 기울어진 각도(HVA)가 %.1f°로 측정되었습니다. 정상 기준(15° 이하)에 해당합니다.",
+                    "엄지발가락이 두 번째 발가락 쪽으로 기울어진 각도가 %.1f°로 측정되었습니다. 정상 기준(15° 이하)에 해당합니다.",
                     toeAngleDegree);
         } else if (toeAngleDegree <= 20) {
             return String.format(
-                    "엄지발가락이 두 번째 발가락 쪽으로 기울어진 각도(HVA)가 %.1f°로 측정되었습니다. 경미한 변형 범위(15~20°)에 해당합니다.",
+                    "엄지발가락이 두 번째 발가락 쪽으로 기울어진 각도가 %.1f°로 측정되었습니다. 경미한 변형 범위(15~20°)에 해당합니다.",
                     toeAngleDegree);
         } else if (toeAngleDegree <= 40) {
             return String.format(
-                    "엄지발가락이 두 번째 발가락 쪽으로 기울어진 각도(HVA)가 %.1f°로 측정되었습니다. 변형이 진행된 범위(20~40°)에 해당합니다.",
+                    "엄지발가락이 두 번째 발가락 쪽으로 기울어진 각도가 %.1f°로 측정되었습니다. 변형이 진행된 범위(20~40°)에 해당합니다.",
                     toeAngleDegree);
         } else {
             return String.format(
-                    "엄지발가락이 두 번째 발가락 쪽으로 기울어진 각도(HVA)가 %.1f°로 측정되었습니다. 심한 변형 범위(40° 이상)에 해당합니다.",
+                    "엄지발가락이 두 번째 발가락 쪽으로 기울어진 각도가 %.1f°로 측정되었습니다. 심한 변형 범위(40° 이상)에 해당합니다.",
                     toeAngleDegree);
         }
     }
@@ -81,10 +81,10 @@ public class ReportConverter {
                 .id(analysis.getId())
                 .measurementSessionId(analysis.getMeasurementSession().getId())
                 .leftToeAngleDegree(analysis.getLeftToeAngleDegree())
-                .leftAnalysisText(analysis.getLeftAnalysisText())
+                .leftAnalysisText(removeHvaLabel(analysis.getLeftAnalysisText()))
                 .leftImageUrl(analysis.getLeftImageUrl())
                 .rightToeAngleDegree(analysis.getRightToeAngleDegree())
-                .rightAnalysisText(analysis.getRightAnalysisText())
+                .rightAnalysisText(removeHvaLabel(analysis.getRightAnalysisText()))
                 .rightImageUrl(analysis.getRightImageUrl())
                 .riskScore(analysis.getRiskScore())
                 .scoreAnalysisText(analysis.getScoreAnalysisText())
@@ -106,10 +106,10 @@ public class ReportConverter {
                 .id(analysis.getId())
                 .measurementSessionId(analysis.getMeasurementSession().getId())
                 .leftToeAngleDegree(analysis.getLeftToeAngleDegree())
-                .leftAnalysisText(analysis.getLeftAnalysisText())
+                .leftAnalysisText(removeHvaLabel(analysis.getLeftAnalysisText()))
                 .leftImageUrl(analysis.getLeftImageUrl())
                 .rightToeAngleDegree(analysis.getRightToeAngleDegree())
-                .rightAnalysisText(analysis.getRightAnalysisText())
+                .rightAnalysisText(removeHvaLabel(analysis.getRightAnalysisText()))
                 .rightImageUrl(analysis.getRightImageUrl())
                 .riskScore(analysis.getRiskScore())
                 .scoreAnalysisText(analysis.getScoreAnalysisText())
@@ -118,6 +118,10 @@ public class ReportConverter {
                 .createdAt(analysis.getCreatedAt())
                 .updatedAt(analysis.getUpdatedAt())
                 .build();
+    }
+
+    private static String removeHvaLabel(String analysisText) {
+        return analysisText == null ? null : analysisText.replace("(HVA)", "");
     }
 
     public static TinaPedisAnalysis toTinaPedisAnalysis(
