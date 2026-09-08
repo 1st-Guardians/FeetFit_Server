@@ -19,11 +19,29 @@ public interface ShoeRepository extends JpaRepository<Shoe, Long> {
     // 관심도순
     Page<Shoe> findAllByOrderByClickCountDesc(Pageable pageable);
 
-    // 발 적합도순 (하나의 완료된 측정 세션 기준)
-    @Query("SELECT s FROM Shoe s " +
-            "JOIN ShoeRecommendation r ON r.shoe.id = s.id " +
-            "WHERE r.measurementSession.id = :measurementSessionId " +
-            "ORDER BY r.fitScore DESC, s.id ASC")
+    // 발 적합도순 (하나의 완료된 측정 세션 기준, 실제 리뷰 근거가 하나 이상인 추천만 노출)
+    @Query(
+            value = """
+                    SELECT recommendation.shoe
+                    FROM ShoeRecommendation recommendation
+                    WHERE recommendation.measurementSession.id = :measurementSessionId
+                      AND EXISTS (
+                          SELECT reasonReview.id
+                          FROM ShoeRecommendationReasonReview reasonReview
+                          WHERE reasonReview.reason.shoeRecommendation = recommendation
+                      )
+                    ORDER BY recommendation.fitScore DESC, recommendation.shoe.id ASC
+                    """,
+            countQuery = """
+                    SELECT COUNT(recommendation)
+                    FROM ShoeRecommendation recommendation
+                    WHERE recommendation.measurementSession.id = :measurementSessionId
+                      AND EXISTS (
+                          SELECT reasonReview.id
+                          FROM ShoeRecommendationReasonReview reasonReview
+                          WHERE reasonReview.reason.shoeRecommendation = recommendation
+                      )
+                    """)
     Page<Shoe> findAllByFitScoreDesc(
             @Param("measurementSessionId") Long measurementSessionId, Pageable pageable);
 
@@ -35,11 +53,18 @@ public interface ShoeRepository extends JpaRepository<Shoe, Long> {
     // 신발명, 브랜드명 기준 검색
     Page<Shoe> findByShoeNameContainingOrBrandNameContaining(String shoeName, String brandName, Pageable pageable);
 
-    // 추천 신발 3종
-    @Query("SELECT s FROM Shoe s " +
-            "JOIN ShoeRecommendation r ON r.shoe.id = s.id " +
-            "WHERE r.measurementSession.id = :measurementSessionId " +
-            "ORDER BY r.fitScore DESC, s.id ASC")
+    // 추천 신발 3종 (실제 리뷰 근거가 하나 이상인 추천만 노출)
+    @Query("""
+            SELECT recommendation.shoe
+            FROM ShoeRecommendation recommendation
+            WHERE recommendation.measurementSession.id = :measurementSessionId
+              AND EXISTS (
+                  SELECT reasonReview.id
+                  FROM ShoeRecommendationReasonReview reasonReview
+                  WHERE reasonReview.reason.shoeRecommendation = recommendation
+              )
+            ORDER BY recommendation.fitScore DESC, recommendation.shoe.id ASC
+            """)
     List<Shoe> findTop3ByFitScoreDesc(
             @Param("measurementSessionId") Long measurementSessionId, Pageable pageable);
 

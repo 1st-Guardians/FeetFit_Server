@@ -308,14 +308,14 @@ class ShoeRecommendationSessionServiceJpaIntegrationTest {
         Shoe secondShoe = shoeRepository.save(shoe("service-goods-2", "model-2"));
         Shoe thirdShoe = shoeRepository.save(shoe("service-goods-3", "model-3"));
 
-        save(firstSession, shoe, 99);
-        save(firstSession, secondShoe, 50);
-        save(firstSession, thirdShoe, 10);
+        saveWithReviewEvidence(firstSession, shoe, 99);
+        saveWithReviewEvidence(firstSession, secondShoe, 50);
+        saveWithReviewEvidence(firstSession, thirdShoe, 10);
         runService.completeRun(user.getId(), firstSession.getId());
 
-        save(secondSession, shoe, 1);
-        save(secondSession, secondShoe, 60);
-        save(secondSession, thirdShoe, 100);
+        saveWithReviewEvidence(secondSession, shoe, 1);
+        saveWithReviewEvidence(secondSession, secondShoe, 60);
+        saveWithReviewEvidence(secondSession, thirdShoe, 100);
         runService.completeRun(user.getId(), secondSession.getId());
 
         ShoeResponseDTO.ShoeListResultDTO currentFirstPage = shoeQueryService.getShoeList(
@@ -409,6 +409,32 @@ class ShoeRecommendationSessionServiceJpaIntegrationTest {
     private void save(MeasurementSession session, Shoe targetShoe, int score) throws Exception {
         shoeCommandService.saveShoeRecommendations(
                 user.getId(), recommendationRequest(session.getId(), targetShoe.getId(), score));
+    }
+
+    private void saveWithReviewEvidence(
+            MeasurementSession session, Shoe targetShoe, int score) throws Exception {
+        save(session, targetShoe, score);
+        ShoeRecommendation recommendation = recommendationRepository
+                .findByMeasurementSessionIdAndShoeId(session.getId(), targetShoe.getId())
+                .orElseThrow();
+        ShoeRecommendationReason reason = reasonRepository
+                .findByShoeRecommendationIdAndReasonType(
+                        recommendation.getId(), ReasonType.FOREFOOT)
+                .orElseThrow();
+        String evidenceKey = session.getId() + "-" + targetShoe.getId();
+        ShoeReview evidence = shoeReviewRepository.save(ShoeReview.builder()
+                .shoe(targetShoe)
+                .rating(5f)
+                .reviewText("목록 노출 검증용 실제 착용 리뷰")
+                .sourceReviewId("list-evidence-" + evidenceKey)
+                .contentHash("list-evidence-hash-" + evidenceKey)
+                .source(ShoeReviewSource.MUSINSA)
+                .collectedAt(LocalDateTime.now())
+                .build());
+        reasonReviewRepository.save(ShoeRecommendationReasonReview.builder()
+                .reason(reason)
+                .review(evidence)
+                .build());
     }
 
     private ShoeRequestDTO.SaveShoeRecommendationDTO recommendationRequest(
