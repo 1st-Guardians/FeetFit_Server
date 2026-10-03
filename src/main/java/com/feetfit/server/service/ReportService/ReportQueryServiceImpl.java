@@ -126,6 +126,7 @@ public class ReportQueryServiceImpl implements ReportQueryService {
         Report report = reportRepository
                 .findTopByUserIdAndReportDateGreaterThanEqualAndReportDateLessThanOrderByReportDateDesc(
                         userId, startOfDay, endOfDay)
+                .or(() -> reportRepository.findTopByUserIdOrderByReportDateDesc(userId))
                 .orElseThrow(() -> new ReportHandler(ErrorStatus.REPORT_NOT_FOUND));
 
         // 5개 필수 지표가 모두 저장되었는지 확인

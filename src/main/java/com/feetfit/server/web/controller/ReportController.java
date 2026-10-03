@@ -880,13 +880,14 @@ public class ReportController {
     @Operation(
             summary = "요약 페이지 조회 [민지]",
             description = """
-                오늘 날짜 기준으로 발 종합 점수, 지표별 점수, 1년간 변화 추이를 조회합니다.
+                가장 최근 발 종합 점수, 지표별 점수, 1년간 변화 추이를 조회합니다.
                 Authorization 헤더에 Bearer accessToken이 필요합니다.
                 - 지표 타입: PRESSURE_BALANCE(압력 균형), HALLUX_VALGUS(무지외반), ATHLETES_FOOT(무좀), SKIN_IRRITATION(피부 자극도), FOOT_ENVIRONMENT(환경 상태)
                 - monthlyScores: 최근 12개월 월별 종합 점수 평균 (5개 지표 모두 있는 날만 포함)
                 - totalScore: 5개 지표 단순 평균으로 백엔드에서 계산
                 - advice: 각 지표별 설명 2개
-                - 오늘 저장된 데이터가 없으면 404를 반환합니다.
+                - 오늘 저장된 데이터가 없으면 가장 최근 과거 리포트를 반환합니다.
+                - 저장된 리포트가 한 건도 없으면 404를 반환합니다.
                 - 5개 지표가 모두 저장되지 않은 경우 400(REPORT4002)을 반환하며, 누락된 지표 목록이 메시지에 포함됩니다.
                 """
     )
@@ -903,7 +904,7 @@ public class ReportController {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "404",
-                    description = "오늘 저장된 리포트 없음",
+                    description = "저장된 리포트 없음",
                     content = @Content(examples = @ExampleObject(value = REPORT_NOT_FOUND_RESPONSE))
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
