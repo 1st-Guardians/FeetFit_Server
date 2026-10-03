@@ -2,13 +2,21 @@ package com.feetfit.server.service.ReportService;
 
 import com.feetfit.server.apiPayload.exception.handler.ReportHandler;
 import com.feetfit.server.domain.MeasurementSession;
+import com.feetfit.server.domain.MetricAnalysisResult;
+import com.feetfit.server.domain.Report;
 import com.feetfit.server.domain.TinaPedisAnalysis;
 import com.feetfit.server.domain.User;
+import com.feetfit.server.domain.enums.GaugeStatus;
+import com.feetfit.server.domain.enums.MetricType;
 import com.feetfit.server.domain.enums.MeasurementStatus;
 import com.feetfit.server.domain.enums.SocialType;
 import com.feetfit.server.domain.enums.UserStatus;
 import com.feetfit.server.repository.HalluxValgusAnalysisRepository;
+import com.feetfit.server.repository.DailyFootAnalysisRepository;
+import com.feetfit.server.repository.MeasurementSessionRepository;
+import com.feetfit.server.repository.ReportRepository;
 import com.feetfit.server.repository.TinaPedisAnalysisRepository;
+import com.feetfit.server.repository.UserRepository;
 import com.feetfit.server.web.dto.report.ReportResponseDTO;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,6 +34,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 
 @ExtendWith(MockitoExtension.class)
 class ReportQueryServiceImplTest {
@@ -36,8 +46,55 @@ class ReportQueryServiceImplTest {
     @Mock
     private TinaPedisAnalysisRepository tinaPedisAnalysisRepository;
 
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
+    private DailyFootAnalysisRepository dailyFootAnalysisRepository;
+
+    @Mock
+    private ReportRepository reportRepository;
+
+    @Mock
+    private MeasurementSessionRepository measurementSessionRepository;
+
     @InjectMocks
     private ReportQueryServiceImpl reportQueryService;
+
+    @Test
+    void getReportSummary_withoutTodayReport_returnsLatestPastReport() {
+        Report pastReport = completeReport(LocalDateTime.now().minusDays(2));
+        given(userRepository.findById(1L)).willReturn(Optional.of(user()));
+        given(reportRepository
+                .findTopByUserIdAndReportDateGreaterThanEqualAndReportDateLessThanOrderByReportDateDesc(
+                        eq(1L), any(LocalDateTime.class), any(LocalDateTime.class)))
+                .willReturn(Optional.empty());
+        given(reportRepository.findTopByUserIdOrderByReportDateDesc(1L))
+                .willReturn(Optional.of(pastReport));
+        given(reportRepository.findByUserIdAndReportDateBetween(
+                eq(1L), any(LocalDateTime.class), any(LocalDateTime.class)))
+                .willReturn(List.of(pastReport));
+
+        ReportResponseDTO.ReportSummaryResultDTO response = reportQueryService.getReportSummary(1L);
+
+        assertThat(response.getTotalScore()).isEqualTo(70);
+        assertThat(response.getMetricScores()).hasSize(5);
+        then(reportRepository).should().findTopByUserIdOrderByReportDateDesc(1L);
+    }
+
+    @Test
+    void getReportSummary_withoutAnyReport_throwsReportNotFound() {
+        given(userRepository.findById(1L)).willReturn(Optional.of(user()));
+        given(reportRepository
+                .findTopByUserIdAndReportDateGreaterThanEqualAndReportDateLessThanOrderByReportDateDesc(
+                        eq(1L), any(LocalDateTime.class), any(LocalDateTime.class)))
+                .willReturn(Optional.empty());
+        given(reportRepository.findTopByUserIdOrderByReportDateDesc(1L))
+                .willReturn(Optional.empty());
+
+        assertThatThrownBy(() -> reportQueryService.getReportSummary(1L))
+                .isInstanceOf(ReportHandler.class);
+    }
 
     @Test
     void getTinaPedisAnalysis_existingAnalysis_returnsAnalysis() {
@@ -210,6 +267,34 @@ class ReportQueryServiceImplTest {
                 .user(user())
                 .status(MeasurementStatus.COMPLETED)
                 .measuredAt(LocalDateTime.of(2026, 5, 20, 8, 0))
+                .build();
+    }
+
+    private static Report completeReport(LocalDateTime reportDate) {
+        Report report = Report.builder()
+                .id(1L)
+                .measurementSession(measurementSession())
+                .user(user())
+                .reportDate(reportDate)
+                .totalScore(70)
+                .build();
+        List<MetricAnalysisResult> results = List.of(
+                metricResult(report, MetricType.PRESSURE_BALANCE),
+                metricResult(report, MetricType.HALLUX_VALGUS),
+                metricResult(report, MetricType.ATHLETES_FOOT),
+                metricResult(report, MetricType.SKIN_IRRITATION),
+                metricResult(report, MetricType.FOOT_ENVIRONMENT));
+        report.getMetricAnalysisResults().addAll(results);
+        return report;
+    }
+
+    private static MetricAnalysisResult metricResult(Report report, MetricType metricType) {
+        return MetricAnalysisResult.builder()
+                .report(report)
+                .metricType(metricType)
+                .score(70.0f)
+                .status(GaugeStatus.VERY_GOOD)
+                .advice(List.of("현재 상태 설명", "관리 방법"))
                 .build();
     }
 
