@@ -124,6 +124,52 @@ class ShoeDetailServiceTest {
     }
 
     @Test
+    void lowInformationPointSummaryIsRegenerated() {
+        ShoeResponseDTO.ShoeDetailResultDTO legacy = detail(
+                21L,
+                85.03f,
+                "디자인에 대한 만족도가 높은 편입니다. 그 밖의 착용 특성은 여러 리뷰에서 "
+                        + "같은 방향으로 반복된 정보가 충분하지 않아 단정하기 어렵습니다.",
+                "실제 착용 리뷰를 반영한 자연스러운 요약입니다.");
+        ShoeResponseDTO.ShoeDetailResultDTO regenerated = detail(
+                21L,
+                85.03f,
+                "전반적인 착화감은 편하게 느껴지는 편입니다. 개별 리뷰에서는 하루 종일 착용해도 "
+                        + "피로가 적었다는 의견과 무게가 가볍게 느껴졌다는 의견이 확인됩니다.",
+                "실제 착용 리뷰를 반영한 자연스러운 요약입니다.");
+        when(queryService.getShoeDetail(7L, 11L, 21L)).thenReturn(legacy, regenerated);
+        when(summaryGenerationTrigger.generateNow(7L, 21L, 11L)).thenReturn(true);
+
+        assertThat(service.getShoeDetail(7L, 11L, 21L)).isSameAs(regenerated);
+
+        verify(summaryGenerationTrigger).generateNow(7L, 21L, 11L);
+        verify(queryService, times(2)).getShoeDetail(7L, 11L, 21L);
+    }
+
+    @Test
+    void thinComfortPointSummaryIsRegenerated() {
+        ShoeResponseDTO.ShoeDetailResultDTO legacy = detail(
+                21L,
+                90f,
+                "쿠션감에 대한 만족도가 높고, 무게도 가볍게 느껴지는 편입니다. "
+                        + "디자인에 대한 만족도가 높은 편입니다.",
+                "실제 착용 리뷰를 반영한 자연스러운 요약입니다.");
+        ShoeResponseDTO.ShoeDetailResultDTO regenerated = detail(
+                21L,
+                90f,
+                "쿠션감에 대한 만족도가 높은 편입니다. 전반적인 착화감은 편하게 느껴지고, "
+                        + "착화 시 가볍게 느껴지는 편입니다.",
+                "실제 착용 리뷰를 반영한 자연스러운 요약입니다.");
+        when(queryService.getShoeDetail(7L, 11L, 21L)).thenReturn(legacy, regenerated);
+        when(summaryGenerationTrigger.generateNow(7L, 21L, 11L)).thenReturn(true);
+
+        assertThat(service.getShoeDetail(7L, 11L, 21L)).isSameAs(regenerated);
+
+        verify(summaryGenerationTrigger).generateNow(7L, 21L, 11L);
+        verify(queryService, times(2)).getShoeDetail(7L, 11L, 21L);
+    }
+
+    @Test
     void naturalRecommendationIsCompleteEvenWhenItMentionsOneMeasurementLevel() {
         ShoeResponseDTO.ShoeDetailResultDTO natural = detail(
                 21L,
