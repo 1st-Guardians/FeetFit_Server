@@ -25,6 +25,10 @@ public class ShoeDetailService {
 
     private static final String LEGACY_QUANTITATIVE_REVIEW_MARKER = "정량 분석 기준";
     private static final String LEGACY_REVIEW_COUNT_MARKER = "관련 착화 리뷰";
+    private static final String LEGACY_LOW_INFORMATION_POINT_MARKER =
+            "그 밖의 착용 특성은 여러 리뷰에서 같은 방향으로 반복된 정보가 충분하지 않아 단정하기 어렵습니다";
+    private static final String LEGACY_THIN_COMFORT_POINT_MARKER =
+            "쿠션감에 대한 만족도가 높고, 무게도 가볍게 느껴지는 편입니다";
     private static final Pattern LEGACY_MEASUREMENT_LEVEL_SENTENCE = Pattern.compile(
             "^(?:RunRepeat 비교 특성에서 )?"
                     + "(?:발볼 공간|앞코 공간|쿠션감|뒤꿈치 구조 강성|통기성|충격 완화 수준|반발력)"
@@ -85,6 +89,8 @@ public class ShoeDetailService {
     private boolean hasCompleteSummary(ShoeResponseDTO.ShoeDetailResultDTO detail) {
         List<ShoeResponseDTO.ReasonResultDTO> reasons = detail.getReasons();
         if (!StringUtils.hasText(detail.getPointSummary())
+                || detail.getPointSummary().contains(LEGACY_LOW_INFORMATION_POINT_MARKER)
+                || detail.getPointSummary().contains(LEGACY_THIN_COMFORT_POINT_MARKER)
                 || isOnlyLegacyMeasurementLevels(detail.getPointSummary())
                 || reasons == null
                 || reasons.size() != 3) {
