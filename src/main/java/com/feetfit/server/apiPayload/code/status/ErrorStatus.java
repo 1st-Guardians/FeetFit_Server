@@ -65,6 +65,11 @@ public enum ErrorStatus implements BaseErrorCode {
     SHOE_RECOMMENDATION_RUN_NOT_RUNNING(HttpStatus.CONFLICT, "SHOE4008", "진행 중인 신발 추천 실행이 아닙니다."),
     SHOE_RECOMMENDATION_RUN_CONFLICT(HttpStatus.CONFLICT, "SHOE4009", "신발 추천 실행 상태가 요청과 충돌합니다."),
 
+    // Drug
+    DRUG_DATA_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "DRUG5031", "의약품 데이터 연결을 준비 중입니다."),
+    DRUG_DATA_REQUEST_FAILED(HttpStatus.BAD_GATEWAY, "DRUG5021", "식약처 의약품 정보를 불러오지 못했습니다."),
+    DRUG_PERMIT_NOT_FOUND(HttpStatus.NOT_FOUND, "DRUG4001", "해당 제품의 허가정보를 찾지 못했습니다."),
+
     // Health Article
     ARTICLE_NOT_FOUND(HttpStatus.NOT_FOUND, "ARTICLE4001", "아티클을 찾을 수 없습니다.");
 
