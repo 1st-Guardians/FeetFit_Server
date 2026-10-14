@@ -31,6 +31,7 @@ class MeasurementHardwareClientTest {
     private static final String START_URL = "https://hardware.example/measurement/start";
     private static final String PHOTO_URL = "https://hardware.example/measurement/photo/start";
     private static final String ENVIRONMENT_URL = "https://hardware.example/measurement/environment/start";
+    private static final String PRESSURE_URL = "https://hardware.example/measurement/pressure/start";
     private final AtomicReference<ClientRequest> sentRequest = new AtomicReference<>();
     private final ObjectMapper objectMapper = new ObjectMapper();
     private MeasurementHardwareClient client;
@@ -44,6 +45,7 @@ class MeasurementHardwareClientTest {
         ReflectionTestUtils.setField(client, "measurementStartUrl", START_URL);
         ReflectionTestUtils.setField(client, "photoCaptureUrl", PHOTO_URL);
         ReflectionTestUtils.setField(client, "environmentMeasurementUrl", ENVIRONMENT_URL);
+        ReflectionTestUtils.setField(client, "pressureMeasurementUrl", PRESSURE_URL);
     }
 
     @Test
@@ -84,12 +86,19 @@ class MeasurementHardwareClientTest {
     }
 
     @Test
-    void pressureRetryUsesPressureEndpointAndSessionWithCurrentAttempt() throws Exception {
-        ReflectionTestUtils.setField(client, "pressureMeasurementUrl", "https://hardware.example/measurement/pressure/start");
+    void initialPressureMeasurementUsesDefaultAttempt() throws Exception {
+        client.requestPressureMeasurement(79L, "Bearer test");
 
+        assertHardwareRequest(PRESSURE_URL);
+        assertThat(objectMapper.readTree(serializedBody(sentRequest.get())))
+                .isEqualTo(objectMapper.readTree("{\"measurementSessionId\":79,\"pressureMeasurementAttempt\":0}"));
+    }
+
+    @Test
+    void pressureRetryUsesPressureEndpointAndSessionWithCurrentAttempt() throws Exception {
         client.requestPressureMeasurement(79L, "Bearer test", 2);
 
-        assertHardwareRequest("https://hardware.example/measurement/pressure/start");
+        assertHardwareRequest(PRESSURE_URL);
         assertThat(objectMapper.readTree(serializedBody(sentRequest.get())))
                 .isEqualTo(objectMapper.readTree("{\"measurementSessionId\":79,\"pressureMeasurementAttempt\":2}"));
     }
