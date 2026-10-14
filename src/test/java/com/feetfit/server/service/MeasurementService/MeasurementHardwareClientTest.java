@@ -28,6 +28,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class MeasurementHardwareClientTest {
+    private static final String START_URL = "https://hardware.example/measurement/start";
     private static final String PHOTO_URL = "https://hardware.example/measurement/photo/start";
     private static final String ENVIRONMENT_URL = "https://hardware.example/measurement/environment/start";
     private final AtomicReference<ClientRequest> sentRequest = new AtomicReference<>();
@@ -40,8 +41,18 @@ class MeasurementHardwareClientTest {
             sentRequest.set(request);
             return Mono.just(ClientResponse.create(HttpStatus.ACCEPTED).build());
         }).build());
+        ReflectionTestUtils.setField(client, "measurementStartUrl", START_URL);
         ReflectionTestUtils.setField(client, "photoCaptureUrl", PHOTO_URL);
         ReflectionTestUtils.setField(client, "environmentMeasurementUrl", ENVIRONMENT_URL);
+    }
+
+    @Test
+    void measurementStartKeepsExistingPayload() throws Exception {
+        client.requestMeasurementStart(79L, "Bearer test");
+
+        assertHardwareRequest(START_URL);
+        assertThat(objectMapper.readTree(serializedBody(sentRequest.get())))
+                .isEqualTo(objectMapper.readTree("{\"measurementSessionId\":79}"));
     }
 
     @Test

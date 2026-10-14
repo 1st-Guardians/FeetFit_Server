@@ -68,6 +68,8 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
         measurementCompletionService.initialize(saved);
 
         measurementSocketService.sendMeasurementStatusChanged(saved);
+        requestHardwareTaskAfterCommit(() -> measurementHardwareClient.requestMeasurementStart(
+                saved.getId(), authorizationHeader));
 
         return MeasurementConverter.toCreateMeasurementSessionResultDTO(saved);
     }
