@@ -57,6 +57,10 @@ public class MeasurementCompletionService {
         findOrCreateForUpdate(measurementSession).resetPhotoAnalysisForRecapture();
     }
 
+    public void resetPressureAnalysisForRetry(MeasurementSession measurementSession) {
+        findOrCreateForUpdate(measurementSession).resetPressureAnalysisForRetry();
+    }
+
     public void refreshCaptureCompletedByStatus(MeasurementSession measurementSession, MeasurementStatus status) {
         if (measurementSession.isPhotoRecaptureInProgress()) {
             return;
@@ -233,6 +237,7 @@ public class MeasurementCompletionService {
             Integer measurementDurationSec) {
         if (!analysisStatus.isReadyToComplete()
                 || measurementSession.isPhotoRecaptureInProgress()
+                || measurementSession.isPressureRetryInProgress()
                 || measurementSession.getStatus() == MeasurementStatus.COMPLETED
                 || measurementSession.getStatus() == MeasurementStatus.FAILED) {
             return;
@@ -242,6 +247,7 @@ public class MeasurementCompletionService {
                 .findByIdForUpdate(measurementSession.getId())
                 .orElseThrow(() -> new MeasurementHandler(ErrorStatus.MEASUREMENT_NOT_FOUND));
         if (lockedMeasurementSession.isPhotoRecaptureInProgress()
+                || lockedMeasurementSession.isPressureRetryInProgress()
                 || lockedMeasurementSession.getStatus() == MeasurementStatus.COMPLETED
                 || lockedMeasurementSession.getStatus() == MeasurementStatus.FAILED) {
             return;

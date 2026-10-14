@@ -57,7 +57,7 @@ import static org.mockito.Mockito.verify;
 class ReportCommandServiceImplTest {
 
     @ParameterizedTest
-    @EnumSource(value = MeasurementStatus.class, names = {"WAITING_FOR_RECAPTURE", "READY_FOR_RECAPTURE", "CAPTURING_PHOTO"})
+    @EnumSource(value = MeasurementStatus.class, names = {"WAITING_FOR_RECAPTURE", "READY_FOR_RECAPTURE", "CAPTURING_PHOTO_ENVIRONMENT"})
     void recaptureRejectsReportWritesUntilCaptureValidationSucceeds(MeasurementStatus status) {
         MeasurementSession session = measurementSession(status);
         session.startPhotoRecapture();

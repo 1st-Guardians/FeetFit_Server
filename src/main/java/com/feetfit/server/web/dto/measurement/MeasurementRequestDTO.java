@@ -16,7 +16,7 @@ public class MeasurementRequestDTO {
     @Schema(description = "측정 세션 상태 수정 요청")
     public static class UpdateMeasurementStatusDTO {
 
-        @Schema(description = "측정 상태", example = "READY_FOR_PHOTO")
+        @Schema(description = "측정 상태", example = "READY_FOR_PHOTO_ENVIRONMENT")
         @NotNull(message = "status(측정 상태)는 필수입니다.")
         private MeasurementStatus status;
 
@@ -32,9 +32,18 @@ public class MeasurementRequestDTO {
         @Schema(description = "촬영 회차. 최초 촬영은 0이며 생략 가능, 재촬영 콜백에는 하드웨어 요청으로 받은 값을 반드시 전달합니다.", example = "1")
         private Integer photoCaptureAttempt;
 
+        @Schema(description = "압력 측정 회차. 최초 측정은 0이며 생략 가능, 재측정 콜백에는 하드웨어 요청으로 받은 값을 반드시 전달합니다.", example = "1")
+        private Integer pressureMeasurementAttempt;
+
         public UpdateMeasurementStatusDTO(MeasurementStatus status, Integer measurementDurationSec,
                                           MeasurementFailureReason failureReason, String failureDetail) {
             this(status, measurementDurationSec, failureReason, failureDetail, null);
+        }
+
+        public UpdateMeasurementStatusDTO(MeasurementStatus status, Integer measurementDurationSec,
+                                          MeasurementFailureReason failureReason, String failureDetail,
+                                          Integer photoCaptureAttempt) {
+            this(status, measurementDurationSec, failureReason, failureDetail, photoCaptureAttempt, null);
         }
 
         public UpdateMeasurementStatusDTO(MeasurementStatus status, Integer measurementDurationSec) {

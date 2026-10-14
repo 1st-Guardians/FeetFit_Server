@@ -515,6 +515,9 @@ public class ReportCommandServiceImpl implements ReportCommandService {
         if (measurementSession.isPhotoRecaptureInProgress()) {
             throw new MeasurementHandler(ErrorStatus.MEASUREMENT_INVALID_STATUS_TRANSITION);
         }
+        if (measurementSession.isPressureRetryInProgress()) {
+            throw new MeasurementHandler(ErrorStatus.MEASUREMENT_INVALID_STATUS_TRANSITION);
+        }
 
         return measurementSession;
     }
