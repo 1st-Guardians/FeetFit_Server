@@ -4,6 +4,8 @@ import com.feetfit.server.apiPayload.exception.handler.MeasurementHandler;
 import com.feetfit.server.domain.Device;
 import com.feetfit.server.domain.MeasurementSession;
 import com.feetfit.server.domain.User;
+import com.feetfit.server.domain.enums.ConnectionStatus;
+import com.feetfit.server.domain.enums.DeviceStatus;
 import com.feetfit.server.domain.enums.MeasurementStatus;
 import com.feetfit.server.domain.enums.SocialType;
 import com.feetfit.server.domain.enums.UserStatus;
@@ -27,6 +29,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willAnswer;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
@@ -50,6 +53,52 @@ class MeasurementCommandServiceImplTest {
 
     @InjectMocks
     private MeasurementCommandServiceImpl measurementCommandService;
+
+    @Test
+    void createMeasurementSession_requestsMeasurementStartAfterCommit() {
+        Device device = Device.builder()
+                .id(1L)
+                .deviceName("FeetFit-001")
+                .connectionStatus(ConnectionStatus.CONNECTED)
+                .status(DeviceStatus.REGISTERED)
+                .build();
+        User user = User.builder()
+                .id(1L)
+                .nickname("은서")
+                .socialId("12345")
+                .socialType(SocialType.KAKAO)
+                .status(UserStatus.ACTIVE)
+                .device(device)
+                .build();
+        MeasurementSession saved = MeasurementSession.builder()
+                .id(1L)
+                .user(user)
+                .device(device)
+                .measuredAt(LocalDateTime.now())
+                .build();
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(measurementSessionRepository.save(any(MeasurementSession.class))).willReturn(saved);
+
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            MeasurementResponseDTO.CreateMeasurementSessionResultDTO response =
+                    measurementCommandService.createMeasurementSession(1L, "Bearer test-token");
+
+            assertThat(response.getStatus()).isEqualTo(MeasurementStatus.WAITING_FOR_PHOTO_ENVIRONMENT);
+            verify(measurementCompletionService).initialize(saved);
+            verify(measurementSocketService).sendMeasurementStatusChanged(saved);
+            verify(measurementHardwareClient, never())
+                    .requestMeasurementStart(1L, "Bearer test-token");
+
+            TransactionSynchronizationManager.getSynchronizations()
+                    .forEach(TransactionSynchronization::afterCommit);
+
+            verify(measurementHardwareClient)
+                    .requestMeasurementStart(1L, "Bearer test-token");
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
 
     @Test
     void updateMeasurementStatus_toCompleted_delegatesPolicyAndReturnsUpdatedState() {
