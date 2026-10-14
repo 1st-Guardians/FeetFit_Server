@@ -67,7 +67,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
             MultipartFile rightFootImage) {
 
         MeasurementSession measurementSession = getValidatedReportWritableMeasurementSession(
-                userId, request.getMeasurementSessionId());
+                userId, request.getMeasurementSessionId(), false);
 
         ImageResponseDTO.UploadImageResultDTO leftImageUpload =
                 imageUploadService.upload("hallux-valgus-left", leftFootImage);
@@ -110,7 +110,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
             MultipartFile soleOriginalFootImage
     ) {
         MeasurementSession measurementSession = getValidatedReportWritableMeasurementSession(
-                userId, request.getMeasurementSessionId());
+                userId, request.getMeasurementSessionId(), false);
         LocalDateTime recordedAt = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
 
         ImageResponseDTO.UploadImageResultDTO suspiciousAreaMapUpload =
@@ -243,7 +243,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
             ReportRequestDTO.PlantarFootprintImageDTO request,
             MultipartFile leftPlantarFootprintImage,
             MultipartFile rightPlantarFootprintImage) {
-        MeasurementSession session = getValidatedReportWritableMeasurementSession(userId, request.getMeasurementSessionId());
+        MeasurementSession session = getValidatedReportWritableMeasurementSession(userId, request.getMeasurementSessionId(), false);
 
         ImageResponseDTO.UploadImageResultDTO leftUpload =
                 imageUploadService.upload("plantar-footprint-left", leftPlantarFootprintImage);
@@ -271,7 +271,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     @Override
     public ReportResponseDTO.DailyFootAnalysisResultDTO saveMetricsPart(
             Long userId, ReportRequestDTO.MetricsPartDTO request) {
-        MeasurementSession session = getValidatedReportWritableMeasurementSession(userId, request.getMeasurementSessionId());
+        MeasurementSession session = getValidatedReportWritableMeasurementSession(userId, request.getMeasurementSessionId(), false);
         DailyFootAnalysis analysis = findOrCreate(session);
         analysis.updateMetrics(request.getMeasuredLeftFootSizeMm(), request.getMeasuredRightFootSizeMm(),
                 request.getLeftFootWidthMm(), request.getRightFootWidthMm());
@@ -282,7 +282,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     @Override
     public ReportResponseDTO.DailyFootAnalysisResultDTO saveEnvironmentPart(
             Long userId, ReportRequestDTO.EnvironmentPartDTO request) {
-        MeasurementSession session = getValidatedReportWritableMeasurementSession(userId, request.getMeasurementSessionId());
+        MeasurementSession session = getValidatedReportWritableMeasurementSession(userId, request.getMeasurementSessionId(), false);
         DailyFootAnalysis analysis = findOrCreate(session);
         analysis.updateEnvironment(
                 request.getBeforeTemperatureCelsius(),
@@ -364,7 +364,9 @@ public class ReportCommandServiceImpl implements ReportCommandService {
             Long userId, ReportRequestDTO.SaveMetricResultDTO request) {
 
         MeasurementSession measurementSession = getValidatedReportWritableMeasurementSession(
-                userId, request.getMeasurementSessionId());
+                userId,
+                request.getMeasurementSessionId(),
+                request.getMetricType() == MetricType.PRESSURE_BALANCE);
 
         // Lock before inserting reports to serialize this user's concurrent analysis callbacks.
         userRepository.findByIdForUpdate(userId)
@@ -503,6 +505,13 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     }
 
     private MeasurementSession getValidatedReportWritableMeasurementSession(Long userId, Long measurementSessionId) {
+        return getValidatedReportWritableMeasurementSession(userId, measurementSessionId, true);
+    }
+
+    private MeasurementSession getValidatedReportWritableMeasurementSession(
+            Long userId,
+            Long measurementSessionId,
+            boolean rejectPressureRetry) {
         MeasurementSession measurementSession = lockMeasurementSession(measurementSessionId);
 
         if (!measurementSession.getUser().getId().equals(userId)) {
@@ -515,7 +524,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
         if (measurementSession.isPhotoRecaptureInProgress()) {
             throw new MeasurementHandler(ErrorStatus.MEASUREMENT_INVALID_STATUS_TRANSITION);
         }
-        if (measurementSession.isPressureRetryInProgress()) {
+        if (rejectPressureRetry && measurementSession.isPressureRetryInProgress()) {
             throw new MeasurementHandler(ErrorStatus.MEASUREMENT_INVALID_STATUS_TRANSITION);
         }
 
