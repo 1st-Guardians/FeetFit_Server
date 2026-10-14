@@ -56,12 +56,7 @@ public class MeasurementHardwareClient {
     }
 
     public void requestPressureMeasurement(Long measurementSessionId, String authorizationHeader) {
-        requestHardwareTask(
-                "pressure-measurement",
-                pressureMeasurementUrl,
-                measurementSessionId,
-                authorizationHeader
-        );
+        requestPressureMeasurement(measurementSessionId, authorizationHeader, 0);
     }
 
     public void requestPressureMeasurement(Long measurementSessionId, String authorizationHeader, int pressureMeasurementAttempt) {
