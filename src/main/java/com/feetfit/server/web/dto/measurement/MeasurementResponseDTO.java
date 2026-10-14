@@ -27,7 +27,7 @@ public class MeasurementResponseDTO {
         @Schema(description = "측정에 사용된 디바이스 ID", example = "1")
         private Long deviceId;
 
-        @Schema(description = "측정 상태", example = "WAITING_FOR_PHOTO")
+        @Schema(description = "측정 상태", example = "WAITING_FOR_PHOTO_ENVIRONMENT")
         private MeasurementStatus status;
 
         @Schema(description = "측정 시작 시각", example = "2026-05-20T09:00:00")
@@ -58,8 +58,14 @@ public class MeasurementResponseDTO {
         @Schema(description = "앞으로 시작할 수 있는 재촬영 횟수", example = "2")
         private int remainingPhotoRecaptures;
 
+        @Schema(description = "현재 압력 측정 회차. 최초 0, 재측정 1~3", example = "1")
+        private int pressureMeasurementAttempt;
+
+        @Schema(description = "앞으로 시작할 수 있는 압력 재측정 횟수", example = "2")
+        private int remainingPressureRetries;
+
         @JsonInclude(JsonInclude.Include.NON_NULL)
-        @Schema(description = "재촬영 대기 사유", example = "기준 ArUco 마커가 가려져 있습니다.")
+        @Schema(description = "재촬영 또는 압력 재측정 대기 사유", example = "기준 ArUco 마커가 가려져 있습니다.")
         private String detail;
 
         @Schema(description = "측정 소요 시간(초)", example = "180")
@@ -223,7 +229,7 @@ public class MeasurementResponseDTO {
         @Schema(description = "디바이스 고유 코드", example = "FeetFit-001")
         private String deviceName;
 
-        @Schema(description = "측정 상태", example = "WAITING_FOR_PHOTO")
+        @Schema(description = "측정 상태", example = "WAITING_FOR_PHOTO_ENVIRONMENT")
         private MeasurementStatus status;
 
         @Schema(description = "측정 상태별 사용자 안내 문구", example = "FSR 센서 판을 올리고 유리판 위에 올라와 주세요.")
@@ -233,7 +239,7 @@ public class MeasurementResponseDTO {
         private String message;
 
         @JsonInclude(JsonInclude.Include.NON_NULL)
-        @Schema(description = "재촬영 대기 사유", example = "기준 ArUco 마커가 가려져 있습니다.")
+        @Schema(description = "재촬영 또는 압력 재측정 대기 사유", example = "기준 ArUco 마커가 가려져 있습니다.")
         private String detail;
 
         @Schema(description = "현재 촬영 회차. 최초 0, 재촬영 1~3", example = "1")
@@ -241,6 +247,12 @@ public class MeasurementResponseDTO {
 
         @Schema(description = "앞으로 시작할 수 있는 재촬영 횟수", example = "2")
         private int remainingPhotoRecaptures;
+
+        @Schema(description = "현재 압력 측정 회차. 최초 0, 재측정 1~3", example = "1")
+        private int pressureMeasurementAttempt;
+
+        @Schema(description = "앞으로 시작할 수 있는 압력 재측정 횟수", example = "2")
+        private int remainingPressureRetries;
 
         @JsonInclude(JsonInclude.Include.NON_NULL)
         @Schema(description = "측정 실패 원인. eventType=MEASUREMENT_FAILED일 때 반환", example = "CAMERA_ERROR")

@@ -204,6 +204,32 @@ class MeasurementControllerTest {
                 .andExpect(jsonPath("$.result.detail").value("marker covered"));
     }
 
+    @Test
+    void pressureRetryCallbackBindsReasonDetailAndAttempt() throws Exception {
+        given(findLoginUser.getCurrentUserId()).willReturn(6L);
+        given(measurementCommandService.updateMeasurementStatus(eq(6L), eq(166L),
+                argThat(request -> request.getStatus() == MeasurementStatus.WAITING_FOR_PRESSURE_RETRY
+                        && request.getFailureReason() == MeasurementFailureReason.INVALID_PRESSURE_DATA
+                        && request.getFailureDetail().equals("pressure too low")
+                        && request.getPressureMeasurementAttempt().equals(1)), eq("Bearer test-token")))
+                .willReturn(MeasurementResponseDTO.UpdateMeasurementStatusResultDTO.builder()
+                        .id(166L).status(MeasurementStatus.WAITING_FOR_PRESSURE_RETRY).detail("pressure too low")
+                        .pressureMeasurementAttempt(1).remainingPressureRetries(2).build());
+
+        mockMvc.perform(patch("/api/measurement-sessions/166/status")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer test-token")
+                        .param("status", "WAITING_FOR_PRESSURE_RETRY")
+                        .param("failureReason", "INVALID_PRESSURE_DATA")
+                        .param("failureDetail", "pressure too low")
+                        .param("pressureMeasurementAttempt", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result.status").value("WAITING_FOR_PRESSURE_RETRY"))
+                .andExpect(jsonPath("$.result.failureReason").doesNotExist())
+                .andExpect(jsonPath("$.result.detail").value("pressure too low"))
+                .andExpect(jsonPath("$.result.pressureMeasurementAttempt").value(1))
+                .andExpect(jsonPath("$.result.remainingPressureRetries").value(2));
+    }
+
     private static MeasurementResponseDTO.TodayMeasurementStatusResultDTO todayMeasurementStatusResponse(
             Boolean hasTodayMeasurement
     ) {

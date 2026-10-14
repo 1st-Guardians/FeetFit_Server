@@ -38,17 +38,16 @@ public class MeasurementController {
                     새로운 측정 세션을 생성합니다.
                     Authorization 헤더에 Bearer accessToken이 필요합니다.
                     - 요청 바디는 없습니다.
-                    - 생성 시 status는 자동으로 WAITING_FOR_PHOTO로 설정됩니다.
+                    - 생성 시 status는 자동으로 WAITING_FOR_PHOTO_ENVIRONMENT로 설정됩니다.
                     - 로그인 사용자에게 연결된 디바이스로 측정을 시작합니다.
                     - WebSocket 연결 주소: /ws/measurements
                     - 측정 상태 구독 topic: /topic/measurements/{measurementSessionId}
                     - 사용자 단위 측정 상태 구독 topic: /topic/users/{userId}/measurements
                     - 응답의 webSocketTopic은 측정 세션별 구독 방 이름입니다.
-                    - 세션 생성 직후 WAITING_FOR_PHOTO 상태에서 하드웨어 측정 시작 API로 촬영 전 온습도 측정 요청을 보냅니다.
-                    - 하드웨어 요청이 수락되면 프론트가 구독 중인 WebSocket topic으로 WAITING_FOR_PHOTO 상태 메시지를 발행합니다.
+                    - 세션 생성 직후 프론트가 구독 중인 WebSocket topic으로 WAITING_FOR_PHOTO_ENVIRONMENT 상태 메시지를 발행합니다.
                     - 이후 하드웨어 작업 요청은 상태 업데이트 시점에 단계별 API로 전달합니다.
-                    - READY_FOR_PHOTO / READY_FOR_RECAPTURE: 하드웨어 사진 촬영 API 호출
-                    - READY_FOR_ENVIRONMENT: 하드웨어 온습도 측정 API 호출
+                    - READY_FOR_PHOTO_ENVIRONMENT / READY_FOR_RECAPTURE: 하드웨어 사진 촬영 API 호출
+                    - AI가 WAITING_FOR_ENVIRONMENT를 보내면 프론트 소켓 발행 없이 하드웨어 온습도 측정 API를 내부 호출합니다.
                     - READY_FOR_PRESSURE: 하드웨어 압력 측정 API 호출
                     - 하드웨어 요청에는 프론트가 보낸 Authorization 헤더 값을 그대로 전달합니다.
                     """
@@ -114,35 +113,40 @@ public class MeasurementController {
             description = """
                 측정 세션의 상태를 업데이트합니다.
                 Authorization 헤더에 Bearer accessToken이 필요합니다.
-                - WAITING_FOR_PHOTO: 사진 촬영 준비 대기. 세션 생성 직후 촬영 전 온습도 측정 요청이 함께 나가는 상태입니다.
-                - READY_FOR_PHOTO: 사진 촬영 준비 완료. 프론트가 사용자의 준비 완료 버튼 입력 후 보내는 상태입니다.
-                - CAPTURING_PHOTO: 발 사진 촬영 중. 사용자가 움직이지 않아야 하는 상태입니다.
+                - WAITING_FOR_PHOTO_ENVIRONMENT: 사진 촬영 및 온습도 측정 준비 대기. 세션 생성 직후 상태입니다.
+                - READY_FOR_PHOTO_ENVIRONMENT: 사진 촬영 및 온습도 측정 준비 완료. 프론트가 사용자의 준비 완료 버튼 입력 후 보내는 상태입니다.
+                - CAPTURING_PHOTO_ENVIRONMENT: 발 사진 촬영 및 온습도 측정 중. 사용자가 움직이지 않아야 하는 상태입니다.
                 - WAITING_FOR_RECAPTURE: 사용자의 발이 ArUco 마커를 가린 경우에만 사용하는 재촬영 대기 상태입니다. 소켓을 유지하며 요청의 failureDetail을 응답과 소켓의 detail로 전달합니다.
                 - READY_FOR_RECAPTURE: 재촬영 버튼 입력. 같은 세션으로 사진 촬영 API를 다시 호출합니다.
                 - 재촬영은 최초 촬영과 별도로 최대 3회입니다. 세 번째 재촬영도 실패하면 INVALID_CAPTURE_DATA 사유로 FAILED 처리합니다.
                 - 하드웨어/AI가 촬영 사전검증에서 발에 의한 마커 가림을 확인하면 FAILED 대신 WAITING_FOR_RECAPTURE를 보내야 합니다. 일반 INVALID_CAPTURE_DATA, 카메라 오류, AI 분석 오류는 자동 재촬영으로 변환하지 않습니다.
-                - 마커 가림 검증은 분석 대기열 등록/결과 저장 및 WAITING_FOR_ENVIRONMENT 상태 변경보다 먼저 완료해야 합니다.
+                - 마커 가림 검증은 분석 대기열 등록/결과 저장 및 WAITING_FOR_PRESSURE 상태 변경보다 먼저 완료해야 합니다.
                 - 재촬영 하드웨어 요청에는 photoCaptureAttempt(1~3)가 포함됩니다. 촬영 시작/성공/실패 콜백에서 같은 값을 전달해야 합니다.
                 - 최초 촬영의 photoCaptureAttempt는 0이며 생략 가능합니다. 재촬영 버튼에도 현재 회차를 전달하면 오래된 버튼 요청을 차단합니다.
-                - 재촬영 순서는 WAITING_FOR_RECAPTURE → READY_FOR_RECAPTURE → CAPTURING_PHOTO → WAITING_FOR_ENVIRONMENT입니다.
-                - WAITING_FOR_ENVIRONMENT: 사진 촬영 완료 후 온습도 측정을 위해 사용자가 기기 가까이 이동해야 하는 상태입니다.
-                - READY_FOR_ENVIRONMENT: 온습도 측정 준비 완료. 프론트가 사용자의 준비 완료 버튼 입력 후 보내는 상태입니다.
-                - MEASURING_ENVIRONMENT: 하드웨어가 온습도를 측정 중인 상태입니다.
-                - WAITING_FOR_PRESSURE: 온습도 측정 완료 후 압력 측정 준비 대기. 사용자가 내려와 FSR 센서 판을 내리고 다시 올라와야 하는 상태입니다.
+                - 재촬영 순서는 WAITING_FOR_RECAPTURE → READY_FOR_RECAPTURE → CAPTURING_PHOTO_ENVIRONMENT → WAITING_FOR_ENVIRONMENT(내부) → WAITING_FOR_PRESSURE입니다.
+                - WAITING_FOR_ENVIRONMENT: AI의 사진 검증 성공 콜백입니다. 백엔드는 프론트 소켓을 발행하지 않고 하드웨어 온습도 측정을 내부 호출합니다.
+                - WAITING_FOR_PRESSURE: 사진 촬영 및 온습도 측정 완료 후 압력 측정 준비 대기. 사용자가 내려와 FSR 센서 판을 내리고 다시 올라와야 하는 상태입니다.
                 - READY_FOR_PRESSURE: 압력 측정 준비 완료. 프론트가 사용자의 준비 완료 버튼 입력 후 보내는 상태입니다.
                 - MEASURING_PRESSURE: FSR 압력 측정 중. 사용자가 움직이지 않아야 하는 상태입니다.
+                - WAITING_FOR_PRESSURE_RETRY: 압력값 부족/비정상 등 다시 측정하면 복구 가능한 압력 실패 상태입니다. 소켓을 유지하며 요청의 failureDetail을 응답과 소켓의 detail로 전달합니다.
+                - READY_FOR_PRESSURE_RETRY: 압력 재측정 버튼 입력. 같은 세션으로 압력 측정 API를 다시 호출합니다.
+                - 압력 재측정은 최초 압력 측정과 별도로 최대 3회입니다. 세 번째 재측정도 실패하면 INVALID_PRESSURE_DATA 사유로 FAILED 처리합니다.
+                - 압력 재측정 하드웨어 요청에는 pressureMeasurementAttempt(1~3)가 포함됩니다. 압력 측정 시작/성공/실패 콜백에서 같은 값을 전달해야 합니다.
+                - 최초 압력 측정의 pressureMeasurementAttempt는 0이며 생략 가능합니다. 압력 재측정 버튼에도 현재 회차를 전달하면 오래된 버튼 요청을 차단합니다.
+                - 압력 재측정 순서는 WAITING_FOR_PRESSURE_RETRY → READY_FOR_PRESSURE_RETRY → MEASURING_PRESSURE → ANALYZING입니다.
                 - ANALYZING: 모든 측정 수집 완료 후 분석 중인 상태입니다.
                 - COMPLETED: 완료 조건 검사 요청입니다. 백엔드가 내부 완료 플래그를 확인해 모두 완료된 경우에만 최종 완료 처리합니다.
                 - FAILED: 측정 실패. 측정 중 오류가 발생한 상태입니다.
-                - READY_FOR_PHOTO 또는 READY_FOR_RECAPTURE 요청이 들어오면 백엔드는 트랜잭션 커밋 후 하드웨어 사진 촬영 API를 호출합니다.
-                - READY_FOR_ENVIRONMENT 요청이 들어오면 백엔드는 트랜잭션 커밋 후 하드웨어 온습도 측정 API를 호출합니다.
+                - READY_FOR_PHOTO_ENVIRONMENT 또는 READY_FOR_RECAPTURE 요청이 들어오면 백엔드는 트랜잭션 커밋 후 하드웨어 사진 촬영 API를 호출합니다.
+                - WAITING_FOR_ENVIRONMENT 요청이 들어오면 백엔드는 트랜잭션 커밋 후 하드웨어 온습도 측정 API를 호출하고, 이 상태는 프론트 WebSocket으로 발행하지 않습니다.
                 - READY_FOR_PRESSURE 요청이 들어오면 백엔드는 트랜잭션 커밋 후 하드웨어 압력 측정 API를 호출합니다.
+                - READY_FOR_PRESSURE_RETRY 요청이 들어오면 백엔드는 트랜잭션 커밋 후 하드웨어 압력 측정 API를 pressureMeasurementAttempt와 함께 다시 호출합니다.
                 - ANALYZING 요청은 분석 중 상태만 갱신하며 하드웨어 API를 호출하지 않습니다.
                 - 같은 상태가 중복으로 들어오면 같은 하드웨어 작업 요청은 다시 보내지 않습니다.
                 - FAILED 요청 시 failureReason, failureDetail을 함께 보내면 측정 세션에 실패 원인을 저장하고 failureMessage와 함께 WebSocket으로 프론트에 전달합니다.
-                - 상태 업데이트 성공 시 WebSocket으로 상태 메시지를 발행합니다. 단, COMPLETED 요청은 모든 완료 조건이 충족된 경우에만 완료 WebSocket을 발행합니다.
+                - 상태 업데이트 성공 시 WebSocket으로 상태 메시지를 발행합니다. 단, WAITING_FOR_ENVIRONMENT/READY_FOR_ENVIRONMENT/MEASURING_ENVIRONMENT는 내부 상태라 발행하지 않고, COMPLETED 요청은 모든 완료 조건이 충족된 경우에만 완료 WebSocket을 발행합니다.
                 - COMPLETED/FAILED 메시지의 shouldDisconnect=true를 받은 프론트는 측정 세션 topic 구독을 해제하거나 WebSocket 연결을 종료하면 됩니다.
-                - PENDING/MEASURING/TRANSFERRING은 기존 DB 데이터 호환용 상태입니다.
+                - WAITING_FOR_PHOTO/READY_FOR_PHOTO/CAPTURING_PHOTO/WAITING_FOR_ENVIRONMENT/READY_FOR_ENVIRONMENT/MEASURING_ENVIRONMENT/PENDING/MEASURING/TRANSFERRING은 기존 DB 데이터 호환용 상태입니다.
                 - 본인의 측정 세션 ID만 사용 가능합니다.
                 """
     )
@@ -174,7 +178,7 @@ public class MeasurementController {
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "409",
-                    description = "허용되지 않은 상태 전이(MEASUREMENT4008) 또는 촬영 회차 누락/불일치(MEASUREMENT4009)"
+                    description = "허용되지 않은 상태 전이(MEASUREMENT4008) 또는 촬영/압력 측정 회차 누락/불일치(MEASUREMENT4009)"
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "500",
@@ -185,7 +189,7 @@ public class MeasurementController {
     public ApiResponse<MeasurementResponseDTO.UpdateMeasurementStatusResultDTO> updateMeasurementStatus(
             @Parameter(hidden = true) HttpServletRequest httpRequest,
             @PathVariable Long measurementSessionId,
-            @Parameter(description = "측정 세션 상태", example = "READY_FOR_PHOTO")
+            @Parameter(description = "측정 세션 상태", example = "READY_FOR_PHOTO_ENVIRONMENT")
             @RequestParam MeasurementStatus status,
             @Parameter(description = "측정 소요 시간 (초). COMPLETED 시 생략하면 자동 계산", example = "180")
             @RequestParam(required = false) Integer measurementDurationSec,
@@ -194,7 +198,9 @@ public class MeasurementController {
             @Parameter(description = "실패 또는 재촬영 대기 사유", example = "발이 기준 ArUco 마커를 가리고 있습니다. 발 위치를 조정한 뒤 다시 촬영해 주세요.")
             @RequestParam(required = false) String failureDetail,
             @Parameter(description = "촬영 회차. 최초 0은 생략 가능. 재촬영 콜백은 하드웨어 요청으로 받은 회차를 반드시 전달", example = "1")
-            @RequestParam(required = false) Integer photoCaptureAttempt
+            @RequestParam(required = false) Integer photoCaptureAttempt,
+            @Parameter(description = "압력 측정 회차. 최초 0은 생략 가능. 압력 재측정 콜백은 하드웨어 요청으로 받은 회차를 반드시 전달", example = "1")
+            @RequestParam(required = false) Integer pressureMeasurementAttempt
     ) {
         Long userId = findLoginUser.getCurrentUserId();
         MeasurementRequestDTO.UpdateMeasurementStatusDTO request =
@@ -203,7 +209,8 @@ public class MeasurementController {
                         measurementDurationSec,
                         failureReason,
                         failureDetail,
-                        photoCaptureAttempt
+                        photoCaptureAttempt,
+                        pressureMeasurementAttempt
                 );
         String authorizationHeader = httpRequest.getHeader(HttpHeaders.AUTHORIZATION);
         return ApiResponse.onSuccess(measurementCommandService.updateMeasurementStatus(
@@ -385,7 +392,7 @@ public class MeasurementController {
               "result": {
                 "id": 1,
                 "deviceId": 1,
-                "status": "WAITING_FOR_PHOTO",
+                "status": "WAITING_FOR_PHOTO_ENVIRONMENT",
                 "measuredAt": "2026-05-20T01:55:09",
                 "createdAt": "2026-05-20T01:55:09",
                 "webSocketTopic": "/topic/measurements/1"
@@ -400,7 +407,7 @@ public class MeasurementController {
               "message": "성공입니다.",
               "result": {
                 "id": 1,
-                "status": "READY_FOR_PHOTO",
+                "status": "READY_FOR_PHOTO_ENVIRONMENT",
                 "measurementDurationSec": null,
                 "updatedAt": "2026-05-20T02:00:09"
               }

@@ -20,6 +20,7 @@ import java.util.List;
 public class MeasurementSession extends BaseEntity {
 
     public static final int MAX_PHOTO_RECAPTURES = 3;
+    public static final int MAX_PRESSURE_RETRIES = 3;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -36,7 +37,7 @@ public class MeasurementSession extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     @Builder.Default
-    private MeasurementStatus status = MeasurementStatus.WAITING_FOR_PHOTO;
+    private MeasurementStatus status = MeasurementStatus.WAITING_FOR_PHOTO_ENVIRONMENT;
 
     @Column
     private Integer measurementDurationSec;
@@ -58,6 +59,14 @@ public class MeasurementSession extends BaseEntity {
 
     @Column(columnDefinition = "TEXT")
     private String recaptureDetail;
+
+    @Builder.Default
+    @Column(nullable = false)
+    @ColumnDefault("0")
+    private int pressureRetryCount = 0;
+
+    @Column(columnDefinition = "TEXT")
+    private String pressureRetryDetail;
 
     @OneToMany(mappedBy = "measurementSession", cascade = CascadeType.ALL)
     @Builder.Default
@@ -128,13 +137,38 @@ public class MeasurementSession extends BaseEntity {
         this.recaptureDetail = null;
     }
 
+    public void requirePressureRetry(String detail) {
+        this.status = MeasurementStatus.WAITING_FOR_PRESSURE_RETRY;
+        this.pressureRetryDetail = detail;
+        clearFailure();
+    }
+
+    public void startPressureRetry() {
+        this.pressureRetryCount++;
+        this.pressureRetryDetail = null;
+    }
+
+    public void clearPressureRetryDetail() {
+        this.pressureRetryDetail = null;
+    }
+
     public int getRemainingPhotoRecaptures() {
         return Math.max(0, MAX_PHOTO_RECAPTURES - photoRecaptureCount);
+    }
+
+    public int getRemainingPressureRetries() {
+        return Math.max(0, MAX_PRESSURE_RETRIES - pressureRetryCount);
     }
 
     public boolean isPhotoRecaptureInProgress() {
         return status == MeasurementStatus.WAITING_FOR_RECAPTURE
                 || status == MeasurementStatus.READY_FOR_RECAPTURE
+                || (photoRecaptureCount > 0 && status == MeasurementStatus.CAPTURING_PHOTO_ENVIRONMENT)
                 || (photoRecaptureCount > 0 && status == MeasurementStatus.CAPTURING_PHOTO);
+    }
+
+    public boolean isPressureRetryInProgress() {
+        return status == MeasurementStatus.WAITING_FOR_PRESSURE_RETRY
+                || status == MeasurementStatus.READY_FOR_PRESSURE_RETRY;
     }
 }

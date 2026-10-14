@@ -21,9 +21,6 @@ public class MeasurementHardwareClient {
 
     private final WebClient webClient;
 
-    @Value("${hardware.measurement.start-url}")
-    private String measurementStartUrl;
-
     @Value("${hardware.measurement.photo-capture-url}")
     private String photoCaptureUrl;
 
@@ -42,10 +39,10 @@ public class MeasurementHardwareClient {
                 Map.of("measurementSessionId", measurementSessionId, "photoCaptureAttempt", photoCaptureAttempt));
     }
 
-    public void requestInitialEnvironmentMeasurement(Long measurementSessionId, String authorizationHeader) {
+    public void requestEnvironmentMeasurement(Long measurementSessionId, String authorizationHeader) {
         requestHardwareTask(
-                "measurement-start",
-                measurementStartUrl,
+                "environment-measurement",
+                environmentMeasurementUrl,
                 measurementSessionId,
                 authorizationHeader
         );
@@ -60,13 +57,9 @@ public class MeasurementHardwareClient {
         );
     }
 
-    public void requestEnvironmentMeasurement(Long measurementSessionId, String authorizationHeader) {
-        requestHardwareTask(
-                "environment-measurement",
-                environmentMeasurementUrl,
-                measurementSessionId,
-                authorizationHeader
-        );
+    public void requestPressureMeasurement(Long measurementSessionId, String authorizationHeader, int pressureMeasurementAttempt) {
+        requestHardwareTask("pressure-measurement", pressureMeasurementUrl, measurementSessionId, authorizationHeader,
+                Map.of("measurementSessionId", measurementSessionId, "pressureMeasurementAttempt", pressureMeasurementAttempt));
     }
 
     private void requestHardwareTask(String taskName, String requestUrl, Long measurementSessionId, String authorizationHeader) {

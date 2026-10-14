@@ -68,6 +68,12 @@ public class MeasurementAnalysisStatus extends BaseEntity {
         this.pressureCaptureCompleted = true;
     }
 
+    public void resetPressureAnalysisForRetry() {
+        this.pressureCaptureCompleted = false;
+        this.pressureAnalysisCompleted = false;
+        this.metricReportCompleted = false;
+    }
+
     public void completePressureAnalysis() {
         this.pressureAnalysisCompleted = true;
     }
