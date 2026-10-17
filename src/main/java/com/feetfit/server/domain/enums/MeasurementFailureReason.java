@@ -3,6 +3,7 @@ package com.feetfit.server.domain.enums;
 public enum MeasurementFailureReason {
     CAMERA_ERROR,
     INVALID_CAPTURE_DATA,
+    INVALID_PRESSURE_DATA,
     PRESSURE_SENSOR_ERROR,
     AI_SERVER_ERROR,
     HARDWARE_TIMEOUT,

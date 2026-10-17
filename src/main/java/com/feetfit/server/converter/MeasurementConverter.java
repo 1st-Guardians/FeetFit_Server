@@ -38,11 +38,20 @@ public class MeasurementConverter {
                 .measurementDurationSec(measurementSession.getMeasurementDurationSec())
                 .photoCaptureAttempt(measurementSession.getPhotoRecaptureCount())
                 .remainingPhotoRecaptures(measurementSession.getRemainingPhotoRecaptures())
-                .detail(measurementSession.getRecaptureDetail())
+                .pressureMeasurementAttempt(measurementSession.getPressureRetryCount())
+                .remainingPressureRetries(measurementSession.getRemainingPressureRetries())
+                .detail(resolveRetryDetail(measurementSession))
                 .failureReason(measurementSession.getFailureReason())
                 .failureMessage(MeasurementFailureMessageResolver.resolve(measurementSession.getFailureReason()))
                 .failureDetail(measurementSession.getFailureDetail())
                 .updatedAt(measurementSession.getUpdatedAt())
                 .build();
+    }
+
+    private static String resolveRetryDetail(MeasurementSession measurementSession) {
+        if (measurementSession.getPressureRetryDetail() != null) {
+            return measurementSession.getPressureRetryDetail();
+        }
+        return measurementSession.getRecaptureDetail();
     }
 }

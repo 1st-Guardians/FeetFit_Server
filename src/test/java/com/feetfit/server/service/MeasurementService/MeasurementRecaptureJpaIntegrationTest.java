@@ -42,16 +42,16 @@ class MeasurementRecaptureJpaIntegrationTest {
     void setUp() {
         User user = em.persist(User.builder().nickname("recapture-user")
                 .socialType(SocialType.KAKAO).socialId(UUID.randomUUID().toString()).build());
-        Device device = em.persist(Device.builder().deviceName("recapture-device").build());
+        Device device = em.persist(Device.builder().deviceName("recapture-device-" + UUID.randomUUID()).build());
         MeasurementSession session = em.persistAndFlush(MeasurementSession.builder().user(user).device(device)
-                .measuredAt(LocalDateTime.now()).status(MeasurementStatus.CAPTURING_PHOTO).build());
+                .measuredAt(LocalDateTime.now()).status(MeasurementStatus.CAPTURING_PHOTO_ENVIRONMENT).build());
         userId = user.getId();
         sessionId = session.getId();
         em.clear();
     }
 
     @Test
-    void retryCounterAndWaitingDetailSurviveReloadAndCommittedRetryDispatchesPhoto() {
+    void retryCounterAndWaitingDetailSurviveReloadAndCommittedRetryDispatchesPhotoCapture() {
         update(MeasurementStatus.WAITING_FOR_RECAPTURE, 0);
         em.flush();
         em.clear();

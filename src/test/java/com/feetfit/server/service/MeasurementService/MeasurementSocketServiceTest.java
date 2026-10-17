@@ -10,6 +10,8 @@ import com.feetfit.server.domain.enums.UserStatus;
 import com.feetfit.server.web.dto.measurement.MeasurementResponseDTO;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -139,7 +141,7 @@ class MeasurementSocketServiceTest {
     @Test
     void successfulSummaryEmitsFinalCompletionWithGptSource() {
         var session = MeasurementSession.builder().id(43L).user(user()).device(device())
-                .status(MeasurementStatus.COMPLETED).build();
+                .status(MeasurementStatus.COMPLETED).pressureRetryCount(1).photoRecaptureCount(1).build();
 
         measurementSocketService.sendMeasurementRecommendationFinished(session, 8L, true);
 
@@ -150,7 +152,32 @@ class MeasurementSocketServiceTest {
         assertThat(message.getReportId()).isEqualTo(8L);
         assertThat(message.getDrugRecommendationStatus()).isEqualTo("COMPLETED");
         assertThat(message.getDrugRecommendationSummarySource()).isEqualTo("GPT");
+        assertThat(message.getPressureMeasurementAttempt()).isEqualTo(1);
+        assertThat(message.getRemainingPressureRetries()).isEqualTo(2);
+        assertThat(message.getPhotoCaptureAttempt()).isEqualTo(1);
         assertThat(message.getShouldDisconnect()).isTrue();
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = MeasurementStatus.class, names = {"WAITING_FOR_PRESSURE_RETRY", "READY_FOR_PRESSURE_RETRY"})
+    void pressureRetryKeepsAttemptDetailAndOpenSocketAfterRecommendationMerge(MeasurementStatus status) {
+        var session = MeasurementSession.builder().id(43L).user(user()).device(device())
+                .status(status).pressureRetryCount(1).pressureRetryDetail("왼발 압력값이 부족합니다.")
+                .recaptureDetail("Previous photo detail").build();
+
+        measurementSocketService.sendMeasurementStatusChanged(session);
+
+        var captor = ArgumentCaptor.forClass(MeasurementResponseDTO.MeasurementSocketMessageDTO.class);
+        verify(messagingTemplate).convertAndSend(eq("/topic/measurements/43"), captor.capture());
+        var message = captor.getValue();
+        assertThat(message.getEventType()).isEqualTo("MEASUREMENT_STATUS_CHANGED");
+        assertThat(message.getStatus()).isEqualTo(status);
+        assertThat(message.getMessage()).contains("압력");
+        assertThat(message.getDetail()).isEqualTo("왼발 압력값이 부족합니다.");
+        assertThat(message.getPressureMeasurementAttempt()).isEqualTo(1);
+        assertThat(message.getRemainingPressureRetries()).isEqualTo(2);
+        assertThat(message.getShouldDisconnect()).isFalse();
+        assertThat(message.getDrugRecommendationStatus()).isNull();
     }
 
     @Test

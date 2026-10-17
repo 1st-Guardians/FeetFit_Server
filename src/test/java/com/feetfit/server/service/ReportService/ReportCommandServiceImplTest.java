@@ -57,7 +57,7 @@ import static org.mockito.Mockito.verify;
 class ReportCommandServiceImplTest {
 
     @ParameterizedTest
-    @EnumSource(value = MeasurementStatus.class, names = {"WAITING_FOR_RECAPTURE", "READY_FOR_RECAPTURE", "CAPTURING_PHOTO"})
+    @EnumSource(value = MeasurementStatus.class, names = {"WAITING_FOR_RECAPTURE", "READY_FOR_RECAPTURE", "CAPTURING_PHOTO_ENVIRONMENT"})
     void recaptureRejectsReportWritesUntilCaptureValidationSucceeds(MeasurementStatus status) {
         MeasurementSession session = measurementSession(status);
         session.startPhotoRecapture();
@@ -144,6 +144,42 @@ class ReportCommandServiceImplTest {
     }
 
     @Test
+    void saveEnvironmentPart_whenPressureRetryInProgress_savesEnvironment() {
+        MeasurementSession measurementSession = measurementSession(MeasurementStatus.READY_FOR_PRESSURE_RETRY);
+        DailyFootAnalysis analysis = DailyFootAnalysis.builder()
+                .id(1L)
+                .measurementSession(measurementSession)
+                .build();
+        ReflectionTestUtils.setField(analysis, "createdAt", LocalDateTime.of(2026, 5, 20, 9, 0));
+        ReflectionTestUtils.setField(analysis, "updatedAt", LocalDateTime.of(2026, 5, 20, 9, 0));
+
+        given(measurementSessionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(measurementSession));
+        given(dailyFootAnalysisRepository.findByMeasurementSessionId(1L)).willReturn(Optional.of(analysis));
+        given(userRepository.findById(1L)).willReturn(Optional.of(user()));
+        given(dailyFootAnalysisRepository.findTopByMeasurementSessionUserIdAndCreatedAtLessThanOrderByCreatedAtDesc(
+                eq(1L), any(LocalDateTime.class)
+        )).willReturn(Optional.empty());
+
+        ReportResponseDTO.DailyFootAnalysisResultDTO response =
+                reportCommandService.saveEnvironmentPart(1L, environmentRequest());
+
+        assertThat(response.getAvgTemperatureCelsius()).isEqualTo(31.0f);
+        verify(measurementCompletionService).refreshEnvironmentAnalysisCompleted(measurementSession);
+    }
+
+    @Test
+    void saveBalancePart_whenPressureRetryInProgress_rejectsPressureAnalysisWrite() {
+        given(measurementSessionRepository.findByIdForUpdate(1L))
+                .willReturn(Optional.of(measurementSession(MeasurementStatus.READY_FOR_PRESSURE_RETRY)));
+
+        assertThatThrownBy(() -> reportCommandService.saveBalancePart(1L, balanceRequest()))
+                .isInstanceOf(MeasurementHandler.class)
+                .satisfies(error -> assertThat(((MeasurementHandler) error).getCode()).isEqualTo(
+                        com.feetfit.server.apiPayload.code.status.ErrorStatus.MEASUREMENT_INVALID_STATUS_TRANSITION));
+        org.mockito.Mockito.verifyNoInteractions(dailyFootAnalysisRepository, measurementCompletionService);
+    }
+
+    @Test
     void saveTinaPedisAnalysis_completedOwnMeasurement_savesAnalysis() {
         given(measurementSessionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(measurementSession(MeasurementStatus.TRANSFERRING)));
         given(tinaPedisAnalysisRepository.findByMeasurementSessionId(1L)).willReturn(Optional.empty());
@@ -170,6 +206,28 @@ class ReportCommandServiceImplTest {
         assertThat(response.getSoleSuspiciousAreaMapImageUrl()).isEqualTo("https://example.com/tina-pedis/sole-map.png");
         assertThat(response.getSoleOriginalFootImageUrl()).isEqualTo("https://example.com/tina-pedis/sole-original.png");
         assertThat(response.getRecordedAt()).isNotNull();
+    }
+
+    @Test
+    void saveTinaPedisAnalysis_whenPressureRetryInProgress_savesPhotoAnalysis() {
+        MeasurementSession measurementSession = measurementSession(MeasurementStatus.READY_FOR_PRESSURE_RETRY);
+        given(measurementSessionRepository.findByIdForUpdate(1L)).willReturn(Optional.of(measurementSession));
+        given(tinaPedisAnalysisRepository.findByMeasurementSessionId(1L)).willReturn(Optional.empty());
+        givenImageUploads();
+        given(tinaPedisAnalysisRepository.save(any(TinaPedisAnalysis.class)))
+                .willAnswer(invocation -> invocation.getArgument(0));
+        given(tinaPedisAnalysisRepository
+                .findTopByMeasurementSessionUserIdAndRecordedAtLessThanOrderByRecordedAtDesc(
+                        eq(1L),
+                        any(LocalDateTime.class)
+                ))
+                .willReturn(Optional.empty());
+
+        ReportResponseDTO.TinaPedisAnalysisResultDTO response =
+                reportCommandService.saveTinaPedisAnalysis(1L, tinaPedisRequest(), anyImage(), anyImage(), anyImage(), anyImage());
+
+        assertThat(response.getMeasurementSessionId()).isEqualTo(1L);
+        verify(measurementCompletionService).refreshPhotoAnalysisCompleted(measurementSession);
     }
 
     @Test
@@ -325,6 +383,14 @@ class ReportCommandServiceImplTest {
         ReflectionTestUtils.setField(request, "beforeHumidityPercent", 45.0f);
         ReflectionTestUtils.setField(request, "afterTemperatureCelsius", 34.0f);
         ReflectionTestUtils.setField(request, "afterHumidityPercent", 55.0f);
+        return request;
+    }
+
+    private static ReportRequestDTO.BalancePartDTO balanceRequest() {
+        ReportRequestDTO.BalancePartDTO request = new ReportRequestDTO.BalancePartDTO();
+        ReflectionTestUtils.setField(request, "measurementSessionId", 1L);
+        ReflectionTestUtils.setField(request, "balanceScore", 65.0f);
+        ReflectionTestUtils.setField(request, "balanceComment", "압력 균형 확인이 필요합니다.");
         return request;
     }
 

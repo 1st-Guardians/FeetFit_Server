@@ -87,10 +87,24 @@ class MeasurementCompletionServiceTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value = MeasurementStatus.class, names = {"WAITING_FOR_RECAPTURE", "READY_FOR_RECAPTURE", "CAPTURING_PHOTO"})
+    @EnumSource(value = MeasurementStatus.class, names = {"WAITING_FOR_RECAPTURE", "READY_FOR_RECAPTURE", "CAPTURING_PHOTO_ENVIRONMENT"})
     void recaptureCannotCompleteEvenWhenOldFlagsWereReady(MeasurementStatus status) {
         MeasurementSession session = session(status);
         session.startPhotoRecapture();
+        when(measurementSessionRepository.findByIdForUpdate(21L)).thenReturn(Optional.of(session));
+        when(measurementAnalysisStatusRepository.findByMeasurementSessionIdForUpdate(21L))
+                .thenReturn(Optional.of(readyStatus(session)));
+
+        service.completeMeasurementIfReady(session, 180);
+
+        assertThat(session.getStatus()).isEqualTo(status);
+        verifyNoInteractions(applicationEventPublisher, measurementSocketService, measurementCareTipsGenerationService);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = MeasurementStatus.class, names = {"WAITING_FOR_PRESSURE_RETRY", "READY_FOR_PRESSURE_RETRY"})
+    void pressureRetryCannotCompleteEvenWhenOldFlagsWereReady(MeasurementStatus status) {
+        MeasurementSession session = session(status);
         when(measurementSessionRepository.findByIdForUpdate(21L)).thenReturn(Optional.of(session));
         when(measurementAnalysisStatusRepository.findByMeasurementSessionIdForUpdate(21L))
                 .thenReturn(Optional.of(readyStatus(session)));
@@ -117,6 +131,24 @@ class MeasurementCompletionServiceTest {
         assertThat(flags.isPressureAnalysisCompleted()).isTrue();
         assertThat(flags.isEnvironmentAnalysisCompleted()).isTrue();
     }
+
+    @Test
+    void pressureRetryResetsPressureAndMetricFlagsButKeepsOtherMeasurements() {
+        MeasurementSession session = session(MeasurementStatus.WAITING_FOR_PRESSURE_RETRY);
+        MeasurementAnalysisStatus flags = readyStatus(session);
+        when(measurementSessionRepository.findByIdForUpdate(21L)).thenReturn(Optional.of(session));
+        when(measurementAnalysisStatusRepository.findByMeasurementSessionIdForUpdate(21L)).thenReturn(Optional.of(flags));
+
+        service.resetPressureAnalysisForRetry(session);
+
+        assertThat(flags.isPhotoCaptureCompleted()).isTrue();
+        assertThat(flags.isPhotoAnalysisCompleted()).isTrue();
+        assertThat(flags.isPressureCaptureCompleted()).isFalse();
+        assertThat(flags.isPressureAnalysisCompleted()).isFalse();
+        assertThat(flags.isMetricReportCompleted()).isFalse();
+        assertThat(flags.isEnvironmentAnalysisCompleted()).isTrue();
+    }
+
 
     private static MeasurementAnalysisStatus readyStatus(MeasurementSession session) {
         return MeasurementAnalysisStatus.builder()

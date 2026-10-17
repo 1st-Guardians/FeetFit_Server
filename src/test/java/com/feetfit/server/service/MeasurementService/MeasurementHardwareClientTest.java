@@ -28,7 +28,10 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class MeasurementHardwareClientTest {
+    private static final String START_URL = "https://hardware.example/measurement/start";
     private static final String PHOTO_URL = "https://hardware.example/measurement/photo/start";
+    private static final String ENVIRONMENT_URL = "https://hardware.example/measurement/environment/start";
+    private static final String PRESSURE_URL = "https://hardware.example/measurement/pressure/start";
     private final AtomicReference<ClientRequest> sentRequest = new AtomicReference<>();
     private final ObjectMapper objectMapper = new ObjectMapper();
     private MeasurementHardwareClient client;
@@ -39,33 +42,72 @@ class MeasurementHardwareClientTest {
             sentRequest.set(request);
             return Mono.just(ClientResponse.create(HttpStatus.ACCEPTED).build());
         }).build());
+        ReflectionTestUtils.setField(client, "measurementStartUrl", START_URL);
         ReflectionTestUtils.setField(client, "photoCaptureUrl", PHOTO_URL);
+        ReflectionTestUtils.setField(client, "environmentMeasurementUrl", ENVIRONMENT_URL);
+        ReflectionTestUtils.setField(client, "pressureMeasurementUrl", PRESSURE_URL);
     }
 
     @Test
-    void initialCaptureKeepsExistingPayload() throws Exception {
+    void measurementStartKeepsExistingPayload() throws Exception {
+        client.requestMeasurementStart(79L, "Bearer test");
+
+        assertHardwareRequest(START_URL);
+        assertThat(objectMapper.readTree(serializedBody(sentRequest.get())))
+                .isEqualTo(objectMapper.readTree("{\"measurementSessionId\":79}"));
+    }
+
+    @Test
+    void photoCaptureKeepsExistingPayload() throws Exception {
         client.requestPhotoCapture(79L, "Bearer test");
 
-        assertPhotoRequest();
+        assertHardwareRequest(PHOTO_URL);
         assertThat(objectMapper.readTree(serializedBody(sentRequest.get())))
                 .isEqualTo(objectMapper.readTree("{\"measurementSessionId\":79}"));
     }
 
     @ParameterizedTest
     @ValueSource(ints = {1, 2, 3})
-    void recaptureUsesSameEndpointAndSessionWithCurrentAttempt(int attempt) throws Exception {
+    void recaptureUsesPhotoEndpointAndSessionWithCurrentAttempt(int attempt) throws Exception {
         client.requestPhotoCapture(79L, "Bearer test", attempt);
 
-        assertPhotoRequest();
+        assertHardwareRequest(PHOTO_URL);
         assertThat(objectMapper.readTree(serializedBody(sentRequest.get())))
                 .isEqualTo(objectMapper.readTree("{\"measurementSessionId\":79,\"photoCaptureAttempt\":" + attempt + "}"));
     }
 
-    private void assertPhotoRequest() {
+    @Test
+    void environmentMeasurementKeepsExistingPayload() throws Exception {
+        client.requestEnvironmentMeasurement(79L, "Bearer test");
+
+        assertHardwareRequest(ENVIRONMENT_URL);
+        assertThat(objectMapper.readTree(serializedBody(sentRequest.get())))
+                .isEqualTo(objectMapper.readTree("{\"measurementSessionId\":79}"));
+    }
+
+    @Test
+    void initialPressureMeasurementUsesDefaultAttempt() throws Exception {
+        client.requestPressureMeasurement(79L, "Bearer test");
+
+        assertHardwareRequest(PRESSURE_URL);
+        assertThat(objectMapper.readTree(serializedBody(sentRequest.get())))
+                .isEqualTo(objectMapper.readTree("{\"measurementSessionId\":79,\"pressureMeasurementAttempt\":0}"));
+    }
+
+    @Test
+    void pressureRetryUsesPressureEndpointAndSessionWithCurrentAttempt() throws Exception {
+        client.requestPressureMeasurement(79L, "Bearer test", 2);
+
+        assertHardwareRequest(PRESSURE_URL);
+        assertThat(objectMapper.readTree(serializedBody(sentRequest.get())))
+                .isEqualTo(objectMapper.readTree("{\"measurementSessionId\":79,\"pressureMeasurementAttempt\":2}"));
+    }
+
+    private void assertHardwareRequest(String expectedUrl) {
         ClientRequest request = sentRequest.get();
         assertThat(request).isNotNull();
         assertThat(request.method()).isEqualTo(HttpMethod.POST);
-        assertThat(request.url().toString()).isEqualTo(PHOTO_URL);
+        assertThat(request.url().toString()).isEqualTo(expectedUrl);
         assertThat(request.headers().getFirst(HttpHeaders.AUTHORIZATION)).isEqualTo("Bearer test");
         assertThat(request.headers().getContentType()).isEqualTo(MediaType.APPLICATION_JSON);
     }

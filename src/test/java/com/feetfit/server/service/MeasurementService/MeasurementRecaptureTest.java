@@ -46,7 +46,7 @@ class MeasurementRecaptureTest {
     @BeforeEach
     void setUp() {
         session = MeasurementSession.builder().id(79L).user(User.builder().id(6L).build())
-                .status(CAPTURING_PHOTO).measuredAt(LocalDateTime.now().minusMinutes(2)).build();
+                .status(CAPTURING_PHOTO_ENVIRONMENT).measuredAt(LocalDateTime.now().minusMinutes(2)).build();
         when(sessions.findByIdForUpdate(79L)).thenReturn(Optional.of(session));
         TransactionSynchronizationManager.initSynchronization();
     }
@@ -72,7 +72,7 @@ class MeasurementRecaptureTest {
     }
 
     @Test
-    void readyRecaptureIncrementsOnceAndDispatchesOnlyPhotoAfterCommit() {
+    void readyRecaptureIncrementsOnceAndDispatchesOnlyPhotoCaptureAfterCommit() {
         update(WAITING_FOR_RECAPTURE, null, 0);
         var result = update(READY_FOR_RECAPTURE, null, null);
         update(READY_FOR_RECAPTURE, null, null);
@@ -103,7 +103,7 @@ class MeasurementRecaptureTest {
         update(WAITING_FOR_RECAPTURE, null, 0);
         for (int attempt = 1; attempt <= 3; attempt++) {
             update(READY_FOR_RECAPTURE, null, attempt - 1);
-            update(CAPTURING_PHOTO, null, attempt);
+            update(CAPTURING_PHOTO_ENVIRONMENT, null, attempt);
             var result = update(WAITING_FOR_RECAPTURE, null, attempt);
             assertThat(result.getPhotoCaptureAttempt()).isEqualTo(attempt);
             assertThat(result.getStatus()).isEqualTo(attempt < 3 ? WAITING_FOR_RECAPTURE : FAILED);
@@ -121,34 +121,51 @@ class MeasurementRecaptureTest {
     }
 
     @Test
-    void successfulRecaptureContinuesToEnvironmentInSameSession() {
+    void successfulRecaptureRequestsEnvironmentBeforePressure() {
         update(WAITING_FOR_RECAPTURE, null, 0);
         update(READY_FOR_RECAPTURE, null, 0);
-        update(CAPTURING_PHOTO, null, 1);
+        update(CAPTURING_PHOTO_ENVIRONMENT, null, 1);
         var result = update(WAITING_FOR_ENVIRONMENT, null, 1);
 
         assertThat(result.getId()).isEqualTo(79L);
         assertThat(result.getStatus()).isEqualTo(WAITING_FOR_ENVIRONMENT);
         assertThat(result.getFailureReason()).isNull();
         verify(completion).refreshCaptureCompletedByStatus(session, WAITING_FOR_ENVIRONMENT);
+
+        commitCallbacks();
+        verify(hardware).requestPhotoCapture(79L, "Bearer test", 1);
+        verify(hardware).requestEnvironmentMeasurement(79L, "Bearer test");
+
+        result = update(WAITING_FOR_PRESSURE, null, null);
+        assertThat(result.getStatus()).isEqualTo(WAITING_FOR_PRESSURE);
+    }
+
+    @Test
+    void successfulRetryPhotoCannotSkipInternalEnvironmentStep() {
+        update(WAITING_FOR_RECAPTURE, null, 0);
+        update(READY_FOR_RECAPTURE, null, 0);
+        update(CAPTURING_PHOTO_ENVIRONMENT, null, 1);
+
+        assertError(() -> update(WAITING_FOR_PRESSURE, null, null),
+                ErrorStatus.MEASUREMENT_INVALID_STATUS_TRANSITION);
     }
 
     @ParameterizedTest
-    @EnumSource(value = MeasurementStatus.class, names = {"CAPTURING_PHOTO", "WAITING_FOR_ENVIRONMENT", "WAITING_FOR_RECAPTURE", "FAILED"})
+    @EnumSource(value = MeasurementStatus.class, names = {"CAPTURING_PHOTO_ENVIRONMENT", "WAITING_FOR_ENVIRONMENT", "WAITING_FOR_RECAPTURE", "FAILED"})
     void staleAndMissingRetryCallbackAttemptsAreRejected(MeasurementStatus status) {
         update(WAITING_FOR_RECAPTURE, null, 0);
         update(READY_FOR_RECAPTURE, null, 0);
-        update(CAPTURING_PHOTO, null, 1);
+        update(CAPTURING_PHOTO_ENVIRONMENT, null, 1);
         for (Integer attempt : new Integer[]{null, 0, 2}) {
             assertError(() -> update(status, MeasurementFailureReason.INVALID_CAPTURE_DATA, attempt),
                     ErrorStatus.MEASUREMENT_STALE_PHOTO_CAPTURE);
         }
-        assertThat(session.getStatus()).isEqualTo(CAPTURING_PHOTO);
+        assertThat(session.getStatus()).isEqualTo(CAPTURING_PHOTO_ENVIRONMENT);
         assertThat(session.getPhotoRecaptureCount()).isOne();
     }
 
     @ParameterizedTest
-    @EnumSource(value = MeasurementStatus.class, names = {"CAPTURING_PHOTO", "READY_FOR_PHOTO", "WAITING_FOR_ENVIRONMENT", "ANALYZING", "COMPLETED"})
+    @EnumSource(value = MeasurementStatus.class, names = {"CAPTURING_PHOTO_ENVIRONMENT", "READY_FOR_PHOTO_ENVIRONMENT", "WAITING_FOR_ENVIRONMENT", "WAITING_FOR_PRESSURE", "ANALYZING", "COMPLETED"})
     void cannotSkipRetryReadiness(MeasurementStatus next) {
         update(WAITING_FOR_RECAPTURE, null, 0);
         assertError(() -> update(next, null, 0), ErrorStatus.MEASUREMENT_INVALID_STATUS_TRANSITION);
@@ -159,12 +176,13 @@ class MeasurementRecaptureTest {
     void oldStartCallbackCannotRewindSuccessfulRecapture() {
         update(WAITING_FOR_RECAPTURE, null, 0);
         update(READY_FOR_RECAPTURE, null, 0);
-        update(CAPTURING_PHOTO, null, 1);
+        update(CAPTURING_PHOTO_ENVIRONMENT, null, 1);
         update(WAITING_FOR_ENVIRONMENT, null, 1);
+        update(WAITING_FOR_PRESSURE, null, null);
 
-        assertError(() -> update(CAPTURING_PHOTO, null, 1), ErrorStatus.MEASUREMENT_INVALID_STATUS_TRANSITION);
+        assertError(() -> update(CAPTURING_PHOTO_ENVIRONMENT, null, 1), ErrorStatus.MEASUREMENT_INVALID_STATUS_TRANSITION);
         assertError(() -> update(WAITING_FOR_RECAPTURE, null, 1), ErrorStatus.MEASUREMENT_INVALID_STATUS_TRANSITION);
-        assertThat(session.getStatus()).isEqualTo(WAITING_FOR_ENVIRONMENT);
+        assertThat(session.getStatus()).isEqualTo(WAITING_FOR_PRESSURE);
     }
 
     @ParameterizedTest
@@ -179,7 +197,7 @@ class MeasurementRecaptureTest {
     void unrelatedFailureReasonCannotBeReportedAsMarkerOcclusion() {
         assertError(() -> update(WAITING_FOR_RECAPTURE, MeasurementFailureReason.CAMERA_ERROR, null),
                 ErrorStatus._BAD_REQUEST);
-        assertThat(session.getStatus()).isEqualTo(CAPTURING_PHOTO);
+        assertThat(session.getStatus()).isEqualTo(CAPTURING_PHOTO_ENVIRONMENT);
         verifyNoInteractions(socket, completion, hardware);
     }
 
@@ -197,7 +215,7 @@ class MeasurementRecaptureTest {
         assertError(() -> service.updateMeasurementStatus(7L, 79L,
                 new MeasurementRequestDTO.UpdateMeasurementStatusDTO(WAITING_FOR_RECAPTURE, null), "Bearer test"),
                 ErrorStatus.MEASUREMENT_FORBIDDEN);
-        assertThat(session.getStatus()).isEqualTo(CAPTURING_PHOTO);
+        assertThat(session.getStatus()).isEqualTo(CAPTURING_PHOTO_ENVIRONMENT);
         verifyNoInteractions(hardware, socket, completion);
     }
 
