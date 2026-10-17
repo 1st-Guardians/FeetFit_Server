@@ -119,6 +119,60 @@ class MeasurementSocketServiceTest {
     }
 
     @Test
+    void savedMeasurementStaysAnalyzingOnSocketUntilRecommendationIsReady() {
+        var session = MeasurementSession.builder().id(43L).user(user()).device(device())
+                .status(MeasurementStatus.COMPLETED).build();
+
+        measurementSocketService.sendMeasurementRecommendationPending(session);
+
+        var captor = ArgumentCaptor.forClass(MeasurementResponseDTO.MeasurementSocketMessageDTO.class);
+        verify(messagingTemplate).convertAndSend(eq("/topic/measurements/43"), captor.capture());
+        var message = captor.getValue();
+        assertThat(session.getStatus()).isEqualTo(MeasurementStatus.COMPLETED);
+        assertThat(message.getStatus()).isEqualTo(MeasurementStatus.ANALYZING);
+        assertThat(message.getEventType()).isEqualTo("MEASUREMENT_STATUS_CHANGED");
+        assertThat(message.getShouldDisconnect()).isFalse();
+        assertThat(message.getDrugRecommendationStatus()).isEqualTo("PENDING");
+        assertThat(message.getMessage()).contains("약 추천 안내 문구를 준비");
+    }
+
+    @Test
+    void successfulSummaryEmitsFinalCompletionWithGptSource() {
+        var session = MeasurementSession.builder().id(43L).user(user()).device(device())
+                .status(MeasurementStatus.COMPLETED).build();
+
+        measurementSocketService.sendMeasurementRecommendationFinished(session, 8L, true);
+
+        var captor = ArgumentCaptor.forClass(MeasurementResponseDTO.MeasurementSocketMessageDTO.class);
+        verify(messagingTemplate).convertAndSend(eq("/topic/measurements/43"), captor.capture());
+        var message = captor.getValue();
+        assertThat(message.getEventType()).isEqualTo("MEASUREMENT_COMPLETED");
+        assertThat(message.getReportId()).isEqualTo(8L);
+        assertThat(message.getDrugRecommendationStatus()).isEqualTo("COMPLETED");
+        assertThat(message.getDrugRecommendationSummarySource()).isEqualTo("GPT");
+        assertThat(message.getShouldDisconnect()).isTrue();
+    }
+
+    @Test
+    void failedSummaryEmitsWarningWithoutClaimingGptSuccessOrLosingReport() {
+        var session = MeasurementSession.builder().id(43L).user(user()).device(device())
+                .status(MeasurementStatus.COMPLETED).build();
+
+        measurementSocketService.sendMeasurementRecommendationFinished(session, 8L, false);
+
+        var captor = ArgumentCaptor.forClass(MeasurementResponseDTO.MeasurementSocketMessageDTO.class);
+        verify(messagingTemplate).convertAndSend(eq("/topic/measurements/43"), captor.capture());
+        var message = captor.getValue();
+        assertThat(message.getEventType()).isEqualTo("MEASUREMENT_COMPLETED_WITH_WARNING");
+        assertThat(message.getStatus()).isEqualTo(MeasurementStatus.COMPLETED);
+        assertThat(message.getDrugRecommendationStatus()).isEqualTo("FAILED");
+        assertThat(message.getDrugRecommendationSummarySource()).isEqualTo("RULE_BASED");
+        assertThat(message.getMessage()).contains("측정 결과는 저장");
+        assertThat(message.getShouldDisconnect()).isTrue();
+        assertThat(message.getFailureReason()).isNull();
+    }
+
+    @Test
     void transactionalMessagesAreSnapshotsPublishedOnlyAfterCommit() {
         MeasurementSession session = MeasurementSession.builder().id(43L).user(user()).device(device()).build();
         session.requirePhotoRecapture("marker covered");

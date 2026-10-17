@@ -281,6 +281,12 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
                 DELETE FROM shoe_recommendation_run
                 WHERE measurement_session_id = :measurementSessionId
                 """, measurementSessionId);
+        executeMeasurementDelete("""
+                DELETE FROM drug_recommendation
+                WHERE report_id IN (
+                    SELECT id FROM report WHERE measurement_session_id = :measurementSessionId
+                )
+                """, measurementSessionId);
         int deletedMetricAnalysisResultCount = executeMeasurementDelete("""
                 DELETE FROM metric_analysis_result
                 WHERE report_id IN (

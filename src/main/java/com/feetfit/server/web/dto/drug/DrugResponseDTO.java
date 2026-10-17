@@ -6,8 +6,48 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.util.List;
+import java.time.Instant;
 
 public class DrugResponseDTO {
+
+    @Builder
+    @Getter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class DrugRecommendationResultDTO {
+        private boolean hasMeasurement;
+        private Long reportId;
+        private Long measurementSessionId;
+        private String summary;
+        private String summarySource;
+        private String summaryStatus;
+        private String model;
+        private Instant generatedAt;
+        private String ruleVersion;
+        private List<DrugPriorityDTO> priorities;
+        private List<DrugItemDTO> items;
+        private int currentPage;
+        private int totalPages;
+        private long totalElements;
+        private boolean hasNext;
+    }
+
+    @Builder
+    @Getter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class DrugPriorityDTO {
+        private int rank;
+        private String category;
+        private String categoryLabel;
+        private String metricType;
+        private Double safetyScore;
+        private Double priorityScore;
+        private Double leftToeAngleDegree;
+        private Double rightToeAngleDegree;
+        private Integer hvaLevel;
+        private String reason;
+    }
 
     @Builder
     @Getter
@@ -46,7 +86,7 @@ public class DrugResponseDTO {
         private boolean hasNext;
     }
 
-    @Builder
+    @Builder(toBuilder = true)
     @Getter
     @NoArgsConstructor
     @AllArgsConstructor

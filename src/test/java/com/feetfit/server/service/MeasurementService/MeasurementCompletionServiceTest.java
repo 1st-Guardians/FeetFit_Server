@@ -55,7 +55,8 @@ class MeasurementCompletionServiceTest {
         verify(applicationEventPublisher).publishEvent(event.capture());
         assertThat(event.getValue()).isEqualTo(new MeasurementCompletedEvent(21L, 7L));
         verify(measurementCareTipsGenerationService).generateAndSaveIfNeeded(session);
-        verify(measurementSocketService).sendMeasurementStatusChanged(session);
+        verify(measurementSocketService).sendMeasurementRecommendationPending(session);
+        verify(measurementSocketService, never()).sendMeasurementStatusChanged(any());
     }
 
     @Test

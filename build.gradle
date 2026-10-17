@@ -72,3 +72,23 @@ tasks.named('test') {
 
 jar { enabled = false }
 bootJar { enabled = true }
+
+springBoot {
+    mainClass = 'com.feetfit.server.FeetFitServerApplication'
+}
+
+tasks.register('syncDrugCatalog', JavaExec) {
+    group = 'application'
+    description = 'Import drug products, permits, and recall information into the configured database.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.feetfit.drugimport.DrugCatalogImportApplication'
+    args '--spring.jpa.hibernate.ddl-auto=update', '--spring.jpa.show-sql=false'
+}
+
+tasks.register('backfillDrugRecommendations', JavaExec) {
+    group = 'application'
+    description = 'Create the drug recommendation table and generate summaries for latest completed reports.'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.feetfit.drugimport.DrugRecommendationBackfillApplication'
+    args '--spring.jpa.hibernate.ddl-auto=none', '--spring.jpa.show-sql=false'
+}

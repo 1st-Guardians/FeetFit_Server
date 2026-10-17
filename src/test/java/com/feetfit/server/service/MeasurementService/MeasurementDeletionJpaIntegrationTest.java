@@ -5,6 +5,7 @@ import com.feetfit.server.apiPayload.exception.handler.MeasurementHandler;
 import com.feetfit.server.apiPayload.exception.handler.ReportHandler;
 import com.feetfit.server.domain.DailyFootAnalysis;
 import com.feetfit.server.domain.Device;
+import com.feetfit.server.domain.DrugRecommendation;
 import com.feetfit.server.domain.MeasurementSession;
 import com.feetfit.server.domain.MetricAnalysisResult;
 import com.feetfit.server.domain.Report;
@@ -199,6 +200,9 @@ class MeasurementDeletionJpaIntegrationTest {
     void deleteOnlyMeasurement_removesSummaryMetricsAndDailyAnalysis() {
         MeasurementSession target = session();
         Report report = report(target, 80f, LocalDate.now().atTime(12, 0));
+        var drugRecommendation = DrugRecommendation.builder().report(report).build();
+        drugRecommendation.prepare("{}", "Saved summary", "test-hash", "test-model");
+        entityManager.persist(drugRecommendation);
         DailyFootAnalysis analysis = analysis(target);
         entityManager.flush();
         entityManager.clear();
@@ -215,6 +219,7 @@ class MeasurementDeletionJpaIntegrationTest {
         assertThat(deleted.getDeletedMetricAnalysisResultCount()).isEqualTo(5);
         assertThat(deleted.getDeletedDailyFootAnalysisCount()).isOne();
         assertThat(entityManager.find(Report.class, report.getId())).isNull();
+        assertThat(entityManager.find(DrugRecommendation.class, report.getId())).isNull();
         assertThat(entityManager.find(DailyFootAnalysis.class, analysis.getId())).isNull();
         assertThat(entityManager.getEntityManager().createQuery(
                 "SELECT COUNT(m) FROM MetricAnalysisResult m WHERE m.report.id = :reportId", Long.class)

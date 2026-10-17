@@ -49,6 +49,7 @@ public class SecurityConfig {
                         .permitAll()
 
                         .requestMatchers(HttpMethod.GET, "/api/shoes/*/characteristics").permitAll()
+                        .requestMatchers("/api/drugs/recommendations", "/api/drugs/recommendations/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/drugs/**").permitAll()
 
                         .requestMatchers(

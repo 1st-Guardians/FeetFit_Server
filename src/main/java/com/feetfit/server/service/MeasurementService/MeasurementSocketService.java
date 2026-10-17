@@ -49,7 +49,29 @@ public class MeasurementSocketService {
         );
     }
 
+    public void sendMeasurementRecommendationPending(MeasurementSession session) {
+        sendMeasurementMessage(session, "MEASUREMENT_STATUS_CHANGED", false, MeasurementStatus.ANALYZING,
+                "분석 결과를 바탕으로 약 추천 안내 문구를 준비하고 있습니다. 잠시 기다려 주세요.",
+                "PENDING", "RULE_BASED", null);
+    }
+
+    public void sendMeasurementRecommendationFinished(MeasurementSession session, Long reportId, boolean generated) {
+        sendMeasurementMessage(session,
+                generated ? "MEASUREMENT_COMPLETED" : "MEASUREMENT_COMPLETED_WITH_WARNING", true,
+                MeasurementStatus.COMPLETED,
+                generated ? "분석과 약 추천 준비가 완료되었습니다. 결과를 확인해 주세요."
+                        : "측정 결과는 저장되었지만 약 추천 요약을 준비하지 못했습니다. 기본 안내를 확인하거나 다시 시도해 주세요.",
+                generated ? "COMPLETED" : "FAILED", generated ? "GPT" : "RULE_BASED", reportId);
+    }
+
     private void sendMeasurementMessage(MeasurementSession measurementSession, String eventType, boolean shouldDisconnect) {
+        sendMeasurementMessage(measurementSession, eventType, shouldDisconnect, measurementSession.getStatus(),
+                resolveStatusMessage(measurementSession.getStatus()), null, null, null);
+    }
+
+    private void sendMeasurementMessage(MeasurementSession measurementSession, String eventType, boolean shouldDisconnect,
+                                        MeasurementStatus displayStatus, String messageText,
+                                        String recommendationStatus, String summarySource, Long reportId) {
         MeasurementResponseDTO.MeasurementSocketMessageDTO message =
                 MeasurementResponseDTO.MeasurementSocketMessageDTO.builder()
                         .eventType(eventType)
@@ -57,9 +79,12 @@ public class MeasurementSocketService {
                         .userId(measurementSession.getUser().getId())
                         .deviceId(measurementSession.getDevice().getId())
                         .deviceName(measurementSession.getDevice().getDeviceName())
-                        .status(measurementSession.getStatus())
-                        .statusMessage(resolveStatusMessage(measurementSession.getStatus()))
-                        .message(resolveStatusMessage(measurementSession.getStatus()))
+                        .status(displayStatus)
+                        .statusMessage(messageText)
+                        .message(messageText)
+                        .reportId(reportId)
+                        .drugRecommendationStatus(recommendationStatus)
+                        .drugRecommendationSummarySource(summarySource)
                         .detail(measurementSession.getRecaptureDetail())
                         .photoCaptureAttempt(measurementSession.getPhotoRecaptureCount())
                         .remainingPhotoRecaptures(measurementSession.getRemainingPhotoRecaptures())
