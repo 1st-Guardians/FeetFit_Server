@@ -297,14 +297,16 @@ class DrugRecommendationJpaIntegrationTest {
         var report = report(user, now, MeasurementStatus.COMPLETED, 100f, 100f, 15f);
         var basis = new DrugRecommendationPolicy().rank(100f, 100f, 15f, 5f);
         String payload = mapper.serialize(basis);
+        String previousSummary = "발 상태가 전반적으로 양호해요. 별도의 약 사용을 권하는 것은 아니며, 아래 제품은 필요할 때 참고해 주세요.";
         String previousHash = java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
-                .digest((client.model() + "\n" + payload).getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+                .digest((client.model() + "\n" + payload + "\n" + DrugRecommendationSummaryClient.SUMMARY_VERSION
+                        + "\n" + previousSummary).getBytes(java.nio.charset.StandardCharsets.UTF_8)));
         var previous = DrugRecommendation.builder().report(report).build();
-        previous.prepare(payload, "Previous healthy wording", previousHash, client.model());
+        previous.prepare(payload, previousSummary, previousHash, client.model());
         em.persistAndFlush(previous);
         var oldPrepared = new DrugRecommendationStore.Prepared(report.getId(), previousHash, client.model(), basis);
         store.claim(oldPrepared);
-        store.complete(oldPrepared, "Previously generated healthy wording");
+        store.complete(oldPrepared, previousSummary);
 
         var updated = store.prepare(user.getId(), report.getMeasurementSession().getId());
 

@@ -15,7 +15,7 @@ public class DrugRecommendationPolicy {
     public static final String RULE_VERSION = "drug-priority-v2-healthy-skin-first-hva-15-20-40";
     public static final List<DrugCategory> DEFAULT_ORDER = List.of(
             DrugCategory.WOUND_CARE, DrugCategory.ATHLETES_FOOT, DrugCategory.BUNION_BAND);
-    public static final String HEALTHY_SUMMARY = "발 상태가 전반적으로 양호해요. 별도의 약 사용을 권하는 것은 아니며, 아래 제품은 필요할 때 참고해 주세요.";
+    public static final String HEALTHY_SUMMARY = "측정 지표가 전반적으로 양호하게 나타났어요. 아래 제품은 필요할 때 참고하실 수 있도록 추천드리며, 현재 측정 결과가 별도의 약 사용이 필요하다는 의미는 아니에요.";
 
     public record Priority(DrugCategory category, MetricType metricType, Double safetyScore,
                            Double priorityScore, Double leftToeAngleDegree, Double rightToeAngleDegree,
