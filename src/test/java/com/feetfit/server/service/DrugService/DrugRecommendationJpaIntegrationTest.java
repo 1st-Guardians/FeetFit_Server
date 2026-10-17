@@ -316,6 +316,31 @@ class DrugRecommendationJpaIntegrationTest {
                 .containsExactly("wound-care", "athletes-foot", "bunion-band");
     }
 
+    @Test
+    void simpleSummaryContractInvalidatesOldNumericSummaryWithoutChangingProductOrder() throws Exception {
+        var report = report(user, now, MeasurementStatus.COMPLETED, 90f, 10f, 10f);
+        var basis = new DrugRecommendationPolicy().rank(90f, 10f, 10f, 5f);
+        String payload = mapper.serialize(basis);
+        String oldHash = java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+                .digest((client.model() + "\n" + payload).getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        var old = DrugRecommendation.builder().report(report).build();
+        old.prepare(payload, "무좀 관련 안전점수 10점", oldHash, client.model());
+        em.persistAndFlush(old);
+        var oldPrepared = new DrugRecommendationStore.Prepared(report.getId(), oldHash, client.model(), basis);
+        store.claim(oldPrepared);
+        store.complete(oldPrepared, "무좀 관련 안전점수 10점으로 무좀약을 안내합니다.");
+
+        var updated = store.prepare(user.getId(), report.getMeasurementSession().getId());
+
+        assertThat(updated.inputHash()).isNotEqualTo(oldHash);
+        var result = query.get(user.getId(), null, null, 0, 20);
+        assertThat(result.getSummary()).contains("무좀약").doesNotContain("10", "점수", "각도");
+        assertThat(result.getSummaryStatus()).isEqualTo("PENDING");
+        assertThat(result.getPriorities()).extracting(DrugResponseDTO.DrugPriorityDTO::getCategory)
+                .containsExactly("athletes-foot", "wound-care", "bunion-band");
+        assertThat(store.complete(oldPrepared, "Old numeric summary must not return")).isFalse();
+    }
+
     private Report report(User owner, LocalDateTime measuredAt, MeasurementStatus status,
                           float skin, float fungal, float angle) {
         var session = em.persist(MeasurementSession.builder().user(owner).device(device)

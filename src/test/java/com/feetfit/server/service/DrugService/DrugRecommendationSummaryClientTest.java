@@ -3,6 +3,8 @@ package com.feetfit.server.service.DrugService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.http.client.reactive.MockClientHttpRequest;
@@ -22,7 +24,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.*;
 
 class DrugRecommendationSummaryClientTest {
-    private static final String VALID_SUMMARY = "무좀 관련 안전점수가 낮아 해당 부위의 관리를 우선 살필 수 있도록 무좀약 정보를 먼저 안내합니다. 측정값만으로 질환을 확진할 수는 없으며, 실제 제품 사용 전에는 제품 설명서를 확인하고 약사와 상담해 주세요.";
+    private static final String VALID_SUMMARY = "무좀 관련 관리가 우선 필요해 보여 무좀약 정보를 먼저 추천해요. 약 사용 전에는 약사와 상담해 주세요.";
     private final ObjectMapper mapper = new ObjectMapper();
     private final List<ClientRequest> requests = new ArrayList<>();
 
@@ -42,14 +44,15 @@ class DrugRecommendationSummaryClientTest {
         assertThat(body.has("temperature")).isFalse();
         assertThat(body.path("response_format").path("json_schema").path("strict").asBoolean()).isTrue();
         assertThat(body.path("messages").path(1).path("content").asText())
-                .contains("allHealthy", "ATHLETES_FOOT", "15도 이하", "임상적 위험도");
+                .contains("allHealthy", "ATHLETES_FOOT", "1~2문장", "30~120자", "needsCare", "구체적인 숫자")
+                .doesNotContain("safetyScore", "priorityScore", "leftToeAngleDegree", "hvaLevel", "35.0", "18.0");
     }
 
     @Test
     void rejectsRefusalAndMalformedOrUnsafeOutput() throws Exception {
         var basis = new DrugRecommendationPolicy().rank(80f, 35f, 18f, 12f);
         for (String body : List.of("{\"choices\":[{\"message\":{\"refusal\":\"No\"}}]}",
-                "{\"choices\":[]}", response(""), response("<script>" + VALID_SUMMARY + "</script>"), response("x".repeat(251)))) {
+                "{\"choices\":[]}", response(""), response("<script>" + VALID_SUMMARY + "</script>"), response("x".repeat(121)))) {
             requests.clear();
             var client = client(HttpStatus.OK, body);
             assertThatThrownBy(() -> client.generate(basis)).isInstanceOf(Exception.class);
@@ -125,6 +128,39 @@ class DrugRecommendationSummaryClientTest {
         assertThat(requests).hasSize(2);
         assertThat(body(requests.get(1)).path("messages").path(1).path("content").asText())
                 .contains("APPROVED_HEALTHY_SUMMARY_REQUIRED");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "무좀 관련 안전점수가 35점으로 나타나 무좀약 정보를 먼저 추천해요. 약 사용 전에는 약사와 상담해 주세요.",
+            "엄지발가락이 18도로 기울어져 발가락 보호밴드를 먼저 추천해요. 사용 전 전문가와 상담해 주세요.",
+            "피부 관리 필요도가 80%로 나타나 상처 보호·발 관리 제품을 먼저 추천해요. 사용 전 제품 안내를 확인해 주세요.",
+            "엄지발가락 상태가 진행 단계로 보여 발가락 보호밴드를 먼저 추천해요. 사용 전 전문가와 상담해 주세요.",
+            "무좀 관련 안전점수가 낮아 무좀약 정보를 먼저 추천해요. 약 사용 전에는 약사와 상담해 주세요."
+    })
+    void numericOrTechnicalSummaryIsRetriedWithoutRepeatingMeasurements(String numericSummary) throws Exception {
+        var client = client(HttpStatus.OK, response(numericSummary), response(VALID_SUMMARY));
+
+        assertThat(client.generate(new DrugRecommendationPolicy().rank(80f, 35f, 18f, 12f)))
+                .isEqualTo(VALID_SUMMARY);
+
+        assertThat(requests).hasSize(2);
+        assertThat(body(requests.get(1)).path("messages").path(1).path("content").asText())
+                .contains("SIMPLE_SUMMARY_WITHOUT_NUMERIC_METRICS_REQUIRED")
+                .doesNotContain(numericSummary);
+    }
+
+    @Test
+    void longSummaryIsRetriedAndShortSummaryBelowOldMinimumIsAccepted() throws Exception {
+        var client = client(HttpStatus.OK, response("긴".repeat(121)), response(VALID_SUMMARY));
+
+        assertThat(VALID_SUMMARY.length()).isLessThan(80);
+        assertThat(client.generate(new DrugRecommendationPolicy().rank(80f, 35f, 18f, 12f)))
+                .isEqualTo(VALID_SUMMARY);
+
+        assertThat(requests).hasSize(2);
+        assertThat(body(requests.get(1)).path("messages").path(1).path("content").asText())
+                .contains("SUMMARY_LENGTH_30_TO_120_REQUIRED");
     }
 
     private DrugRecommendationSummaryClient client(HttpStatus status, String... bodies) {
