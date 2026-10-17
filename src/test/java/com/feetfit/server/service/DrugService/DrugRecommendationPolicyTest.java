@@ -45,8 +45,9 @@ class DrugRecommendationPolicyTest {
                 .containsExactly(DrugCategory.WOUND_CARE, DrugCategory.ATHLETES_FOOT, DrugCategory.BUNION_BAND);
         assertThat(basis.priorities()).extracting(DrugRecommendationPolicy.Priority::priorityScore)
                 .containsOnly(0.0);
-        assertThat(policy.fallbackSummary(basis)).isEqualTo(DrugRecommendationPolicy.HEALTHY_SUMMARY)
-                .contains("발 상태가 전반적으로 양호해요.", "별도의 약 사용을 권하는 것은 아니며", "필요할 때 참고해 주세요.")
+        assertThat(policy.fallbackSummary(basis)).isEqualTo(
+                        "측정 지표가 전반적으로 양호하게 나타났어요. 아래 제품은 필요할 때 참고하실 수 있도록 추천드리며, 현재 측정 결과가 별도의 약 사용이 필요하다는 의미는 아니에요.")
+                .isEqualTo(DrugRecommendationPolicy.HEALTHY_SUMMARY)
                 .doesNotContain("발 관리 제품 정보를 안내");
     }
 
