@@ -15,7 +15,7 @@ public class DrugRecommendationPolicy {
     public static final String RULE_VERSION = "drug-priority-v2-healthy-skin-first-hva-15-20-40";
     public static final List<DrugCategory> DEFAULT_ORDER = List.of(
             DrugCategory.WOUND_CARE, DrugCategory.ATHLETES_FOOT, DrugCategory.BUNION_BAND);
-    public static final String HEALTHY_SUMMARY = "측정 지표가 전반적으로 양호하게 나타났어요. 아래 제품은 필요할 때 참고하실 수 있도록 추천드리며, 현재 측정 결과가 별도의 약 사용이 필요하다는 의미는 아니에요.";
+    public static final String HEALTHY_SUMMARY = "발 상태가 전반적으로 양호해요. 별도의 약 사용을 권하는 것은 아니며, 아래 제품은 필요할 때 참고해 주세요.";
 
     public record Priority(DrugCategory category, MetricType metricType, Double safetyScore,
                            Double priorityScore, Double leftToeAngleDegree, Double rightToeAngleDegree,
@@ -64,14 +64,12 @@ public class DrugRecommendationPolicy {
         Priority first = basis.priorities().stream().filter(item -> item.priorityScore() != null && item.priorityScore() > 0)
                 .findFirst().orElse(null);
         if (first == null) {
-            return "측정 정보가 충분하지 않아 취약한 부위를 판단하기 어렵습니다. 제품 정보를 확인하고 필요하면 전문가와 상담해 주세요.";
+            return "발 상태를 판단할 정보가 부족해요. 제품 정보를 참고하고 필요하면 전문가와 상담해 주세요.";
         }
         return switch (first.category()) {
-            case ATHLETES_FOOT -> String.format(Locale.ROOT,
-                    "무좀 관련 안전점수가 %.0f점으로 세 지표 중 우선 관리가 필요한 것으로 나타나, 약사 상담에 참고할 무좀약 정보를 먼저 안내해 드려요.", first.safetyScore());
-            case WOUND_CARE -> String.format(Locale.ROOT,
-                    "피부 반응 안전점수가 %.0f점으로 세 지표 중 우선 관리가 필요한 것으로 나타나, 상처 보호·발 관리 제품 정보를 먼저 안내해 드려요.", first.safetyScore());
-            case BUNION_BAND -> first.reason() + " 발가락 보호·교정밴드 등 보조용품 정보를 먼저 안내하며, 사용 전 전문가와 상담해 주세요.";
+            case ATHLETES_FOOT -> "무좀 관련 관리가 우선 필요해 보여 무좀약 정보를 먼저 추천해요. 약 사용 전에는 약사와 상담해 주세요.";
+            case WOUND_CARE -> "피부 보호가 우선 필요해 보여 상처 보호·발 관리 제품을 먼저 추천해요. 사용 전 제품 안내를 확인해 주세요.";
+            case BUNION_BAND -> "엄지발가락 주변 관리를 위해 발가락 보호·교정밴드를 먼저 추천해요. 사용 전 전문가와 상담해 주세요.";
         };
     }
 

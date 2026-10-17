@@ -46,8 +46,19 @@ class DrugRecommendationPolicyTest {
         assertThat(basis.priorities()).extracting(DrugRecommendationPolicy.Priority::priorityScore)
                 .containsOnly(0.0);
         assertThat(policy.fallbackSummary(basis)).isEqualTo(DrugRecommendationPolicy.HEALTHY_SUMMARY)
-                .contains("필요할 때 참고하실 수 있도록 추천드리며", "별도의 약 사용이 필요하다는 의미는 아니에요.")
+                .contains("발 상태가 전반적으로 양호해요.", "별도의 약 사용을 권하는 것은 아니며", "필요할 때 참고해 주세요.")
                 .doesNotContain("발 관리 제품 정보를 안내");
+    }
+
+    @ParameterizedTest
+    @CsvSource({"90,10,10,무좀약", "10,90,10,상처 보호", "100,100,45,발가락 보호", "100,100,15,양호"})
+    void fallbackSummaryIsShortAndDoesNotMentionMeasurements(float skin, float fungal, float angle, String product) {
+        String summary = policy.fallbackSummary(policy.rank(skin, fungal, angle, 5f));
+
+        assertThat(summary).contains(product).doesNotContain("점수", "각도", "단계", "°", "%");
+        assertThat(summary.codePoints().anyMatch(Character::isDigit)).isFalse();
+        assertThat(summary.codePointCount(0, summary.length())).isBetween(
+                DrugRecommendationSummaryClient.MIN_SUMMARY_LENGTH, DrugRecommendationSummaryClient.MAX_SUMMARY_LENGTH);
     }
 
     @Test

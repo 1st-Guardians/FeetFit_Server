@@ -57,7 +57,8 @@ public class DrugRecommendationStore {
                 angles == null ? null : angles.getLeftToeAngleDegree(),
                 angles == null ? null : angles.getRightToeAngleDegree());
         String payload = mapper.serialize(basis);
-        String summaryContract = basis.allHealthy() ? "\n" + DrugRecommendationPolicy.HEALTHY_SUMMARY : "";
+        String summaryContract = "\n" + DrugRecommendationSummaryClient.SUMMARY_VERSION
+                + (basis.allHealthy() ? "\n" + DrugRecommendationPolicy.HEALTHY_SUMMARY : "");
         String hash = hash(summaryClient.model() + "\n" + payload + summaryContract);
         var recommendation = recommendations.findById(report.getId())
                 .orElseGet(() -> DrugRecommendation.builder().report(report).build());
