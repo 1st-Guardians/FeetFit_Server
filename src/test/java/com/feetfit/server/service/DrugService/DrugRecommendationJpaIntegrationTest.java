@@ -9,6 +9,8 @@ import com.feetfit.server.repository.ReportRepository;
 import com.feetfit.server.web.dto.drug.DrugResponseDTO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.jackson.JacksonAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
@@ -28,13 +30,15 @@ import static org.mockito.Mockito.*;
         "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect"
 })
 @Import({JacksonAutoConfiguration.class, DrugCatalogMapper.class, DrugCatalogStore.class,
-        DrugRecommendationPolicy.class, DrugRecommendationStore.class, DrugRecommendationQueryService.class})
+        DrugRecommendationPolicy.class, DrugRecommendationStore.class, DrugRecommendationQueryService.class,
+        DrugQueryServiceImpl.class})
 class DrugRecommendationJpaIntegrationTest {
     @Autowired TestEntityManager em;
     @Autowired DrugCatalogStore catalog;
     @Autowired DrugRecommendationStore store;
     @Autowired DrugCatalogMapper mapper;
     @Autowired DrugRecommendationQueryService query;
+    @Autowired DrugQueryService catalogQuery;
     @Autowired DrugRecommendationRepository recommendations;
     @Autowired MetricAnalysisResultRepository metrics;
     @Autowired ReportRepository reports;
@@ -83,6 +87,102 @@ class DrugRecommendationJpaIntegrationTest {
     }
 
     @Test
+    void catalogPagesIncludeSamePersistedSummaryWithoutChangingProductsOrCallingGpt() {
+        var report = report(user, now, MeasurementStatus.COMPLETED, 90f, 10f, 10f);
+        for (int i = 0; i < 3; i++) product("fungal-" + i, DrugCategory.ATHLETES_FOOT, true, false, "clear");
+        product("skin", DrugCategory.WOUND_CARE, true, false, "clear");
+        var prepared = store.prepare(user.getId(), report.getMeasurementSession().getId());
+        store.claim(prepared);
+        store.complete(prepared, "Saved personal explanation");
+        em.flush();
+        em.clear();
+        clearInvocations(client, generation);
+
+        var catalogPage = catalogQuery.getDrugList("athletes-foot", null, 0, 2);
+        var first = query.withRecommendationSummary(user.getId(), catalogPage);
+        var second = query.withRecommendationSummary(user.getId(),
+                catalogQuery.getDrugList("athletes-foot", null, 1, 2));
+        var otherCategory = query.withRecommendationSummary(user.getId(),
+                catalogQuery.getDrugList("wound-care", null, 0, 2));
+
+        assertThat(first.isHasMeasurement()).isTrue();
+        assertThat(first.getReportId()).isEqualTo(report.getId());
+        assertThat(first.getMeasurementSessionId()).isEqualTo(report.getMeasurementSession().getId());
+        assertThat(first.getSummary()).isEqualTo("Saved personal explanation");
+        assertThat(first.getSummaryStatus()).isEqualTo("COMPLETED");
+        assertThat(first.getSummarySource()).isEqualTo("GPT");
+        assertThat(first.getCategory()).isEqualTo(catalogPage.getCategory());
+        assertThat(first.getCategoryLabel()).isEqualTo(catalogPage.getCategoryLabel());
+        assertThat(first.getSource()).isEqualTo(catalogPage.getSource());
+        assertThat(first.getItems()).isSameAs(catalogPage.getItems()).hasSize(2);
+        assertThat(first.getTotalElements()).isEqualTo(3);
+        assertThat(first.getTotalPages()).isEqualTo(2);
+        assertThat(first.isHasNext()).isTrue();
+        assertThat(second.getSummary()).isEqualTo(first.getSummary());
+        assertThat(second.getItems()).hasSize(1);
+        assertThat(second.getCurrentPage()).isOne();
+        assertThat(otherCategory.getCategory()).isEqualTo("wound-care");
+        assertThat(otherCategory.getSummary()).isEqualTo(first.getSummary());
+        assertThat(catalogPage.getSummary()).isNull();
+        assertThat(catalogPage.isHasMeasurement()).isFalse();
+        verifyNoInteractions(client, generation);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"PENDING", "GENERATING", "FAILED"})
+    void catalogIncludesSavedFallbackAndStatusWhileGptIsNotCompleted(String status) {
+        var report = report(user, now, MeasurementStatus.COMPLETED, 90f, 10f, 10f);
+        var prepared = store.prepare(user.getId(), report.getMeasurementSession().getId());
+        if (!status.equals("PENDING")) store.claim(prepared);
+        if (status.equals("FAILED")) store.fail(prepared);
+        em.flush();
+        em.clear();
+        clearInvocations(client, generation);
+
+        var result = query.withRecommendationSummary(user.getId(), emptyCatalogPage());
+
+        assertThat(result.isHasMeasurement()).isTrue();
+        assertThat(result.getSummary()).isNotBlank();
+        assertThat(result.getSummaryStatus()).isEqualTo(status);
+        assertThat(result.getSummarySource()).isEqualTo("RULE_BASED");
+        verifyNoInteractions(client, generation);
+    }
+
+    @Test
+    void catalogBeforeRecommendationPreparationStillIncludesCompletedReportAndNotReadyStatus() {
+        var report = report(user, now, MeasurementStatus.COMPLETED, 90f, 10f, 10f);
+
+        var result = query.withRecommendationSummary(user.getId(), emptyCatalogPage());
+
+        assertThat(result.isHasMeasurement()).isTrue();
+        assertThat(result.getReportId()).isEqualTo(report.getId());
+        assertThat(result.getSummary()).isNull();
+        assertThat(result.getSummaryStatus()).isEqualTo("NOT_READY");
+        assertThat(result.getSummarySource()).isEqualTo("NONE");
+        verifyNoInteractions(client, generation);
+    }
+
+    @Test
+    void catalogWithoutCompletedReportDoesNotBorrowAnotherUsersSummary() {
+        report(user, now, MeasurementStatus.ANALYZING, 90f, 10f, 10f);
+        var other = em.persist(User.builder().nickname("other").socialId("other")
+                .socialType(SocialType.KAKAO).status(UserStatus.ACTIVE).build());
+        var otherReport = report(other, now, MeasurementStatus.COMPLETED, 10f, 90f, 10f);
+        store.prepare(other.getId(), otherReport.getMeasurementSession().getId());
+        clearInvocations(client, generation);
+
+        var result = query.withRecommendationSummary(user.getId(), emptyCatalogPage());
+
+        assertThat(result.isHasMeasurement()).isFalse();
+        assertThat(result.getReportId()).isNull();
+        assertThat(result.getSummary()).isNull();
+        assertThat(result.getSummaryStatus()).isEqualTo("NOT_READY");
+        assertThatThrownBy(() -> query.withRecommendationSummary(null, emptyCatalogPage()))
+                .isInstanceOf(GeneralException.class);
+        verifyNoInteractions(client, generation);
+    }
+
+    @Test
     void latestCompletedMeasurementWinsAndDataBelongsToAuthenticatedUser() {
         var old = report(user, now.minusDays(1), MeasurementStatus.COMPLETED, 95f, 95f, 45f);
         var latest = report(user, now, MeasurementStatus.COMPLETED, 90f, 10f, 10f);
@@ -97,6 +197,8 @@ class DrugRecommendationJpaIntegrationTest {
         var result = query.get(user.getId(), null, null, 0, 20);
         assertThat(result.getReportId()).isEqualTo(latest.getId());
         assertThat(result.getPriorities().get(0).getCategory()).isEqualTo("athletes-foot");
+        assertThat(query.withRecommendationSummary(user.getId(), emptyCatalogPage()).getReportId())
+                .isEqualTo(latest.getId());
         assertThat(reports.findLatestCompletedReportIds(MeasurementStatus.COMPLETED))
                 .containsExactlyInAnyOrder(latest.getId(), otherReport.getId());
         assertThatThrownBy(() -> store.prepare(user.getId(), otherReport.getMeasurementSession().getId()))
@@ -235,5 +337,9 @@ class DrugRecommendationJpaIntegrationTest {
                 .category(category.getId()).online(online).build(), 0);
         catalog.saveDetails(id, true, DrugResponseDTO.PermitInfoDTO.builder().itemSeq(id).cancelled(cancelled).build(),
                 DrugResponseDTO.RecallInfoDTO.builder().status(recallStatus).records(List.of()).build());
+    }
+
+    private DrugResponseDTO.DrugListResultDTO emptyCatalogPage() {
+        return DrugResponseDTO.DrugListResultDTO.builder().category("athletes-foot").items(List.of()).build();
     }
 }

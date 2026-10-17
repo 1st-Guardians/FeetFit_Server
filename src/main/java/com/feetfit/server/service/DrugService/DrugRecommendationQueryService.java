@@ -2,6 +2,7 @@ package com.feetfit.server.service.DrugService;
 
 import com.feetfit.server.apiPayload.code.status.ErrorStatus;
 import com.feetfit.server.apiPayload.exception.GeneralException;
+import com.feetfit.server.domain.Report;
 import com.feetfit.server.domain.enums.DrugCategory;
 import com.feetfit.server.domain.enums.MeasurementStatus;
 import com.feetfit.server.repository.DrugRecommendationRepository;
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -29,9 +31,7 @@ public class DrugRecommendationQueryService {
 
     @Transactional(readOnly = true)
     public DrugResponseDTO.DrugRecommendationResultDTO get(Long userId, String categoryId, String query, int page, int size) {
-        requireUser(userId);
-        var latest = reports.findLatestCompleted(userId, MeasurementStatus.COMPLETED, PageRequest.of(0, 1));
-        var report = latest.isEmpty() ? null : latest.get(0);
+        var report = findLatestCompletedReport(userId).orElse(null);
         var saved = report == null ? null : recommendations.findById(report.getId()).orElse(null);
         var basis = saved == null ? null : mapper.deserialize(saved.getPrioritiesPayload(), DrugRecommendationPolicy.Basis.class);
         List<DrugCategory> order = basis == null
@@ -74,14 +74,32 @@ public class DrugRecommendationQueryService {
                 .build();
     }
 
+    @Transactional(readOnly = true)
+    public DrugResponseDTO.DrugListResultDTO withRecommendationSummary(
+            Long userId, DrugResponseDTO.DrugListResultDTO catalog) {
+        var report = findLatestCompletedReport(userId).orElse(null);
+        var saved = report == null ? null : recommendations.findById(report.getId()).orElse(null);
+        return catalog.toBuilder()
+                .hasMeasurement(report != null)
+                .reportId(report == null ? null : report.getId())
+                .measurementSessionId(report == null ? null : report.getMeasurementSession().getId())
+                .summary(saved == null ? null : saved.getSummary())
+                .summaryStatus(saved == null ? "NOT_READY" : saved.getStatus())
+                .summarySource(saved == null ? "NONE" : saved.getSummarySource())
+                .build();
+    }
+
     public void refresh(Long userId) {
-        requireUser(userId);
-        var latest = reports.findLatestCompleted(userId, MeasurementStatus.COMPLETED, PageRequest.of(0, 1));
-        if (latest.isEmpty()) {
-            throw new GeneralException(ErrorStatus.REPORT_NOT_FOUND);
-        }
-        var prepared = store.prepare(userId, latest.get(0).getMeasurementSession().getId());
+        var latest = findLatestCompletedReport(userId)
+                .orElseThrow(() -> new GeneralException(ErrorStatus.REPORT_NOT_FOUND));
+        var prepared = store.prepare(userId, latest.getMeasurementSession().getId());
         generation.generate(prepared.reportId());
+    }
+
+    private Optional<Report> findLatestCompletedReport(Long userId) {
+        requireUser(userId);
+        return reports.findLatestCompleted(userId, MeasurementStatus.COMPLETED, PageRequest.of(0, 1))
+                .stream().findFirst();
     }
 
     private void requireUser(Long userId) {

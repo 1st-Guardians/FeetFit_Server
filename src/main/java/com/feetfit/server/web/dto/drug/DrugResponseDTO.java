@@ -71,7 +71,7 @@ public class DrugResponseDTO {
         private String iconName;
     }
 
-    @Builder
+    @Builder(toBuilder = true)
     @Getter
     @NoArgsConstructor
     @AllArgsConstructor
@@ -79,6 +79,14 @@ public class DrugResponseDTO {
         private String category;
         private String categoryLabel;
         private String source;
+        private boolean hasMeasurement;
+        private Long reportId;
+        private Long measurementSessionId;
+        private String summary;
+        @Builder.Default
+        private String summaryStatus = "NOT_READY";
+        @Builder.Default
+        private String summarySource = "NONE";
         private List<DrugItemDTO> items;
         private int currentPage;
         private int totalPages;

@@ -218,11 +218,11 @@ public class MeasurementResponseDTO {
         private String eventType;
 
         @JsonInclude(JsonInclude.Include.NON_NULL)
-        @Schema(description = "약 추천 생성이 종료된 리포트 ID", example = "8")
+        @Schema(description = "완료된 측정의 리포트 ID", example = "8")
         private Long reportId;
 
         @JsonInclude(JsonInclude.Include.NON_NULL)
-        @Schema(description = "약 추천 요약 생성 상태. PENDING, COMPLETED, FAILED", example = "COMPLETED")
+        @Schema(description = "측정 완료 시 PENDING. 이후 약 추천 상태는 약 추천 조회 API의 summaryStatus로 확인합니다.", example = "PENDING")
         private String drugRecommendationStatus;
 
         @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -241,7 +241,7 @@ public class MeasurementResponseDTO {
         @Schema(description = "디바이스 고유 코드", example = "FeetFit-001")
         private String deviceName;
 
-        @Schema(description = "프론트 표시용 측정 상태. 리포트 저장 후 약 추천 요약을 생성하는 동안에는 ANALYZING을 유지합니다.", example = "WAITING_FOR_PHOTO_ENVIRONMENT")
+        @Schema(description = "측정 상태. 리포트 저장이 끝나면 약 추천 요약 생성 여부와 관계없이 COMPLETED를 전달합니다.", example = "WAITING_FOR_PHOTO_ENVIRONMENT")
         private MeasurementStatus status;
 
         @Schema(description = "측정 상태별 사용자 안내 문구", example = "FSR 센서 판을 올리고 유리판 위에 올라와 주세요.")

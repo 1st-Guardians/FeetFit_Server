@@ -2,6 +2,7 @@ package com.feetfit.server.service.MeasurementService;
 
 import com.feetfit.server.domain.MeasurementAnalysisStatus;
 import com.feetfit.server.domain.MeasurementSession;
+import com.feetfit.server.domain.Report;
 import com.feetfit.server.domain.User;
 import com.feetfit.server.domain.enums.MeasurementStatus;
 import com.feetfit.server.event.MeasurementCompletedEvent;
@@ -46,16 +47,19 @@ class MeasurementCompletionServiceTest {
                 .thenReturn(Optional.of(session));
         when(measurementAnalysisStatusRepository.findByMeasurementSessionIdForUpdate(21L))
                 .thenReturn(Optional.of(ready));
+        when(reportRepository.findByMeasurementSessionId(21L))
+                .thenReturn(Optional.of(Report.builder().id(8L).build()));
 
         service.completeMeasurementIfReady(session, 180);
 
         assertThat(session.getStatus()).isEqualTo(MeasurementStatus.COMPLETED);
         ArgumentCaptor<MeasurementCompletedEvent> event =
                 ArgumentCaptor.forClass(MeasurementCompletedEvent.class);
-        verify(applicationEventPublisher).publishEvent(event.capture());
+        var order = inOrder(measurementSocketService, applicationEventPublisher);
+        order.verify(measurementSocketService).sendMeasurementCompleted(session, 8L);
+        order.verify(applicationEventPublisher).publishEvent(event.capture());
         assertThat(event.getValue()).isEqualTo(new MeasurementCompletedEvent(21L, 7L));
         verify(measurementCareTipsGenerationService).generateAndSaveIfNeeded(session);
-        verify(measurementSocketService).sendMeasurementRecommendationPending(session);
         verify(measurementSocketService, never()).sendMeasurementStatusChanged(any());
     }
 
