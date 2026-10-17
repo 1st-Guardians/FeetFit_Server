@@ -259,7 +259,9 @@ public class MeasurementCompletionService {
         );
         lockedMeasurementSession.clearFailure();
         measurementCareTipsGenerationService.generateAndSaveIfNeeded(lockedMeasurementSession);
-        measurementSocketService.sendMeasurementRecommendationPending(lockedMeasurementSession);
+        Long reportId = reportRepository.findByMeasurementSessionId(lockedMeasurementSession.getId())
+                .map(Report::getId).orElse(null);
+        measurementSocketService.sendMeasurementCompleted(lockedMeasurementSession, reportId);
         applicationEventPublisher.publishEvent(new MeasurementCompletedEvent(
                 lockedMeasurementSession.getId(),
                 lockedMeasurementSession.getUser().getId()

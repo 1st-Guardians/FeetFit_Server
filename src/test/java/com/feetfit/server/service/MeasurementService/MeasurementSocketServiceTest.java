@@ -121,37 +121,20 @@ class MeasurementSocketServiceTest {
     }
 
     @Test
-    void savedMeasurementStaysAnalyzingOnSocketUntilRecommendationIsReady() {
-        var session = MeasurementSession.builder().id(43L).user(user()).device(device())
-                .status(MeasurementStatus.COMPLETED).build();
-
-        measurementSocketService.sendMeasurementRecommendationPending(session);
-
-        var captor = ArgumentCaptor.forClass(MeasurementResponseDTO.MeasurementSocketMessageDTO.class);
-        verify(messagingTemplate).convertAndSend(eq("/topic/measurements/43"), captor.capture());
-        var message = captor.getValue();
-        assertThat(session.getStatus()).isEqualTo(MeasurementStatus.COMPLETED);
-        assertThat(message.getStatus()).isEqualTo(MeasurementStatus.ANALYZING);
-        assertThat(message.getEventType()).isEqualTo("MEASUREMENT_STATUS_CHANGED");
-        assertThat(message.getShouldDisconnect()).isFalse();
-        assertThat(message.getDrugRecommendationStatus()).isEqualTo("PENDING");
-        assertThat(message.getMessage()).contains("약 추천 안내 문구를 준비");
-    }
-
-    @Test
-    void successfulSummaryEmitsFinalCompletionWithGptSource() {
+    void savedMeasurementEmitsCompletionBeforeRecommendationIsReady() {
         var session = MeasurementSession.builder().id(43L).user(user()).device(device())
                 .status(MeasurementStatus.COMPLETED).pressureRetryCount(1).photoRecaptureCount(1).build();
 
-        measurementSocketService.sendMeasurementRecommendationFinished(session, 8L, true);
+        measurementSocketService.sendMeasurementCompleted(session, 8L);
 
         var captor = ArgumentCaptor.forClass(MeasurementResponseDTO.MeasurementSocketMessageDTO.class);
         verify(messagingTemplate).convertAndSend(eq("/topic/measurements/43"), captor.capture());
         var message = captor.getValue();
-        assertThat(message.getEventType()).isEqualTo("MEASUREMENT_COMPLETED");
+        assertCompletedMessage(message);
         assertThat(message.getReportId()).isEqualTo(8L);
-        assertThat(message.getDrugRecommendationStatus()).isEqualTo("COMPLETED");
-        assertThat(message.getDrugRecommendationSummarySource()).isEqualTo("GPT");
+        assertThat(message.getDrugRecommendationStatus()).isEqualTo("PENDING");
+        assertThat(message.getDrugRecommendationSummarySource()).isNull();
+        assertThat(message.getMessage()).isEqualTo("분석이 완료되었습니다. 결과를 확인해 주세요.");
         assertThat(message.getPressureMeasurementAttempt()).isEqualTo(1);
         assertThat(message.getRemainingPressureRetries()).isEqualTo(2);
         assertThat(message.getPhotoCaptureAttempt()).isEqualTo(1);
@@ -178,25 +161,6 @@ class MeasurementSocketServiceTest {
         assertThat(message.getRemainingPressureRetries()).isEqualTo(2);
         assertThat(message.getShouldDisconnect()).isFalse();
         assertThat(message.getDrugRecommendationStatus()).isNull();
-    }
-
-    @Test
-    void failedSummaryEmitsWarningWithoutClaimingGptSuccessOrLosingReport() {
-        var session = MeasurementSession.builder().id(43L).user(user()).device(device())
-                .status(MeasurementStatus.COMPLETED).build();
-
-        measurementSocketService.sendMeasurementRecommendationFinished(session, 8L, false);
-
-        var captor = ArgumentCaptor.forClass(MeasurementResponseDTO.MeasurementSocketMessageDTO.class);
-        verify(messagingTemplate).convertAndSend(eq("/topic/measurements/43"), captor.capture());
-        var message = captor.getValue();
-        assertThat(message.getEventType()).isEqualTo("MEASUREMENT_COMPLETED_WITH_WARNING");
-        assertThat(message.getStatus()).isEqualTo(MeasurementStatus.COMPLETED);
-        assertThat(message.getDrugRecommendationStatus()).isEqualTo("FAILED");
-        assertThat(message.getDrugRecommendationSummarySource()).isEqualTo("RULE_BASED");
-        assertThat(message.getMessage()).contains("측정 결과는 저장");
-        assertThat(message.getShouldDisconnect()).isTrue();
-        assertThat(message.getFailureReason()).isNull();
     }
 
     @Test

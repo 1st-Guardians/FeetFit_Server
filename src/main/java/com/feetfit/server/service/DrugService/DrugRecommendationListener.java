@@ -14,21 +14,15 @@ import org.springframework.transaction.event.TransactionalEventListener;
 @Component
 @RequiredArgsConstructor
 public class DrugRecommendationListener {
-    private final DrugRecommendationStore store;
     private final DrugRecommendationGenerationService generation;
 
     @Value("${drug.recommendation.backfill-on-startup:true}")
     private boolean backfillOnStartup = true;
 
-    @TransactionalEventListener(phase = TransactionPhase.BEFORE_COMMIT)
-    public void prepare(MeasurementCompletedEvent event) {
-        store.prepare(event.userId(), event.measurementSessionId());
-    }
-
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void generate(MeasurementCompletedEvent event) {
         try {
-            // The completed report is committed before any external model request starts.
+            // Completion sockets publish in afterCommit, before this AFTER_COMMIT listener runs.
             generation.generateForSession(event.userId(), event.measurementSessionId());
         } catch (Exception e) {
             log.warn("Drug recommendation dispatch failed. measurementSessionId={}", event.measurementSessionId(), e);
