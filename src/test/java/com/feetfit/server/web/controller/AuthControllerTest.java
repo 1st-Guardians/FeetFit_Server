@@ -4,6 +4,7 @@ import com.feetfit.server.apiPayload.code.status.ErrorStatus;
 import com.feetfit.server.apiPayload.exception.ExceptionAdvice;
 import com.feetfit.server.apiPayload.exception.handler.AuthHandler;
 import com.feetfit.server.jwt.TokenProvider;
+import com.feetfit.server.service.OAuthService.AppleLoginCommandService;
 import com.feetfit.server.service.OAuthService.KakaoLoginCommandService;
 import com.feetfit.server.web.dto.user.UserResponseDTO;
 import org.junit.jupiter.api.Test;
@@ -31,6 +32,9 @@ class AuthControllerTest {
 
     @MockBean
     private KakaoLoginCommandService kakaoLoginCommandService;
+
+    @MockBean
+    private AppleLoginCommandService appleLoginCommandService;
 
     @MockBean
     private TokenProvider tokenProvider;
@@ -99,5 +103,51 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.isSuccess").value(false))
                 .andExpect(jsonPath("$.code").value("AUTH4003"))
                 .andExpect(jsonPath("$.message").value("카카오 로그인에 실패했습니다."));
+    }
+
+    @Test
+    void appleLogin_success_returnsServiceTokensAndProfileSetupFlag() throws Exception {
+        given(appleLoginCommandService.login("apple-authorization-code"))
+                .willReturn(UserResponseDTO.UserLoginResponseDTO.builder()
+                        .accessToken("service-access-token")
+                        .refreshToken("service-refresh-token")
+                        .grantType("Bearer")
+                        .expiresIn(1779287307449L)
+                        .requiresProfileSetup(true)
+                        .build());
+
+        mockMvc.perform(post("/api/auth/apple")
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .param("code", "apple-authorization-code"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.isSuccess").value(true))
+                .andExpect(jsonPath("$.result.accessToken").value("service-access-token"))
+                .andExpect(jsonPath("$.result.refreshToken").value("service-refresh-token"))
+                .andExpect(jsonPath("$.result.requiresProfileSetup").value(true));
+    }
+
+    @Test
+    void appleLogin_blankCode_returnsValidationError() throws Exception {
+        mockMvc.perform(post("/api/auth/apple")
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .param("code", ""))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.isSuccess").value(false))
+                .andExpect(jsonPath("$.code").value("COMMON400"))
+                .andExpect(jsonPath("$.result.code").value("Apple Authorization Code는 필수입니다."));
+    }
+
+    @Test
+    void appleLogin_serviceThrowsAuthHandler_returnsAppleLoginFailedError() throws Exception {
+        given(appleLoginCommandService.login("invalid-code"))
+                .willThrow(new AuthHandler(ErrorStatus.APPLE_LOGIN_FAILED));
+
+        mockMvc.perform(post("/api/auth/apple")
+                        .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                        .param("code", "invalid-code"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.isSuccess").value(false))
+                .andExpect(jsonPath("$.code").value("AUTH4004"))
+                .andExpect(jsonPath("$.message").value("애플 로그인에 실패했습니다."));
     }
 }

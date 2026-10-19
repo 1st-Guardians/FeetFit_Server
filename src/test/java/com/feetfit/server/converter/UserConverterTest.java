@@ -23,6 +23,23 @@ class UserConverterTest {
     }
 
     @Test
+    void toAppleUser_email_usesEmailPrefixAsNickname() {
+        User user = UserConverter.toAppleUser("apple-subject", "feetfit@example.com");
+
+        assertThat(user.getSocialId()).isEqualTo("apple-subject");
+        assertThat(user.getSocialType()).isEqualTo(SocialType.APPLE);
+        assertThat(user.getNickname()).isEqualTo("feetfit");
+        assertThat(user.getStatus()).isEqualTo(UserStatus.ACTIVE);
+        assertThat(UserConverter.requiresProfileSetup(user)).isTrue();
+    }
+
+    @Test
+    void toAppleUser_missingEmail_usesFallbackNickname() {
+        assertThat(UserConverter.toAppleUser("apple-subject", null).getNickname())
+                .isEqualTo("애플사용자");
+    }
+
+    @Test
     void toUserLoginResponseDTO_incompleteProfile_setsRequiresProfileSetupTrue() {
         User user = User.builder()
                 .id(1L)
