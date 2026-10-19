@@ -44,12 +44,42 @@ public class ReportConverter {
         }
     }
 
-    // riskScore 계산: Score = max(0, 100 - 2.5 × HVA)
-    // 왼발/오른발 평균으로 계산
+    // 무지외반 4단계별 점수 범위 안에서 각도에 따라 선형 계산 후 왼발/오른발 평균 사용
+    // 정상(0~15°): 100~90, 경미(15~20°): 90~70,
+    // 진행(20~40°): 70~40, 심한 변형(40~90°): 40~0
     public static float calculateHvaRiskScore(Float left, Float right) {
-        float leftScore = left != null ? Math.max(0, 100 - 2.5f * left) : 100f;
-        float rightScore = right != null ? Math.max(0, 100 - 2.5f * right) : 100f;
+        float leftScore = left != null ? calculateHvaScore(left) : 100f;
+        float rightScore = right != null ? calculateHvaScore(right) : 100f;
         return (leftScore + rightScore) / 2f;
+    }
+
+    private static float calculateHvaScore(float angle) {
+        float normalizedAngle = Math.max(0f, angle);
+
+        if (normalizedAngle <= 15f) {
+            return interpolate(normalizedAngle, 0f, 15f, 100f, 90f);
+        }
+        if (normalizedAngle <= 20f) {
+            return interpolate(normalizedAngle, 15f, 20f, 90f, 70f);
+        }
+        if (normalizedAngle <= 40f) {
+            return interpolate(normalizedAngle, 20f, 40f, 70f, 40f);
+        }
+        if (normalizedAngle <= 90f) {
+            return interpolate(normalizedAngle, 40f, 90f, 40f, 0f);
+        }
+        return 0f;
+    }
+
+    private static float interpolate(
+            float value,
+            float rangeStart,
+            float rangeEnd,
+            float scoreStart,
+            float scoreEnd
+    ) {
+        float ratio = (value - rangeStart) / (rangeEnd - rangeStart);
+        return scoreStart + ratio * (scoreEnd - scoreStart);
     }
 
     public static HalluxValgusAnalysis toHalluxValgusAnalysis(
