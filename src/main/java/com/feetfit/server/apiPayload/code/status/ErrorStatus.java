@@ -27,6 +27,9 @@ public enum ErrorStatus implements BaseErrorCode {
     TOKEN_EXPIRED(HttpStatus.UNAUTHORIZED, "AUTH4002", "토큰이 만료되었습니다."),
     KAKAO_LOGIN_FAILED(HttpStatus.BAD_REQUEST, "AUTH4003", "카카오 로그인에 실패했습니다."),
     APPLE_LOGIN_FAILED(HttpStatus.BAD_REQUEST, "AUTH4004", "애플 로그인에 실패했습니다."),
+    APPLE_CONFIGURATION_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "AUTH5001", "애플 로그인 설정이 올바르지 않습니다."),
+    APPLE_PRIVATE_KEY_INVALID(HttpStatus.INTERNAL_SERVER_ERROR, "AUTH5002", "애플 비공개 키를 읽을 수 없습니다."),
+    APPLE_CLIENT_SECRET_GENERATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "AUTH5003", "애플 Client Secret 생성에 실패했습니다."),
 
     // Device
     DEVICE_NOT_FOUND(HttpStatus.NOT_FOUND, "DEVICE4001", "기기를 찾을 수 없습니다."),

@@ -16,6 +16,18 @@ public class UserConverter {
                 .build();
     }
 
+    public static User toAppleUser(String socialId, String email) {
+        String nickname = email != null && email.contains("@")
+                ? email.substring(0, email.indexOf('@'))
+                : "애플사용자";
+        return User.builder()
+                .socialId(socialId)
+                .socialType(SocialType.APPLE)
+                .nickname(nickname)
+                .status(UserStatus.ACTIVE)
+                .build();
+    }
+
     public static UserResponseDTO.UserLoginResponseDTO toUserLoginResponseDTO(
             User user,
             String accessToken,

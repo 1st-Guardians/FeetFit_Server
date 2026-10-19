@@ -53,3 +53,8 @@ logs/
 ### Env ###
 .env
 *.env
+
+# Apple Sign in private key
+*.p8
+/secrets/apple/*
+!/secrets/apple/.gitkeep
