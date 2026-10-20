@@ -16,8 +16,11 @@ import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.util.UriComponentsBuilder;
+import reactor.core.Exceptions;
+import reactor.util.retry.Retry;
 
 import java.io.IOException;
 import java.net.URI;
@@ -29,7 +32,10 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.TimeoutException;
 import java.util.regex.Pattern;
+import javax.net.ssl.SSLException;
 
 @Slf4j
 @Service
@@ -43,6 +49,7 @@ public class DrugDataClient {
     private static final String DEFAULT_FALLBACK_IMAGE =
             "https://project5-42-oregon-feetfit-s3.s3.us-west-2.amazonaws.com/drug-images/9917badb-5647-43b7-8d0f-531bf0dcb7f0.png";
     private static final Pattern PERCENT_ENCODING_PATTERN = Pattern.compile("%[0-9a-fA-F]{2}");
+    private static final Set<Integer> RETRYABLE_HTTP_STATUSES = Set.of(408, 500, 502, 503, 504);
 
     private final WebClient webClient;
     private final ObjectMapper objectMapper;
@@ -62,8 +69,14 @@ public class DrugDataClient {
     @Value("${drug.image.fallback-url:" + DEFAULT_FALLBACK_IMAGE + "}")
     private String fallbackImageUrl;
 
-    @Value("${data-go-kr.drug.request-timeout-seconds:10}")
-    private long requestTimeoutSeconds = 10;
+    @Value("${data-go-kr.drug.request-timeout-seconds:30}")
+    private long requestTimeoutSeconds = 30;
+
+    @Value("${data-go-kr.drug.max-retries:2}")
+    private int maxRetries = 2;
+
+    @Value("${data-go-kr.drug.retry-backoff-millis:1000}")
+    private long retryBackoffMillis = 1000;
 
     private Map<String, String> officialDrugImages;
 
@@ -284,6 +297,13 @@ public class DrugDataClient {
                     .retrieve()
                     .bodyToMono(JsonNode.class)
                     .timeout(Duration.ofSeconds(requestTimeoutSeconds))
+                    .retryWhen(Retry.backoff(maxRetries, Duration.ofMillis(retryBackoffMillis))
+                            .filter(this::isTransientFailure)
+                            .doBeforeRetry(signal -> log.warn(
+                                    "Public data request retrying. requestName={}, attempt={}, maxAttempts={}, timeoutSeconds={}, failureType={}, url={}",
+                                    requestName, signal.totalRetries() + 2, maxRetries + 1, requestTimeoutSeconds,
+                                    signal.failure().getClass().getSimpleName(), maskServiceKey(uri)))
+                            .onRetryExhaustedThrow((spec, signal) -> signal.failure()))
                     .block();
         } catch (WebClientResponseException e) {
             log.error(
@@ -295,7 +315,27 @@ public class DrugDataClient {
                     e
             );
             throw e;
+        } catch (RuntimeException e) {
+            log.error("Public data request failed. requestName={}, timeoutSeconds={}, maxAttempts={}, failureType={}, url={}",
+                    requestName, requestTimeoutSeconds, maxRetries + 1,
+                    Exceptions.unwrap(e).getClass().getSimpleName(), maskServiceKey(uri));
+            throw e;
         }
+    }
+
+    private boolean isTransientFailure(Throwable failure) {
+        Throwable error = Exceptions.unwrap(failure);
+        if (error instanceof WebClientResponseException response) {
+            return RETRYABLE_HTTP_STATUSES.contains(response.getStatusCode().value());
+        }
+        if (error instanceof TimeoutException) return true;
+        if (error instanceof WebClientRequestException request) {
+            Throwable cause = request.getMostSpecificCause();
+            return !(cause instanceof SSLException)
+                    && (cause instanceof IOException || cause instanceof TimeoutException
+                    || cause instanceof io.netty.handler.timeout.TimeoutException);
+        }
+        return false;
     }
 
     private String resolveEncodedServiceKey(String message) {
