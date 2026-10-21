@@ -12,6 +12,21 @@ public class UserResponseDTO {
     @Getter
     @NoArgsConstructor
     @AllArgsConstructor
+    @Schema(description = "회원 및 연관 DB 데이터 삭제 결과. 외부 정리 작업은 커밋 후 재시도됩니다.")
+    public static class WithdrawUserResultDTO {
+        private Long userId;
+        private boolean deleted;
+        private java.time.LocalDateTime deletedAt;
+        private boolean cleanupPending;
+        @Schema(allowableValues = {"PENDING", "MANUAL_UNLINK_REQUIRED"},
+                description = "PENDING은 소셜 연결 해제 작업 접수, MANUAL_UNLINK_REQUIRED는 소셜 계정 설정에서 직접 연결 해제가 필요한 상태입니다.")
+        private String socialUnlinkStatus;
+    }
+
+    @Builder
+    @Getter
+    @NoArgsConstructor
+    @AllArgsConstructor
     @Schema(description = "로그인 응답")
     public static class UserLoginResponseDTO {
         @Schema(description = "JWT Access Token", example = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIiwiaWF0IjoxNzc5MjAwOTA3LCJleHAiOjE3NzkyODczMDd9.example")

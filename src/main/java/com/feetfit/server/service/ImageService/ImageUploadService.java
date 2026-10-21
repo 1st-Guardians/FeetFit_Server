@@ -73,7 +73,7 @@ public class ImageUploadService {
 
         String sanitizedFolderName = sanitizeFolderName(folderName);
         if (shouldProxyUpload()) {
-            return uploadViaDeployServer(sanitizedFolderName, image);
+            return UploadedImageTracker.record(uploadViaDeployServer(sanitizedFolderName, image));
         }
 
         validateUploadConfig();
@@ -97,7 +97,7 @@ public class ImageUploadService {
 
         String imageUrl = normalizePublicUrlPrefix(publicUrlPrefix) + "/" + s3Key;
 
-        return ImageResponseDTO.UploadImageResultDTO.builder()
+        return UploadedImageTracker.record(ImageResponseDTO.UploadImageResultDTO.builder()
                 .folderName(sanitizedFolderName)
                 .originalFileName(originalFileName)
                 .storedFileName(storedFileName)
@@ -107,7 +107,7 @@ public class ImageUploadService {
                 .s3Key(s3Key)
                 .s3Uri(s3Uri)
                 .imageUrl(imageUrl)
-                .build();
+                .build());
     }
 
     private boolean shouldProxyUpload() {

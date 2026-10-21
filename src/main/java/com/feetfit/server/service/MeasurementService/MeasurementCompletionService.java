@@ -61,6 +61,17 @@ public class MeasurementCompletionService {
         findOrCreateForUpdate(measurementSession).resetPressureAnalysisForRetry();
     }
 
+    public void invalidatePressureResultsForRetry(MeasurementSession measurementSession) {
+        resetPressureAnalysisForRetry(measurementSession);
+        dailyFootAnalysisRepository.findByMeasurementSessionId(measurementSession.getId())
+                .ifPresent(DailyFootAnalysis::resetPressureResults);
+        reportRepository.findByMeasurementSessionId(measurementSession.getId()).ifPresent(report -> {
+            metricAnalysisResultRepository.findByReportIdAndMetricType(report.getId(), MetricType.PRESSURE_BALANCE)
+                    .ifPresent(metricAnalysisResultRepository::delete);
+            report.clearTotalScore();
+        });
+    }
+
     public void refreshCaptureCompletedByStatus(MeasurementSession measurementSession, MeasurementStatus status) {
         if (measurementSession.isPhotoRecaptureInProgress()) {
             return;

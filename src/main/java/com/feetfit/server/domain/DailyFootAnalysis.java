@@ -135,6 +135,17 @@ public class DailyFootAnalysis extends BaseEntity {
         this.rightPressureHeatmapImageUrl = rightPressureHeatmapImageUrl;
     }
 
+    public void resetPressureResults() {
+        this.balanceScore = null;
+        this.balanceComment = null;
+        this.leftPressurePercent = null;
+        this.rightPressurePercent = null;
+        this.leftPressureImageUrl = null;
+        this.rightPressureImageUrl = null;
+        this.leftPressureHeatmapImageUrl = null;
+        this.rightPressureHeatmapImageUrl = null;
+    }
+
     public void updatePlantarFootprint(String leftPlantarFootprintImageUrl,
                                        String rightPlantarFootprintImageUrl,
                                        String plantarFootprintAnalysisText) {
