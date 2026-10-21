@@ -128,6 +128,9 @@ public class MeasurementController {
                 - WAITING_FOR_PRESSURE: 사진 촬영 및 온습도 측정 완료 후 압력 측정 준비 대기. 사용자가 내려와 FSR 센서 판을 내리고 다시 올라와야 하는 상태입니다.
                 - READY_FOR_PRESSURE: 압력 측정 준비 완료. 프론트가 사용자의 준비 완료 버튼 입력 후 보내는 상태입니다.
                 - MEASURING_PRESSURE: FSR 압력 측정 중. 사용자가 움직이지 않아야 하는 상태입니다.
+                - MEASURING_PRESSURE로 처음 전환할 때는 상태/회차 검증과 상태 저장을 우선하며, 전체 분석 완료 검사는 결과 저장 콜백에서 수행합니다.
+                - 기존 요청 형식은 유지합니다. 같은 회차와 같은 압력 진행 상태의 PATCH는 쓰기 잠금과 부수 효과 없이 현재 상태를 응답합니다.
+                - 실제 압력 상태 변경 중 일시적 DB 잠금 충돌은 백엔드에서 최대 3회 재시도하며 소진 시 503(MEASUREMENT5031)을 반환합니다.
                 - WAITING_FOR_PRESSURE_RETRY: 압력값 부족/비정상 등 다시 측정하면 복구 가능한 압력 실패 상태입니다. 소켓을 유지하며 요청의 failureDetail을 응답과 소켓의 detail로 전달합니다.
                 - READY_FOR_PRESSURE_RETRY: 압력 재측정 버튼 입력. 같은 세션으로 압력 측정 API를 다시 호출합니다.
                 - 압력 재측정은 최초 압력 측정과 별도로 최대 3회입니다. 세 번째 재측정도 실패하면 INVALID_PRESSURE_DATA 사유로 FAILED 처리합니다.
@@ -179,6 +182,10 @@ public class MeasurementController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "409",
                     description = "허용되지 않은 상태 전이(MEASUREMENT4008) 또는 촬영/압력 측정 회차 누락/불일치(MEASUREMENT4009)"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "503",
+                    description = "일시적 DB 잠금 충돌 재시도 소진(MEASUREMENT5031). 같은 세션/회차/상태로 제한적으로 재요청합니다."
             ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "500",

@@ -9,6 +9,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.codec.HttpMessageWriter;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.mock.http.client.reactive.MockClientHttpRequest;
@@ -20,12 +21,15 @@ import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 class MeasurementHardwareClientTest {
     private static final String START_URL = "https://hardware.example/measurement/start";
@@ -101,6 +105,28 @@ class MeasurementHardwareClientTest {
         assertHardwareRequest(PRESSURE_URL);
         assertThat(objectMapper.readTree(serializedBody(sentRequest.get())))
                 .isEqualTo(objectMapper.readTree("{\"measurementSessionId\":79,\"pressureMeasurementAttempt\":2}"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void onlyPressureRequestsUseTheLongerResponseTimeout() {
+        WebClient webClient = mock(WebClient.class);
+        WebClient.RequestBodyUriSpec request = mock(WebClient.RequestBodyUriSpec.class, RETURNS_SELF);
+        WebClient.ResponseSpec response = mock(WebClient.ResponseSpec.class);
+        Mono<ResponseEntity<Void>> pending = mock(Mono.class);
+        when(webClient.post()).thenReturn(request);
+        doReturn(request).when(request).bodyValue(any());
+        when(request.retrieve()).thenReturn(response);
+        when(response.toBodilessEntity()).thenReturn(pending);
+        MeasurementHardwareClient configured = new MeasurementHardwareClient(webClient);
+        ReflectionTestUtils.setField(configured, "pressureMeasurementUrl", PRESSURE_URL);
+        ReflectionTestUtils.setField(configured, "measurementStartUrl", START_URL);
+
+        configured.requestPressureMeasurement(79L, "Bearer test");
+        configured.requestMeasurementStart(79L, "Bearer test");
+
+        verify(pending).block(Duration.ofSeconds(30));
+        verify(pending).block(Duration.ofSeconds(10));
     }
 
     private void assertHardwareRequest(String expectedUrl) {

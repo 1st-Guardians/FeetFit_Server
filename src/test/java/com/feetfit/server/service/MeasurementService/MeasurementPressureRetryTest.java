@@ -17,6 +17,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -39,15 +41,21 @@ class MeasurementPressureRetryTest {
     @Mock MeasurementHardwareClient hardware;
     @Mock MeasurementCompletionService completion;
     @Mock EntityManager entityManager;
+    @Mock MeasurementWriteTransactions writeTransactions;
     @InjectMocks MeasurementCommandServiceImpl service;
 
     private MeasurementSession session;
 
     @BeforeEach
     void setUp() {
+        lenient().when(writeTransactions.execute(any(), any()))
+                .thenAnswer(invocation -> ((java.util.function.Supplier<?>) invocation.getArgument(1)).get());
+        lenient().when(writeTransactions.executeRequired(any()))
+                .thenAnswer(invocation -> ((java.util.function.Supplier<?>) invocation.getArgument(0)).get());
         session = MeasurementSession.builder().id(166L).user(User.builder().id(6L).build())
                 .status(MEASURING_PRESSURE).measuredAt(LocalDateTime.now().minusMinutes(2)).build();
-        when(sessions.findByIdForUpdate(166L)).thenReturn(Optional.of(session));
+        lenient().when(sessions.findByIdForUpdate(166L)).thenReturn(Optional.of(session));
+        lenient().when(sessions.findById(166L)).thenReturn(Optional.of(session));
         TransactionSynchronizationManager.initSynchronization();
     }
 
@@ -151,6 +159,104 @@ class MeasurementPressureRetryTest {
         assertError(() -> update(WAITING_FOR_PRESSURE_RETRY, MeasurementFailureReason.PRESSURE_SENSOR_ERROR, null),
                 ErrorStatus._BAD_REQUEST);
         assertThat(session.getStatus()).isEqualTo(MEASURING_PRESSURE);
+        verifyNoInteractions(socket, completion, hardware);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = MeasurementStatus.class, names = {"READY_FOR_PRESSURE", "READY_FOR_PRESSURE_RETRY"})
+    void startingPressureOnlyUpdatesTheStateWithoutRunningAnalysisChecks(MeasurementStatus readyStatus) {
+        session.updateStatus(readyStatus, null);
+        if (readyStatus == READY_FOR_PRESSURE_RETRY) session.startPressureRetry();
+
+        var response = update(MEASURING_PRESSURE, null, session.getPressureRetryCount());
+
+        assertThat(response.getStatus()).isEqualTo(MEASURING_PRESSURE);
+        assertThat(response.getPressureMeasurementAttempt()).isEqualTo(session.getPressureRetryCount());
+        verify(sessions).findByIdForUpdate(166L);
+        verify(socket).sendMeasurementStatusChanged(session);
+        verifyNoInteractions(completion, hardware);
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(ints = {0, 2})
+    void firstMeasuringCallbackStillRejectsMissingOrWrongRetryAttempts(Integer attempt) {
+        session.updateStatus(READY_FOR_PRESSURE_RETRY, null);
+        session.startPressureRetry();
+
+        assertError(() -> update(MEASURING_PRESSURE, null, attempt), ErrorStatus.MEASUREMENT_STALE_PHOTO_CAPTURE);
+
+        assertThat(session.getStatus()).isEqualTo(READY_FOR_PRESSURE_RETRY);
+        assertThat(session.getPressureRetryCount()).isEqualTo(1);
+        verifyNoInteractions(completion, socket, hardware);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = MeasurementStatus.class, names = {"MEASURING_PRESSURE", "ANALYZING"})
+    void duplicatePressureProgressDoesNotRecomputeOrPublish(MeasurementStatus status) {
+        session.updateStatus(status, null);
+        assertThat(update(status, null, 0).getStatus()).isEqualTo(status);
+        verify(sessions, never()).findByIdForUpdate(any());
+        verifyNoInteractions(socket, completion, hardware, writeTransactions);
+    }
+
+    @Test
+    void unchangedStatusStillRejectsAnotherUserWithoutTakingAWriteLock() {
+        assertError(() -> service.updateMeasurementStatus(7L, 166L,
+                new MeasurementRequestDTO.UpdateMeasurementStatusDTO(MEASURING_PRESSURE, null, null, null, null, 0),
+                "Bearer test"), ErrorStatus.MEASUREMENT_FORBIDDEN);
+        verify(sessions, never()).findByIdForUpdate(any());
+        verifyNoInteractions(socket, completion, hardware, writeTransactions);
+    }
+
+    @Test
+    void unchangedStatusStillRejectsMissingSession() {
+        when(sessions.findById(166L)).thenReturn(Optional.empty());
+        assertError(() -> update(MEASURING_PRESSURE, null, 0), ErrorStatus.MEASUREMENT_NOT_FOUND);
+        verify(sessions, never()).findByIdForUpdate(any());
+        verifyNoInteractions(writeTransactions);
+    }
+
+    @Test
+    void unchangedStatusStillRejectsNegativeAttemptWithoutTakingAWriteLock() {
+        assertError(() -> update(MEASURING_PRESSURE, null, -1), ErrorStatus._BAD_REQUEST);
+        verify(sessions, never()).findByIdForUpdate(any());
+        verifyNoInteractions(writeTransactions);
+    }
+
+    @Test
+    void sameStatusWithANewDurationUsesTheWriteTransaction() {
+        var response = service.updateMeasurementStatus(6L, 166L,
+                new MeasurementRequestDTO.UpdateMeasurementStatusDTO(MEASURING_PRESSURE, 60, null, null, null, 0),
+                "Bearer test");
+        assertThat(response.getMeasurementDurationSec()).isEqualTo(60);
+        verify(writeTransactions).execute(eq(166L), any());
+        verify(sessions).findByIdForUpdate(166L);
+    }
+
+    @Test
+    void delayedMeasuringCallbackCannotRegressAnalyzing() {
+        session.updateStatus(ANALYZING, null);
+        assertError(() -> update(MEASURING_PRESSURE, null, 0), ErrorStatus.MEASUREMENT_INVALID_STATUS_TRANSITION);
+        assertThat(session.getStatus()).isEqualTo(ANALYZING);
+        verifyNoInteractions(socket, completion, hardware);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = MeasurementStatus.class, names = {"MEASURING_PRESSURE", "ANALYZING"})
+    void lateInitialReadyButtonCannotStartTheHardwareAgain(MeasurementStatus currentStatus) {
+        session.updateStatus(currentStatus, null);
+        assertError(() -> update(READY_FOR_PRESSURE, null, 0), ErrorStatus.MEASUREMENT_INVALID_STATUS_TRANSITION);
+        assertThat(session.getStatus()).isEqualTo(currentStatus);
+        verifyNoInteractions(socket, completion, hardware);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = MeasurementStatus.class, names = {"WAITING_FOR_PHOTO_ENVIRONMENT", "CAPTURING_PHOTO_ENVIRONMENT", "WAITING_FOR_PRESSURE"})
+    void measuringCannotSkipPressureReadiness(MeasurementStatus currentStatus) {
+        session.updateStatus(currentStatus, null);
+        assertError(() -> update(MEASURING_PRESSURE, null, 0), ErrorStatus.MEASUREMENT_INVALID_STATUS_TRANSITION);
+        assertThat(session.getStatus()).isEqualTo(currentStatus);
         verifyNoInteractions(socket, completion, hardware);
     }
 

@@ -33,6 +33,9 @@ public class MeasurementHardwareClient {
     @Value("${hardware.measurement.pressure-measurement-url}")
     private String pressureMeasurementUrl;
 
+    @Value("${hardware.measurement.pressure-request-timeout-seconds:30}")
+    private long pressureRequestTimeoutSeconds = 30;
+
     public void requestMeasurementStart(Long measurementSessionId, String authorizationHeader) {
         requestHardwareTask("measurement-start", measurementStartUrl, measurementSessionId, authorizationHeader);
     }
@@ -75,12 +78,14 @@ public class MeasurementHardwareClient {
         String authorizationPreview = hasAuthorization
                 ? authorizationHeader.substring(0, Math.min(authorizationHeader.length(), 12))
                 : null;
-        log.info("Hardware task request sending. taskName={}, url={}, measurementSessionId={}, hasAuthorization={}, authorizationPreview={}, body={}",
+        long timeoutSeconds = "pressure-measurement".equals(taskName) ? Math.max(1, pressureRequestTimeoutSeconds) : 10;
+        log.info("Hardware task request sending. taskName={}, url={}, measurementSessionId={}, hasAuthorization={}, authorizationPreview={}, timeoutSeconds={}, body={}",
                 taskName,
                 requestUrl,
                 measurementSessionId,
                 hasAuthorization,
                 authorizationPreview,
+                timeoutSeconds,
                 body
         );
 
@@ -98,7 +103,7 @@ public class MeasurementHardwareClient {
                     .bodyValue(body)
                     .retrieve()
                     .toBodilessEntity()
-                    .block(Duration.ofSeconds(10));
+                    .block(Duration.ofSeconds(timeoutSeconds));
 
             log.info(
                     "Hardware task request accepted. taskName={}, url={}, measurementSessionId={}, status={}",

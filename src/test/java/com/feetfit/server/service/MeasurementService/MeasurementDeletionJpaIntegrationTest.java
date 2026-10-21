@@ -48,7 +48,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
         "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect",
         "spring.jpa.show-sql=false"
 })
-@Import({MeasurementCommandServiceImpl.class, ReportQueryServiceImpl.class})
+@Import({MeasurementCommandServiceImpl.class, ReportQueryServiceImpl.class,
+        com.feetfit.server.service.MeasurementService.MeasurementWriteTransactions.class})
 class MeasurementDeletionJpaIntegrationTest {
 
     @Autowired

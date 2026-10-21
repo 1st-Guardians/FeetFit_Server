@@ -30,6 +30,7 @@ import com.feetfit.server.web.dto.image.ImageResponseDTO;
 import com.feetfit.server.web.dto.report.ReportRequestDTO;
 import com.feetfit.server.web.dto.report.ReportResponseDTO;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -110,6 +111,20 @@ class ReportCommandServiceImplTest {
 
     @Mock
     private MetricInsightGenerationService metricInsightGenerationService;
+
+    @Mock
+    private com.feetfit.server.service.MeasurementService.MeasurementWriteTransactions writeTransactions;
+
+    @Mock
+    private jakarta.persistence.EntityManager entityManager;
+
+    @BeforeEach
+    void executeShortWrites() {
+        org.mockito.Mockito.lenient().when(writeTransactions.execute(any(), any()))
+                .thenAnswer(invocation -> ((java.util.function.Supplier<?>) invocation.getArgument(1)).get());
+        org.mockito.Mockito.lenient().when(measurementSessionRepository.findById(any()))
+                .thenAnswer(invocation -> measurementSessionRepository.findByIdForUpdate(invocation.getArgument(0)));
+    }
 
     @InjectMocks
     private ReportCommandServiceImpl reportCommandService;

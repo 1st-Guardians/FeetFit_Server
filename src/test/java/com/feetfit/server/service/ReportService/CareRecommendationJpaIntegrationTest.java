@@ -47,7 +47,8 @@ import static org.mockito.Mockito.doReturn;
         "spring.jpa.hibernate.ddl-auto=create-drop",
         "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect"
 })
-@Import({ReportCommandServiceImpl.class, FootCareTodoServiceImpl.class, HealthArticleServiceImpl.class})
+@Import({ReportCommandServiceImpl.class, FootCareTodoServiceImpl.class, HealthArticleServiceImpl.class,
+        com.feetfit.server.service.MeasurementService.MeasurementWriteTransactions.class})
 class CareRecommendationJpaIntegrationTest {
 
     private static final List<MetricType> METRICS = List.of(
