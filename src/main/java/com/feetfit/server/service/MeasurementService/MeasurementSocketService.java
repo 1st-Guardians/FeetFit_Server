@@ -60,6 +60,10 @@ public class MeasurementSocketService {
     private void sendMeasurementMessage(MeasurementSession measurementSession, String eventType, boolean shouldDisconnect,
                                         Long reportId, String recommendationStatus) {
         String messageText = resolveStatusMessage(measurementSession.getStatus());
+        if (measurementSession.getStatus() == MeasurementStatus.WAITING_FOR_PRESSURE_RETRY
+                && measurementSession.getFailureReason() != null) {
+            messageText = "압력 측정 처리를 완료하지 못했어요. 잠시 후 다시 측정해 주세요.";
+        }
         MeasurementResponseDTO.MeasurementSocketMessageDTO message =
                 MeasurementResponseDTO.MeasurementSocketMessageDTO.builder()
                         .eventType(eventType)

@@ -2,6 +2,7 @@ package com.feetfit.server.repository;
 
 import com.feetfit.server.domain.User;
 import com.feetfit.server.domain.enums.SocialType;
+import com.feetfit.server.domain.enums.UserStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -12,6 +13,8 @@ import java.util.Optional;
 
 public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findBySocialTypeAndSocialId(SocialType socialType, String socialId);
+
+    boolean existsByIdAndStatus(Long id, UserStatus status);
 
     long countByDeviceId(Long deviceId);
 

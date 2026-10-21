@@ -13,6 +13,7 @@ import jakarta.validation.Valid;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -27,6 +28,27 @@ public class UserController {
 
     private final UserService userService;
     private final FindLoginUser findLoginUser;
+
+    @DeleteMapping("/withdraw")
+    @Operation(summary = "회원 탈퇴 [은서]", description = """
+            로그인한 회원과 개인정보·측정·분석·리포트·추천·개인 이력을 DB에서 실제 삭제합니다.
+            Authorization 헤더에 FeetFit Bearer accessToken이 필요하며 탈퇴할 userId는 입력받지 않습니다.
+            공통 기기·신발·리뷰·약 상품·관리 콘텐츠는 삭제하지 않습니다.
+            진행 중인 측정은 종료하고 탈퇴 후 기존 토큰 및 늦게 도착한 AI 결과의 접근을 차단합니다.
+            소유한 S3 이미지와 소셜 연결 해제는 암호화된 정리 작업으로 접수하여 커밋 후 실행·재시도합니다.
+            요청 본문은 선택 사항입니다. 카카오는 kakaoAccessToken(카카오 토큰)을 전달하거나 서버의 KAKAO_ADMIN_KEY를 설정합니다.
+            애플은 탈퇴 직전 재인증으로 받은 appleAuthorizationCode를 전달합니다.
+            소셜 자격 증명이 없어도 서비스 계정은 삭제하지만 socialUnlinkStatus=MANUAL_UNLINK_REQUIRED가 반환됩니다.
+            이 경우 클라이언트는 카카오/애플 계정 설정에서 서비스 연결을 직접 해제하도록 안내해야 합니다.
+            cleanupPending=true는 외부 정리 작업이 아직 남았다는 뜻이며 서비스 회원 DB 삭제는 이미 완료된 상태입니다.
+            소셜 연결 해제가 진행 중이면 재가입은 USER4005(409)로 거절합니다. 완료 후 새 계정으로 가입할 수 있습니다.
+            성공 후 클라이언트는 서비스 토큰·캐시를 삭제하고 측정 WebSocket을 종료한 뒤 로그인 화면으로 이동합니다.
+            측정 WebSocket은 STOMP CONNECT의 Authorization 헤더에 Bearer 토큰을 전달해야 하며 본인 topic만 구독할 수 있습니다.
+            """)
+    public ApiResponse<UserResponseDTO.WithdrawUserResultDTO> withdraw(
+            @RequestBody(required = false) @Valid UserRequestDTO.WithdrawUserRequestDTO request) {
+        return ApiResponse.onSuccess(userService.withdraw(findLoginUser.getCurrentUserId(), request));
+    }
 
     @GetMapping("/profile")
     @Operation(

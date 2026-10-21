@@ -139,7 +139,7 @@ class MeasurementPressureRetryTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value = MeasurementFailureReason.class, names = {"CAMERA_ERROR", "AI_SERVER_ERROR", "NETWORK_ERROR", "USER_CANCELLED", "PRESSURE_SENSOR_ERROR"})
+    @EnumSource(value = MeasurementFailureReason.class, names = {"CAMERA_ERROR", "AI_SERVER_ERROR", "NETWORK_ERROR", "USER_CANCELLED"})
     void unrelatedErrorsStillFailImmediately(MeasurementFailureReason reason) {
         assertThat(update(FAILED, reason, null).getStatus()).isEqualTo(FAILED);
         assertThat(session.getFailureReason()).isEqualTo(reason);
@@ -148,8 +148,40 @@ class MeasurementPressureRetryTest {
 
     @Test
     void unrelatedFailureReasonCannotBeReportedAsPressureRetry() {
-        assertError(() -> update(WAITING_FOR_PRESSURE_RETRY, MeasurementFailureReason.PRESSURE_SENSOR_ERROR, null),
+        assertError(() -> update(WAITING_FOR_PRESSURE_RETRY, MeasurementFailureReason.CAMERA_ERROR, null),
                 ErrorStatus._BAD_REQUEST);
+        assertThat(session.getStatus()).isEqualTo(MEASURING_PRESSURE);
+        verifyNoInteractions(socket, completion, hardware);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = MeasurementFailureReason.class, names = {"INVALID_PRESSURE_DATA", "PRESSURE_SENSOR_ERROR",
+            "AI_SERVER_ERROR", "NETWORK_ERROR", "HARDWARE_TIMEOUT", "REPORT_SAVE_ERROR"})
+    void recoverableAttemptBoundPressureFailuresWaitForRetry(MeasurementFailureReason reason) {
+        var result = update(FAILED, reason, 0);
+
+        assertThat(result.getStatus()).isEqualTo(WAITING_FOR_PRESSURE_RETRY);
+        assertThat(session.getPressureRetryCount()).isZero();
+        verify(completion).resetPressureAnalysisForRetry(session);
+        verify(socket).sendMeasurementStatusChanged(session);
+        verifyNoInteractions(hardware);
+    }
+
+    @Test
+    void backendFailureAfterLastRetryBecomesTerminalWithActualReason() {
+        for (int i = 0; i < 3; i++) session.startPressureRetry();
+
+        assertThat(update(FAILED, MeasurementFailureReason.REPORT_SAVE_ERROR, 3).getStatus()).isEqualTo(FAILED);
+        assertThat(session.getFailureReason()).isEqualTo(MeasurementFailureReason.REPORT_SAVE_ERROR);
+        assertThat(session.getFailureDetail()).contains("3회");
+    }
+
+    @Test
+    void oldBackendFailureCannotResetNewPressureAttempt() {
+        session.startPressureRetry();
+
+        assertError(() -> update(FAILED, MeasurementFailureReason.REPORT_SAVE_ERROR, 0),
+                ErrorStatus.MEASUREMENT_STALE_PHOTO_CAPTURE);
         assertThat(session.getStatus()).isEqualTo(MEASURING_PRESSURE);
         verifyNoInteractions(socket, completion, hardware);
     }

@@ -7,6 +7,7 @@ import com.feetfit.server.domain.User;
 import com.feetfit.server.domain.enums.SocialType;
 import com.feetfit.server.jwt.TokenProvider;
 import com.feetfit.server.repository.UserRepository;
+import com.feetfit.server.service.UserService.AccountCleanupStore;
 import com.feetfit.server.web.dto.kakao.KakaoLoginResponseDTO;
 import com.feetfit.server.web.dto.user.UserResponseDTO;
 import lombok.RequiredArgsConstructor;
@@ -23,12 +24,14 @@ public class KakaoLoginCommandServiceImpl implements KakaoLoginCommandService {
     private final WebClient webClient;
     private final TokenProvider tokenProvider;
     private final UserRepository userRepository;
+    private final AccountCleanupStore accountCleanup;
 
     @Override
     public UserResponseDTO.UserLoginResponseDTO login(String accessToken) {
         KakaoLoginResponseDTO.KakaoUserInfo kakaoUserInfo = getUserInfo(accessToken);
         String socialId = getSocialId(kakaoUserInfo);
         String nickname = getNickname(kakaoUserInfo);
+        accountCleanup.requireNoPendingUnlink(SocialType.KAKAO, socialId);
 
         User user = userRepository.findBySocialTypeAndSocialId(SocialType.KAKAO, socialId)
                 .orElseGet(() -> userRepository.save(UserConverter.toKakaoUser(socialId, nickname)));

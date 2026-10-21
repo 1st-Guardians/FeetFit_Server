@@ -5,6 +5,7 @@ import com.feetfit.server.domain.User;
 import com.feetfit.server.domain.enums.SocialType;
 import com.feetfit.server.jwt.TokenProvider;
 import com.feetfit.server.repository.UserRepository;
+import com.feetfit.server.service.UserService.AccountCleanupStore;
 import com.feetfit.server.web.dto.apple.AppleTokenResponseDTO;
 import com.feetfit.server.web.dto.user.UserResponseDTO;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ public class AppleLoginCommandServiceImpl implements AppleLoginCommandService {
     private final AppleIdTokenVerifier appleIdTokenVerifier;
     private final TokenProvider tokenProvider;
     private final UserRepository userRepository;
+    private final AccountCleanupStore accountCleanup;
 
     @Override
     public UserResponseDTO.UserLoginResponseDTO login(String authorizationCode) {
@@ -27,6 +29,7 @@ public class AppleLoginCommandServiceImpl implements AppleLoginCommandService {
                 appleTokenClient.exchangeAuthorizationCode(authorizationCode);
         AppleIdTokenVerifier.AppleUserIdentity identity =
                 appleIdTokenVerifier.verify(appleTokens.getIdToken());
+        accountCleanup.requireNoPendingUnlink(SocialType.APPLE, identity.subject());
 
         User user = userRepository
                 .findBySocialTypeAndSocialId(SocialType.APPLE, identity.subject())

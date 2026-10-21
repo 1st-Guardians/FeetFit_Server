@@ -22,6 +22,13 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final UserTermsRepository userTermsRepository;
+    private final AccountWithdrawalService accountWithdrawalService;
+
+    @Override
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
+    public UserResponseDTO.WithdrawUserResultDTO withdraw(Long userId, UserRequestDTO.WithdrawUserRequestDTO request) {
+        return accountWithdrawalService.withdraw(userId, request);
+    }
 
     @Override
     public UserResponseDTO.UserProfileResponseDTO getProfile(Long userId) {

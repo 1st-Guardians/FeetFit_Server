@@ -1,6 +1,7 @@
 package com.feetfit.server.service.MeasurementService;
 
 import com.feetfit.server.apiPayload.code.status.ErrorStatus;
+import com.feetfit.server.apiPayload.exception.GeneralException;
 import com.feetfit.server.apiPayload.exception.handler.DeviceHandler;
 import com.feetfit.server.apiPayload.exception.handler.MeasurementHandler;
 import com.feetfit.server.apiPayload.exception.handler.UserHandler;
@@ -13,10 +14,13 @@ import com.feetfit.server.domain.enums.MeasurementFailureReason;
 import com.feetfit.server.domain.enums.MeasurementStatus;
 import com.feetfit.server.repository.MeasurementSessionRepository;
 import com.feetfit.server.repository.UserRepository;
+import com.feetfit.server.event.MeasurementPressureStatusFailureEvent;
 import com.feetfit.server.web.dto.measurement.MeasurementRequestDTO;
 import com.feetfit.server.web.dto.measurement.MeasurementResponseDTO;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -28,6 +32,7 @@ import java.time.LocalDateTime;
 @Service
 @Transactional
 @RequiredArgsConstructor
+@Slf4j
 public class MeasurementCommandServiceImpl implements MeasurementCommandService {
 
     private static final String RECAPTURE_DETAIL =
@@ -45,6 +50,7 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
     private final MeasurementHardwareClient measurementHardwareClient;
     private final MeasurementCompletionService measurementCompletionService;
     private final EntityManager entityManager;
+    private final ApplicationEventPublisher events;
 
     @Override
     public MeasurementResponseDTO.CreateMeasurementSessionResultDTO createMeasurementSession(Long userId, String authorizationHeader) {
@@ -80,8 +86,50 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
             Long measurementSessionId,
             MeasurementRequestDTO.UpdateMeasurementStatusDTO request,
             String authorizationHeader) {
+        MeasurementPressureStatusFailureEvent failureContext = null;
+        try {
+            MeasurementSession session = getOwnedMeasurementSession(userId, measurementSessionId);
+            failureContext = new MeasurementPressureStatusFailureEvent(userId, measurementSessionId,
+                    session.getPhotoRecaptureCount(), session.getPressureRetryCount(), request.getStatus());
+            var result = applyMeasurementStatus(session, request, authorizationHeader);
+            if (isPressureStatusRequest(request.getStatus())) {
+                entityManager.flush();
+            }
+            return result;
+        } catch (RuntimeException failure) {
+            boolean clientError = failure instanceof GeneralException exception
+                    && exception.getErrorReasonHttpStatus().getHttpStatus().is4xxClientError();
+            if (isPressureStatusRequest(request.getStatus()) && failureContext != null
+                    && !clientError && TransactionSynchronizationManager.isSynchronizationActive()) {
+                MeasurementPressureStatusFailureEvent event = failureContext;
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCompletion(int status) {
+                        if (status != STATUS_ROLLED_BACK) return;
+                        try {
+                            events.publishEvent(event);
+                        } catch (RuntimeException recoveryFailure) {
+                            log.error("Could not persist pressure retry after status failure. measurementSessionId={}",
+                                    measurementSessionId, recoveryFailure);
+                        }
+                    }
+                });
+            }
+            throw failure;
+        }
+    }
 
-        MeasurementSession measurementSession = getOwnedMeasurementSession(userId, measurementSessionId);
+    private boolean isPressureStatusRequest(MeasurementStatus status) {
+        return status == MeasurementStatus.READY_FOR_PRESSURE
+                || status == MeasurementStatus.READY_FOR_PRESSURE_RETRY
+                || status == MeasurementStatus.MEASURING_PRESSURE
+                || status == MeasurementStatus.ANALYZING;
+    }
+
+    private MeasurementResponseDTO.UpdateMeasurementStatusResultDTO applyMeasurementStatus(
+            MeasurementSession measurementSession, MeasurementRequestDTO.UpdateMeasurementStatusDTO request,
+            String authorizationHeader) {
+
         MeasurementStatus previousStatus = measurementSession.getStatus();
         if (request.getStatus() == null
                 || (request.getMeasurementDurationSec() != null && request.getMeasurementDurationSec() <= 0)) {
@@ -125,6 +173,14 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
         }
 
         if (nextStatus == MeasurementStatus.FAILED) {
+            if (MeasurementPressureRecoveryService.isPressureStage(previousStatus)
+                    && MeasurementPressureRecoveryService.isRecoverableFailure(request.getFailureReason())
+                    && (request.getPressureMeasurementAttempt() != null
+                    || request.getFailureReason() == MeasurementFailureReason.INVALID_PRESSURE_DATA
+                    || request.getFailureReason() == MeasurementFailureReason.PRESSURE_SENSOR_ERROR)) {
+                requirePressureRetry(measurementSession, request);
+                return MeasurementConverter.toUpdateMeasurementStatusResultDTO(measurementSession);
+            }
             failMeasurement(
                     measurementSession,
                     request.getMeasurementDurationSec(),
@@ -151,6 +207,7 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
                 throw new MeasurementHandler(ErrorStatus.MEASUREMENT_INVALID_STATUS_TRANSITION);
             }
             measurementSession.startPressureRetry();
+            measurementCompletionService.invalidatePressureResultsForRetry(measurementSession);
         }
         measurementSession.updateStatus(nextStatus, request.getMeasurementDurationSec());
         measurementSession.clearFailure();
@@ -261,7 +318,9 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
                 || nextStatus == MeasurementStatus.ANALYZING
                 || (nextStatus == MeasurementStatus.FAILED
                     && (request.getFailureReason() == MeasurementFailureReason.INVALID_PRESSURE_DATA
-                        || request.getFailureReason() == MeasurementFailureReason.PRESSURE_SENSOR_ERROR));
+                        || request.getFailureReason() == MeasurementFailureReason.PRESSURE_SENSOR_ERROR
+                        || (request.getPressureMeasurementAttempt() != null
+                        && MeasurementPressureRecoveryService.isRecoverableFailure(request.getFailureReason()))));
         if ((attempt != null && attempt != session.getPressureRetryCount())
                 || (pressureCallback && session.getPressureRetryCount() > 0 && attempt == null)) {
             throw new MeasurementHandler(ErrorStatus.MEASUREMENT_STALE_PHOTO_CAPTURE);
@@ -345,33 +404,39 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
         measurementSocketService.sendMeasurementStatusChanged(session);
     }
 
-    private boolean isPressureMeasurementStage(MeasurementStatus status) {
-        return status == MeasurementStatus.READY_FOR_PRESSURE
-                || status == MeasurementStatus.MEASURING_PRESSURE
-                || status == MeasurementStatus.ANALYZING
-                || status == MeasurementStatus.WAITING_FOR_PRESSURE_RETRY
-                || status == MeasurementStatus.READY_FOR_PRESSURE_RETRY;
-    }
-
     private void requirePressureRetry(MeasurementSession session,
                                       MeasurementRequestDTO.UpdateMeasurementStatusDTO request) {
         if (request.getFailureReason() != null
-                && request.getFailureReason() != MeasurementFailureReason.INVALID_PRESSURE_DATA) {
+                && !MeasurementPressureRecoveryService.isRecoverableFailure(request.getFailureReason())) {
             throw new MeasurementHandler(ErrorStatus._BAD_REQUEST);
         }
-        if (!isPressureMeasurementStage(session.getStatus())) {
+        boolean startSaveFailure = session.getStatus() == MeasurementStatus.WAITING_FOR_PRESSURE
+                && request.getFailureReason() == MeasurementFailureReason.REPORT_SAVE_ERROR
+                && request.getPressureMeasurementAttempt() != null;
+        if (!MeasurementPressureRecoveryService.isPressureStage(session.getStatus()) && !startSaveFailure) {
             throw new MeasurementHandler(ErrorStatus.MEASUREMENT_INVALID_STATUS_TRANSITION);
         }
         if (session.getStatus() == MeasurementStatus.WAITING_FOR_PRESSURE_RETRY) {
             return;
         }
+        MeasurementFailureReason reason = request.getFailureReason() != null
+                ? request.getFailureReason() : MeasurementFailureReason.INVALID_PRESSURE_DATA;
+        boolean invalidData = reason == MeasurementFailureReason.INVALID_PRESSURE_DATA;
         if (session.getRemainingPressureRetries() == 0) {
             failMeasurement(session, request.getMeasurementDurationSec(),
-                    MeasurementFailureReason.INVALID_PRESSURE_DATA, PRESSURE_RETRY_EXHAUSTED_DETAIL);
+                    reason, invalidData ? PRESSURE_RETRY_EXHAUSTED_DETAIL
+                            : "압력 재측정 3회를 모두 사용했지만 측정 처리를 완료하지 못했습니다.");
             return;
         }
         String detail = request.getFailureDetail();
-        session.requirePressureRetry(detail != null && !detail.isBlank() ? detail : PRESSURE_RETRY_DETAIL);
+        String defaultDetail = invalidData ? PRESSURE_RETRY_DETAIL
+                : "압력 측정 처리 중 문제가 발생했어요. 잠시 후 압력을 다시 측정해 주세요.";
+        String retryDetail = detail != null && !detail.isBlank() ? detail
+                : defaultDetail;
+        session.requirePressureRetry(retryDetail);
+        if (!invalidData) {
+            session.updateFailure(reason, retryDetail);
+        }
         measurementCompletionService.resetPressureAnalysisForRetry(session);
         measurementSocketService.sendMeasurementStatusChanged(session);
     }

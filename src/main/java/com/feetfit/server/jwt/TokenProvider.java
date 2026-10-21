@@ -9,6 +9,9 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
+import org.springframework.security.authentication.BadCredentialsException;
+import com.feetfit.server.repository.UserRepository;
+import com.feetfit.server.domain.enums.UserStatus;
 import org.springframework.stereotype.Component;
 
 import java.security.Key;
@@ -23,10 +26,12 @@ public class TokenProvider {
     private static final long REFRESH_TOKEN_EXPIRE_TIME = 1000L * 60 * 60 * 24 * 14;  // 14d
 
     private final Key key;
+    private final UserRepository users;
 
-    public TokenProvider(@Value("${jwt.secret}") String secretKey) {
+    public TokenProvider(@Value("${jwt.secret}") String secretKey, UserRepository users) {
         byte[] keyBytes = Decoders.BASE64.decode(secretKey);
         this.key = Keys.hmacShaKeyFor(keyBytes);
+        this.users = users;
     }
 
     public String createAccessToken(Long userId) {
@@ -53,6 +58,13 @@ public class TokenProvider {
 
     public Authentication getAuthentication(String token) {
         Claims claims = parseClaims(token);
+        try {
+            if (!users.existsByIdAndStatus(Long.parseLong(claims.getSubject()), UserStatus.ACTIVE)) {
+                throw new BadCredentialsException("Account is no longer active.");
+            }
+        } catch (NumberFormatException exception) {
+            throw new BadCredentialsException("Invalid account identifier.");
+        }
         User principal = new User(claims.getSubject(), "", Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")));
         return new UsernamePasswordAuthenticationToken(principal, token, principal.getAuthorities());
     }

@@ -23,7 +23,7 @@ public class MeasurementRequestDTO {
         @Schema(description = "측정 소요 시간(초)", example = "180")
         private Integer measurementDurationSec;
 
-        @Schema(description = "측정 실패 원인. FAILED는 최종 실패이며, 발에 의한 ArUco 마커 가림은 WAITING_FOR_RECAPTURE 상태로 요청해야 합니다.", example = "INVALID_CAPTURE_DATA")
+        @Schema(description = "측정 실패 원인. 회차가 일치하는 복구 가능 압력 오류는 재측정 대기로 처리합니다. 사진 마커 가림은 WAITING_FOR_RECAPTURE로 요청합니다.", example = "INVALID_CAPTURE_DATA")
         private MeasurementFailureReason failureReason;
 
         @Schema(description = "실패 또는 재촬영 사유. WAITING_FOR_RECAPTURE에서는 발에 의한 ArUco 마커 가림 안내에 사용합니다.", example = "발이 기준 ArUco 마커를 가리고 있습니다. 발 위치를 조정한 뒤 다시 촬영해 주세요.")

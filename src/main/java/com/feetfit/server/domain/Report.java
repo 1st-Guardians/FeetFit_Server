@@ -42,6 +42,10 @@ public class Report extends BaseEntity {
         this.totalScore = totalScore;
     }
 
+    public void clearTotalScore() {
+        this.totalScore = null;
+    }
+
     public void updateReportDate(LocalDateTime reportDate) {
         this.reportDate = reportDate;
     }
