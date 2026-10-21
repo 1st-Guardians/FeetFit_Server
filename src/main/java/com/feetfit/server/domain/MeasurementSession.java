@@ -68,8 +68,6 @@ public class MeasurementSession extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String pressureRetryDetail;
 
-    private LocalDateTime pressureProgressAt;
-
     @OneToMany(mappedBy = "measurementSession", cascade = CascadeType.ALL)
     @Builder.Default
     private List<PressureSensorReading> pressureSensorReadings = new ArrayList<>();
@@ -110,35 +108,8 @@ public class MeasurementSession extends BaseEntity {
     private TinaPedisAnalysis tinaPedisAnalysis;
 
     public void updateStatus(MeasurementStatus status, Integer measurementDurationSec) {
-        if (isActivePressureStatus(status)) {
-            if (this.status != status || pressureProgressAt == null) {
-                pressureProgressAt = LocalDateTime.now();
-            }
-        } else {
-            pressureProgressAt = null;
-        }
         this.status = status;
         this.measurementDurationSec = measurementDurationSec;
-    }
-
-    public void recordPressureProgress() {
-        if (isActivePressureStatus(status)) {
-            pressureProgressAt = LocalDateTime.now();
-        }
-    }
-
-    public LocalDateTime getLastPressureProgressAt() {
-        if (pressureProgressAt != null) return pressureProgressAt;
-        if (getUpdatedAt() != null) return getUpdatedAt();
-        if (getCreatedAt() != null) return getCreatedAt();
-        return measuredAt;
-    }
-
-    private boolean isActivePressureStatus(MeasurementStatus status) {
-        return status == MeasurementStatus.READY_FOR_PRESSURE
-                || status == MeasurementStatus.READY_FOR_PRESSURE_RETRY
-                || status == MeasurementStatus.MEASURING_PRESSURE
-                || status == MeasurementStatus.ANALYZING;
     }
 
     public void updateFailure(MeasurementFailureReason failureReason, String failureDetail) {
@@ -153,7 +124,6 @@ public class MeasurementSession extends BaseEntity {
 
     public void requirePhotoRecapture(String detail) {
         this.status = MeasurementStatus.WAITING_FOR_RECAPTURE;
-        this.pressureProgressAt = null;
         this.recaptureDetail = detail;
         clearFailure();
     }
@@ -169,7 +139,6 @@ public class MeasurementSession extends BaseEntity {
 
     public void requirePressureRetry(String detail) {
         this.status = MeasurementStatus.WAITING_FOR_PRESSURE_RETRY;
-        this.pressureProgressAt = null;
         this.pressureRetryDetail = detail;
         clearFailure();
     }

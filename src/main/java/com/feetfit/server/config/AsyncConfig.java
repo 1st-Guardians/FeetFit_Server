@@ -6,25 +6,10 @@ import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.concurrent.Executor;
-import java.util.concurrent.ThreadPoolExecutor;
 
 @EnableAsync
 @Configuration
 public class AsyncConfig {
-
-    @Bean(name = "accountCleanupTaskExecutor")
-    public Executor accountCleanupTaskExecutor() {
-        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        executor.setCorePoolSize(1);
-        executor.setMaxPoolSize(1);
-        executor.setQueueCapacity(1);
-        // Only wakeups are coalesced; cleanup jobs remain durable in the database.
-        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.DiscardPolicy());
-        executor.setThreadNamePrefix("account-cleanup-");
-        executor.setWaitForTasksToCompleteOnShutdown(false);
-        executor.initialize();
-        return executor;
-    }
 
     @Bean(name = "measurementCompletionAutomationTaskExecutor")
     public Executor measurementCompletionAutomationTaskExecutor() {

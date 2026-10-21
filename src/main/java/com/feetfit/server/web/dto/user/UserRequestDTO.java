@@ -17,19 +17,6 @@ public class UserRequestDTO {
 
     @Getter
     @NoArgsConstructor
-    @Schema(description = "회원 탈퇴 선택 입력. 미입력해도 서비스 계정은 삭제되지만 소셜 연결 해제에 추가 조치가 필요할 수 있습니다.")
-    public static class WithdrawUserRequestDTO {
-        @Schema(description = "카카오 계정 연결 해제용 카카오 액세스 토큰. FeetFit JWT가 아닙니다.", accessMode = Schema.AccessMode.WRITE_ONLY)
-        @Size(max = 8192)
-        private String kakaoAccessToken;
-
-        @Schema(description = "탈퇴 직전 애플 재인증으로 받은 새로운 인가 코드", accessMode = Schema.AccessMode.WRITE_ONLY)
-        @Size(max = 8192)
-        private String appleAuthorizationCode;
-    }
-
-    @Getter
-    @NoArgsConstructor
     @Schema(description = "사용자 프로필 수정 요청")
     public static class UserProfileUpdateRequestDTO {
         @Schema(description = "사용자 닉네임", example = "은서")

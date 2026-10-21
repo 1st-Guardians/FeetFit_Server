@@ -22,7 +22,6 @@ import com.feetfit.server.service.HealthArticleService.HealthArticleServiceImpl;
 import com.feetfit.server.service.ImageService.ImageUploadService;
 import com.feetfit.server.service.MeasurementService.MeasurementCompletionService;
 import com.feetfit.server.service.MeasurementService.MeasurementSocketService;
-import com.feetfit.server.service.MeasurementService.MeasurementPressureRecoveryService;
 import com.feetfit.server.web.dto.footcare.FootCareTodoRequestDTO;
 import com.feetfit.server.web.dto.report.ReportRequestDTO;
 import com.feetfit.server.web.dto.report.ReportResponseDTO;
@@ -68,7 +67,6 @@ class CareRecommendationJpaIntegrationTest {
     @MockBean private MeasurementCompletionService completionService;
     @MockBean private MeasurementSocketService socketService;
     @MockBean private MetricInsightGenerationService metricInsightGenerationService;
-    @MockBean private MeasurementPressureRecoveryService pressureRecovery;
 
     private User user;
     private Device device;

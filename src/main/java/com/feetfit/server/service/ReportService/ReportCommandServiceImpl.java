@@ -1,7 +1,6 @@
 package com.feetfit.server.service.ReportService;
 
 import com.feetfit.server.apiPayload.code.status.ErrorStatus;
-import com.feetfit.server.apiPayload.exception.GeneralException;
 import com.feetfit.server.apiPayload.exception.handler.MeasurementHandler;
 import com.feetfit.server.apiPayload.exception.handler.UserHandler;
 import com.feetfit.server.converter.ReportConverter;
@@ -15,35 +14,23 @@ import com.feetfit.server.repository.*;
 import com.feetfit.server.service.ImageService.ImageUploadService;
 import com.feetfit.server.service.MeasurementService.MeasurementCompletionService;
 import com.feetfit.server.service.MeasurementService.MeasurementSocketService;
-import com.feetfit.server.service.MeasurementService.MeasurementPressureRecoveryService;
 import com.feetfit.server.web.dto.image.ImageResponseDTO;
 import com.feetfit.server.web.dto.report.ReportRequestDTO;
 import com.feetfit.server.web.dto.report.ReportResponseDTO;
-import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Isolation;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionTemplate;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.*;
-import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 @Service
 @Transactional(isolation = Isolation.READ_COMMITTED)
 @RequiredArgsConstructor
-@Slf4j
 public class ReportCommandServiceImpl implements ReportCommandService {
 
     private static final Set<MetricType> REQUIRED_METRIC_TYPES = EnumSet.of(
@@ -71,19 +58,15 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     private final MeasurementCompletionService measurementCompletionService;
     private final MeasurementSocketService measurementSocketService;
     private final MetricInsightGenerationService metricInsightGenerationService;
-    private final PlatformTransactionManager transactionManager;
-    private final EntityManager entityManager;
-    private final MeasurementPressureRecoveryService pressureRecovery;
 
     @Override
-    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public ReportResponseDTO.SaveHalluxValgusResultDTO saveHalluxValgusAnalysis(
             Long userId,
             ReportRequestDTO.SaveHalluxValgusDTO request,
             MultipartFile leftFootImage,
             MultipartFile rightFootImage) {
 
-        ImageWriteAttempt attempt = prepareImageWrite(
+        MeasurementSession measurementSession = getValidatedReportWritableMeasurementSession(
                 userId, request.getMeasurementSessionId(), false);
 
         ImageResponseDTO.UploadImageResultDTO leftImageUpload =
@@ -96,30 +79,28 @@ public class ReportCommandServiceImpl implements ReportCommandService {
         float riskScore = ReportConverter.calculateHvaRiskScore(
                 request.getLeftToeAngleDegree(), request.getRightToeAngleDegree());
 
-        return saveImageWrite(attempt, lockedMeasurementSession -> {
-            HalluxValgusAnalysis saved = halluxValgusAnalysisRepository
-                    .findByMeasurementSessionId(lockedMeasurementSession.getId())
-                    .map(existing -> {
-                        existing.updateHalluxValgusAnalysis(
-                                request.getLeftToeAngleDegree(), leftAnalysisText, leftImageUpload.getImageUrl(),
-                                request.getRightToeAngleDegree(), rightAnalysisText, rightImageUpload.getImageUrl(),
-                                riskScore, request.getScoreAnalysisText()
-                        );
-                        return existing;
-                    })
-                    .orElseGet(() -> halluxValgusAnalysisRepository.save(
-                            ReportConverter.toHalluxValgusAnalysis(
-                                    lockedMeasurementSession, request,
-                                    leftImageUpload.getImageUrl(), rightImageUpload.getImageUrl())
-                    ));
+        MeasurementSession lockedMeasurementSession = lockMeasurementSession(measurementSession.getId());
+        HalluxValgusAnalysis saved = halluxValgusAnalysisRepository
+                .findByMeasurementSessionId(lockedMeasurementSession.getId())
+                .map(existing -> {
+                    existing.updateHalluxValgusAnalysis(
+                            request.getLeftToeAngleDegree(), leftAnalysisText, leftImageUpload.getImageUrl(),
+                            request.getRightToeAngleDegree(), rightAnalysisText, rightImageUpload.getImageUrl(),
+                            riskScore, request.getScoreAnalysisText()
+                    );
+                    return existing;
+                })
+                .orElseGet(() -> halluxValgusAnalysisRepository.save(
+                        ReportConverter.toHalluxValgusAnalysis(
+                                lockedMeasurementSession, request,
+                                leftImageUpload.getImageUrl(), rightImageUpload.getImageUrl())
+                ));
 
-            measurementCompletionService.refreshPhotoAnalysisCompleted(lockedMeasurementSession);
-            return ReportConverter.toSaveHalluxValgusResultDTO(saved);
-        });
+        measurementCompletionService.refreshPhotoAnalysisCompleted(lockedMeasurementSession);
+        return ReportConverter.toSaveHalluxValgusResultDTO(saved);
     }
 
     @Override
-    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public ReportResponseDTO.TinaPedisAnalysisResultDTO saveTinaPedisAnalysis(
             Long userId,
             ReportRequestDTO.SaveTinaPedisAnalysisDTO request,
@@ -128,7 +109,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
             MultipartFile soleSuspiciousAreaMapImage,
             MultipartFile soleOriginalFootImage
     ) {
-        ImageWriteAttempt attempt = prepareImageWrite(
+        MeasurementSession measurementSession = getValidatedReportWritableMeasurementSession(
                 userId, request.getMeasurementSessionId(), false);
         LocalDateTime recordedAt = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
 
@@ -141,47 +122,46 @@ public class ReportCommandServiceImpl implements ReportCommandService {
         ImageResponseDTO.UploadImageResultDTO soleOriginalFootUpload =
                 imageUploadService.upload("tina-pedis-sole-original", soleOriginalFootImage);
 
-        return saveImageWrite(attempt, lockedMeasurementSession -> {
-            TinaPedisAnalysis saved = tinaPedisAnalysisRepository.findByMeasurementSessionId(lockedMeasurementSession.getId())
-                    .map(existing -> {
-                        existing.updateTinaPedisAnalysis(
-                                request.getFungalSuspicionSafetyScore(),
-                                request.getSkinReactionSafetyScore(),
-                                request.getFungalSuspicionSafetyDescription(),
-                                request.getSkinReactionSafetyDescription(),
-                                request.getTotalScoreDescription(),
+        MeasurementSession lockedMeasurementSession = lockMeasurementSession(measurementSession.getId());
+        TinaPedisAnalysis saved = tinaPedisAnalysisRepository.findByMeasurementSessionId(lockedMeasurementSession.getId())
+                .map(existing -> {
+                    existing.updateTinaPedisAnalysis(
+                            request.getFungalSuspicionSafetyScore(),
+                            request.getSkinReactionSafetyScore(),
+                            request.getFungalSuspicionSafetyDescription(),
+                            request.getSkinReactionSafetyDescription(),
+                            request.getTotalScoreDescription(),
+                            suspiciousAreaMapUpload.getImageUrl(),
+                            originalFootUpload.getImageUrl(),
+                            soleSuspiciousAreaMapUpload.getImageUrl(),
+                            soleOriginalFootUpload.getImageUrl(),
+                            recordedAt
+                    );
+                    return existing;
+                })
+                .orElseGet(() -> tinaPedisAnalysisRepository.save(
+                        ReportConverter.toTinaPedisAnalysis(
+                                lockedMeasurementSession,
+                                request,
                                 suspiciousAreaMapUpload.getImageUrl(),
                                 originalFootUpload.getImageUrl(),
                                 soleSuspiciousAreaMapUpload.getImageUrl(),
                                 soleOriginalFootUpload.getImageUrl(),
                                 recordedAt
-                        );
-                        return existing;
-                    })
-                    .orElseGet(() -> tinaPedisAnalysisRepository.save(
-                            ReportConverter.toTinaPedisAnalysis(
-                                    lockedMeasurementSession,
-                                    request,
-                                    suspiciousAreaMapUpload.getImageUrl(),
-                                    originalFootUpload.getImageUrl(),
-                                    soleSuspiciousAreaMapUpload.getImageUrl(),
-                                    soleOriginalFootUpload.getImageUrl(),
-                                    recordedAt
-                            )
-                    ));
+                        )
+                ));
 
-            tinaPedisAnalysisRepository.flush();
+        tinaPedisAnalysisRepository.flush();
 
-            TinaPedisAnalysis previousAnalysis = tinaPedisAnalysisRepository
-                    .findTopByMeasurementSessionUserIdAndRecordedAtLessThanOrderByRecordedAtDesc(
-                            userId,
-                            saved.getRecordedAt().toLocalDate().atStartOfDay()
-                    )
-                    .orElse(null);
+        TinaPedisAnalysis previousAnalysis = tinaPedisAnalysisRepository
+                .findTopByMeasurementSessionUserIdAndRecordedAtLessThanOrderByRecordedAtDesc(
+                        userId,
+                        saved.getRecordedAt().toLocalDate().atStartOfDay()
+                )
+                .orElse(null);
 
-            measurementCompletionService.refreshPhotoAnalysisCompleted(lockedMeasurementSession);
-            return ReportConverter.toTinaPedisAnalysisResultDTO(saved, previousAnalysis);
-        });
+        measurementCompletionService.refreshPhotoAnalysisCompleted(lockedMeasurementSession);
+        return ReportConverter.toTinaPedisAnalysisResultDTO(saved, previousAnalysis);
     }
 
     // ─── 종합 발 분석 파트별 저장 ────────────────────────────────────────────────
@@ -190,113 +170,102 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     public ReportResponseDTO.DailyFootAnalysisResultDTO saveBalancePart(
             Long userId, ReportRequestDTO.BalancePartDTO request) {
         MeasurementSession session = getValidatedReportWritableMeasurementSession(userId, request.getMeasurementSessionId());
-        return savePressureReportInTransaction(session, () -> {
-            DailyFootAnalysis analysis = findOrCreate(session);
-            analysis.updateBalance(request.getBalanceScore(), request.getBalanceComment());
-            return buildDailyFootAnalysisResult(userId, analysis);
-        });
+        DailyFootAnalysis analysis = findOrCreate(session);
+        analysis.updateBalance(request.getBalanceScore(), request.getBalanceComment());
+        return buildDailyFootAnalysisResult(userId, analysis);
     }
 
     @Override
-    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public ReportResponseDTO.DailyFootAnalysisResultDTO savePressurePart(
             Long userId,
             ReportRequestDTO.PressurePartDTO request,
             MultipartFile leftPressureImage,
             MultipartFile rightPressureImage) {
-        ImageWriteAttempt attempt = prepareImageWrite(userId, request.getMeasurementSessionId(), true);
+        MeasurementSession session = getValidatedReportWritableMeasurementSession(userId, request.getMeasurementSessionId());
 
         ImageResponseDTO.UploadImageResultDTO leftUpload =
-                withPressureRecovery(attempt, () -> imageUploadService.upload("pressure-left", leftPressureImage));
+                imageUploadService.upload("pressure-left", leftPressureImage);
         ImageResponseDTO.UploadImageResultDTO rightUpload =
-                withPressureRecovery(attempt, () -> imageUploadService.upload("pressure-right", rightPressureImage));
+                imageUploadService.upload("pressure-right", rightPressureImage);
 
-        return saveImageWrite(attempt, session -> {
-            DailyFootAnalysis analysis = findOrCreate(session);
-            analysis.updatePressure(request.getLeftPressurePercent(), request.getRightPressurePercent(),
-                    leftUpload.getImageUrl(), rightUpload.getImageUrl());
-            measurementCompletionService.refreshPressureAnalysisCompleted(session);
-            return buildDailyFootAnalysisResult(userId, analysis);
-        });
+        DailyFootAnalysis analysis = findOrCreate(session);
+        analysis.updatePressure(request.getLeftPressurePercent(), request.getRightPressurePercent(),
+                leftUpload.getImageUrl(), rightUpload.getImageUrl());
+        measurementCompletionService.refreshPressureAnalysisCompleted(session);
+        return buildDailyFootAnalysisResult(userId, analysis);
     }
 
     @Override
-    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public ReportResponseDTO.PressureHeatmapImageResultDTO savePressureHeatmapImage(
             Long userId,
             ReportRequestDTO.PressureHeatmapImageDTO request,
             MultipartFile leftPressureHeatmapImage,
             MultipartFile rightPressureHeatmapImage) {
-        ImageWriteAttempt attempt = prepareImageWrite(userId, request.getMeasurementSessionId(), true);
+        MeasurementSession session = getValidatedReportWritableMeasurementSession(userId, request.getMeasurementSessionId());
 
         ImageResponseDTO.UploadImageResultDTO leftUpload =
-                withPressureRecovery(attempt, () -> imageUploadService.upload("pressure-heatmap-left", leftPressureHeatmapImage));
+                imageUploadService.upload("pressure-heatmap-left", leftPressureHeatmapImage);
         ImageResponseDTO.UploadImageResultDTO rightUpload =
-                withPressureRecovery(attempt, () -> imageUploadService.upload("pressure-heatmap-right", rightPressureHeatmapImage));
+                imageUploadService.upload("pressure-heatmap-right", rightPressureHeatmapImage);
 
-        return saveImageWrite(attempt, session -> {
-            DailyFootAnalysis analysis = findOrCreate(session);
-            analysis.updatePressureHeatmapImages(leftUpload.getImageUrl(), rightUpload.getImageUrl());
-            LocalDateTime recordedAt = resolveRecordedAt(request.getRecordedAt());
-            PressureSensorReading leftReading = replacePressureSensorReading(
-                    session,
-                    FootSide.LEFT,
-                    request.getLeftPressureValues(),
-                    recordedAt
-            );
-            PressureSensorReading rightReading = replacePressureSensorReading(
-                    session,
-                    FootSide.RIGHT,
-                    request.getRightPressureValues(),
-                    recordedAt
-            );
-            measurementCompletionService.refreshPressureAnalysisCompleted(session);
+        DailyFootAnalysis analysis = findOrCreate(session);
+        analysis.updatePressureHeatmapImages(leftUpload.getImageUrl(), rightUpload.getImageUrl());
+        LocalDateTime recordedAt = resolveRecordedAt(request.getRecordedAt());
+        PressureSensorReading leftReading = replacePressureSensorReading(
+                session,
+                FootSide.LEFT,
+                request.getLeftPressureValues(),
+                recordedAt
+        );
+        PressureSensorReading rightReading = replacePressureSensorReading(
+                session,
+                FootSide.RIGHT,
+                request.getRightPressureValues(),
+                recordedAt
+        );
+        measurementCompletionService.refreshPressureAnalysisCompleted(session);
 
-            return ReportResponseDTO.PressureHeatmapImageResultDTO.builder()
-                    .id(analysis.getId())
-                    .measurementSessionId(session.getId())
-                    .leftPressureHeatmapImageUrl(analysis.getLeftPressureHeatmapImageUrl())
-                    .rightPressureHeatmapImageUrl(analysis.getRightPressureHeatmapImageUrl())
-                    .leftPressureSensorReadingId(leftReading.getId())
-                    .rightPressureSensorReadingId(rightReading.getId())
-                    .pressureSensorValueCount(leftReading.getSensorValues().size() + rightReading.getSensorValues().size())
-                    .updatedAt(analysis.getUpdatedAt())
-                    .build();
-        });
+        return ReportResponseDTO.PressureHeatmapImageResultDTO.builder()
+                .id(analysis.getId())
+                .measurementSessionId(session.getId())
+                .leftPressureHeatmapImageUrl(analysis.getLeftPressureHeatmapImageUrl())
+                .rightPressureHeatmapImageUrl(analysis.getRightPressureHeatmapImageUrl())
+                .leftPressureSensorReadingId(leftReading.getId())
+                .rightPressureSensorReadingId(rightReading.getId())
+                .pressureSensorValueCount(leftReading.getSensorValues().size() + rightReading.getSensorValues().size())
+                .updatedAt(analysis.getUpdatedAt())
+                .build();
     }
 
     @Override
-    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public ReportResponseDTO.PlantarFootprintImageResultDTO savePlantarFootprintImage(
             Long userId,
             ReportRequestDTO.PlantarFootprintImageDTO request,
             MultipartFile leftPlantarFootprintImage,
             MultipartFile rightPlantarFootprintImage) {
-        ImageWriteAttempt attempt = prepareImageWrite(userId, request.getMeasurementSessionId(), false);
+        MeasurementSession session = getValidatedReportWritableMeasurementSession(userId, request.getMeasurementSessionId(), false);
 
         ImageResponseDTO.UploadImageResultDTO leftUpload =
                 imageUploadService.upload("plantar-footprint-left", leftPlantarFootprintImage);
         ImageResponseDTO.UploadImageResultDTO rightUpload =
                 imageUploadService.upload("plantar-footprint-right", rightPlantarFootprintImage);
 
-        return saveImageWrite(attempt, session -> {
-            DailyFootAnalysis analysis = findOrCreate(session);
-            analysis.updatePlantarFootprint(
-                    leftUpload.getImageUrl(),
-                    rightUpload.getImageUrl(),
-                    request.getPlantarFootprintAnalysisText()
-            );
-            measurementCompletionService.refreshPhotoAnalysisCompleted(session);
+        DailyFootAnalysis analysis = findOrCreate(session);
+        analysis.updatePlantarFootprint(
+                leftUpload.getImageUrl(),
+                rightUpload.getImageUrl(),
+                request.getPlantarFootprintAnalysisText()
+        );
+        measurementCompletionService.refreshPhotoAnalysisCompleted(session);
 
-            return ReportResponseDTO.PlantarFootprintImageResultDTO.builder()
-                    .id(analysis.getId())
-                    .measurementSessionId(session.getId())
-                    .leftPlantarFootprintImageUrl(analysis.getLeftPlantarFootprintImageUrl())
-                    .rightPlantarFootprintImageUrl(analysis.getRightPlantarFootprintImageUrl())
-                    .plantarFootprintAnalysisText(analysis.getPlantarFootprintAnalysisText())
-                    .updatedAt(analysis.getUpdatedAt())
-                    .build();
-        });
+        return ReportResponseDTO.PlantarFootprintImageResultDTO.builder()
+                .id(analysis.getId())
+                .measurementSessionId(session.getId())
+                .leftPlantarFootprintImageUrl(analysis.getLeftPlantarFootprintImageUrl())
+                .rightPlantarFootprintImageUrl(analysis.getRightPlantarFootprintImageUrl())
+                .plantarFootprintAnalysisText(analysis.getPlantarFootprintAnalysisText())
+                .updatedAt(analysis.getUpdatedAt())
+                .build();
     }
 
     @Override
@@ -394,38 +363,24 @@ public class ReportCommandServiceImpl implements ReportCommandService {
     public ReportResponseDTO.SaveMetricResultResultDTO saveMetricResult(
             Long userId, ReportRequestDTO.SaveMetricResultDTO request) {
 
-        boolean pressureWrite = request.getMetricType() == MetricType.PRESSURE_BALANCE;
-        MeasurementSession beforeGeneration = measurementSessionRepository.findById(request.getMeasurementSessionId())
-                .orElseThrow(() -> new MeasurementHandler(ErrorStatus.MEASUREMENT_NOT_FOUND));
-        validateReportWritableMeasurementSession(userId, beforeGeneration, pressureWrite);
-        ImageWriteAttempt attempt = new ImageWriteAttempt(userId, beforeGeneration.getId(),
-                beforeGeneration.getPhotoRecaptureCount(), beforeGeneration.getPressureRetryCount(), pressureWrite);
-        MetricInsightGenerationService.MetricInsight generatedInsight = withPressureRecovery(attempt,
-                () -> metricInsightGenerationService.generate(userId, request.getMetricType(), request.getScore(),
-                        request.getAdvice(), calculateGaugeStatus(request.getScore())));
-
-        // Text generation must not hold the session/user write locks needed by status callbacks.
-        MeasurementSession session = lockMeasurementSession(request.getMeasurementSessionId());
-        entityManager.refresh(session);
-        validateReportWritableMeasurementSession(userId, session, pressureWrite);
-        if (session.getPhotoRecaptureCount() != attempt.photoCaptureAttempt()
-                || (pressureWrite && session.getPressureRetryCount() != attempt.pressureMeasurementAttempt())) {
-            throw new MeasurementHandler(ErrorStatus.MEASUREMENT_STALE_PHOTO_CAPTURE);
-        }
-        if (request.getMetricType() == MetricType.PRESSURE_BALANCE) {
-            return savePressureReportInTransaction(session, () -> persistMetricResult(userId, request, session, generatedInsight));
-        }
-        return persistMetricResult(userId, request, session, generatedInsight);
-    }
-
-    private ReportResponseDTO.SaveMetricResultResultDTO persistMetricResult(
-            Long userId, ReportRequestDTO.SaveMetricResultDTO request, MeasurementSession measurementSession,
-            MetricInsightGenerationService.MetricInsight generatedInsight) {
+        MeasurementSession measurementSession = getValidatedReportWritableMeasurementSession(
+                userId,
+                request.getMeasurementSessionId(),
+                request.getMetricType() == MetricType.PRESSURE_BALANCE);
 
         // Lock before inserting reports to serialize this user's concurrent analysis callbacks.
         userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new UserHandler(ErrorStatus.USER_NOT_FOUND));
         Report report = findOrCreateReport(measurementSession);
+
+        // 오늘 결과와 오늘을 제외한 최근 최대 10회 동일 지표를 비교하여 status/advice 생성
+        GaugeStatus calculatedStatus = calculateGaugeStatus(request.getScore());
+        MetricInsightGenerationService.MetricInsight generatedInsight = metricInsightGenerationService.generate(
+                userId,
+                request.getMetricType(),
+                request.getScore(),
+                request.getAdvice(),
+                calculatedStatus);
 
         // 해당 metricType의 결과를 upsert
         MetricAnalysisResult metricResult = metricAnalysisResultRepository
@@ -558,12 +513,7 @@ public class ReportCommandServiceImpl implements ReportCommandService {
             Long measurementSessionId,
             boolean rejectPressureRetry) {
         MeasurementSession measurementSession = lockMeasurementSession(measurementSessionId);
-        validateReportWritableMeasurementSession(userId, measurementSession, rejectPressureRetry);
-        return measurementSession;
-    }
 
-    private void validateReportWritableMeasurementSession(
-            Long userId, MeasurementSession measurementSession, boolean rejectPressureRetry) {
         if (!measurementSession.getUser().getId().equals(userId)) {
             throw new MeasurementHandler(ErrorStatus.MEASUREMENT_FORBIDDEN);
         }
@@ -577,93 +527,8 @@ public class ReportCommandServiceImpl implements ReportCommandService {
         if (rejectPressureRetry && measurementSession.isPressureRetryInProgress()) {
             throw new MeasurementHandler(ErrorStatus.MEASUREMENT_INVALID_STATUS_TRANSITION);
         }
-    }
 
-    private ImageWriteAttempt prepareImageWrite(Long userId, Long measurementSessionId, boolean pressureWrite) {
-        TransactionTemplate transaction = imageWriteTransaction();
-        return transaction.execute(ignored -> {
-            MeasurementSession session = measurementSessionRepository.findById(measurementSessionId)
-                    .orElseThrow(() -> new MeasurementHandler(ErrorStatus.MEASUREMENT_NOT_FOUND));
-            validateReportWritableMeasurementSession(userId, session, pressureWrite);
-            return new ImageWriteAttempt(userId, measurementSessionId,
-                    session.getPhotoRecaptureCount(), session.getPressureRetryCount(), pressureWrite);
-        });
-    }
-
-    private <T> T saveImageWrite(ImageWriteAttempt attempt, Function<MeasurementSession, T> save) {
-        return withPressureRecovery(attempt, () -> imageWriteTransaction().execute(ignored -> {
-            // Only pre-upload reads exist here; discard open-in-view cache before locking current DB state.
-            entityManager.clear();
-            MeasurementSession session = lockMeasurementSession(attempt.measurementSessionId());
-            validateReportWritableMeasurementSession(attempt.userId(), session, attempt.pressureWrite());
-            if (session.getPhotoRecaptureCount() != attempt.photoCaptureAttempt()
-                    || (attempt.pressureWrite()
-                    && session.getPressureRetryCount() != attempt.pressureMeasurementAttempt())) {
-                throw new MeasurementHandler(ErrorStatus.MEASUREMENT_STALE_PHOTO_CAPTURE);
-            }
-            if (attempt.pressureWrite()) session.recordPressureProgress();
-            return save.apply(session);
-        }));
-    }
-
-    private <T> T withPressureRecovery(ImageWriteAttempt attempt, Supplier<T> operation) {
-        try {
-            return operation.get();
-        } catch (RuntimeException failure) {
-            boolean clientError = failure instanceof GeneralException exception
-                    && exception.getErrorReasonHttpStatus().getHttpStatus().is4xxClientError();
-            if (attempt.pressureWrite() && !clientError) {
-                log.error("Pressure report operation failed. measurementSessionId={}, pressureMeasurementAttempt={}",
-                        attempt.measurementSessionId(), attempt.pressureMeasurementAttempt(), failure);
-                recoverPressureReport(attempt);
-            }
-            throw failure;
-        }
-    }
-
-    private <T> T savePressureReportInTransaction(MeasurementSession session, Supplier<T> operation) {
-        ImageWriteAttempt attempt = new ImageWriteAttempt(session.getUser().getId(), session.getId(),
-                session.getPhotoRecaptureCount(), session.getPressureRetryCount(), true);
-        try {
-            session.recordPressureProgress();
-            T result = operation.get();
-            entityManager.flush();
-            return result;
-        } catch (RuntimeException failure) {
-            boolean clientError = failure instanceof GeneralException exception
-                    && exception.getErrorReasonHttpStatus().getHttpStatus().is4xxClientError();
-            if (!clientError && TransactionSynchronizationManager.isSynchronizationActive()) {
-                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-                    @Override
-                    public void afterCompletion(int status) {
-                        if (status == STATUS_ROLLED_BACK) recoverPressureReport(attempt);
-                    }
-                });
-            }
-            throw failure;
-        }
-    }
-
-    private void recoverPressureReport(ImageWriteAttempt attempt) {
-        try {
-            pressureRecovery.recoverReportFailure(attempt.userId(), attempt.measurementSessionId(),
-                    attempt.photoCaptureAttempt(), attempt.pressureMeasurementAttempt());
-        } catch (RuntimeException recoveryFailure) {
-            log.error("Could not persist pressure retry after report failure. measurementSessionId={}",
-                    attempt.measurementSessionId(), recoveryFailure);
-        }
-    }
-
-    private TransactionTemplate imageWriteTransaction() {
-        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
-        transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-        transaction.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
-        return transaction;
-    }
-
-    private record ImageWriteAttempt(Long userId, Long measurementSessionId,
-                                     int photoCaptureAttempt, int pressureMeasurementAttempt,
-                                     boolean pressureWrite) {
+        return measurementSession;
     }
 
     private List<UserFootCareTodo> currentTodos(Long userId) {

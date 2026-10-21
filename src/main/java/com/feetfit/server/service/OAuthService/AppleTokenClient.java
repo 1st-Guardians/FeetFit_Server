@@ -24,19 +24,6 @@ public class AppleTokenClient {
     private final AppleOAuthProperties properties;
     private final AppleClientSecretGenerator clientSecretGenerator;
 
-    public void revoke(String token) {
-        properties.validate();
-        try {
-            webClient.post().uri("https://appleid.apple.com/auth/revoke")
-                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
-                    .body(BodyInserters.fromFormData("client_id", properties.getClientId())
-                            .with("client_secret", clientSecretGenerator.generate()).with("token", token))
-                    .retrieve().toBodilessEntity().timeout(Duration.ofSeconds(15)).block();
-        } catch (RuntimeException exception) {
-            throw new IllegalStateException("Apple token revocation was not confirmed.");
-        }
-    }
-
     public AppleTokenResponseDTO exchangeAuthorizationCode(String authorizationCode) {
         properties.validate();
         try {

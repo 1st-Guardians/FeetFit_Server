@@ -21,8 +21,6 @@ public enum ErrorStatus implements BaseErrorCode {
     USER_ALREADY_EXISTS(HttpStatus.CONFLICT, "USER4002", "이미 존재하는 사용자입니다."),
     USER_WITHDRAWN(HttpStatus.FORBIDDEN, "USER4003", "탈퇴한 사용자입니다."),
     USER_PROFILE_ALREADY_SETUP(HttpStatus.CONFLICT, "USER4004", "이미 기본 정보가 등록된 사용자입니다."),
-    USER_WITHDRAWAL_CLEANUP_PENDING(HttpStatus.CONFLICT, "USER4005", "이전 계정의 연결 해제를 처리하고 있어요. 잠시 후 다시 로그인해 주세요."),
-    USER_WITHDRAWAL_CONFLICT(HttpStatus.CONFLICT, "USER4006", "측정 상태가 변경되었어요. 잠시 후 회원 탈퇴를 다시 시도해 주세요."),
 
     // Auth
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH4001", "유효하지 않은 토큰입니다."),

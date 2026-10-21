@@ -4,10 +4,6 @@ import com.feetfit.server.jwt.JwtAccessDeniedHandler;
 import com.feetfit.server.jwt.JwtAuthenticationEntryPoint;
 import com.feetfit.server.jwt.JwtFilter;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.ObjectProvider;
-import com.feetfit.server.service.ImageService.ReportUploadCleanupFilter;
-import com.feetfit.server.service.ImageService.S3ObjectDeletionClient;
-import com.feetfit.server.service.UserService.AccountCleanupStore;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -34,8 +30,6 @@ public class SecurityConfig {
     private final JwtFilter jwtFilter;
     private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
-    private final ObjectProvider<AccountCleanupStore> accountCleanup;
-    private final ObjectProvider<S3ObjectDeletionClient> imageDeletion;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -72,7 +66,6 @@ public class SecurityConfig {
 
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
-        http.addFilterAfter(new ReportUploadCleanupFilter(accountCleanup, imageDeletion), JwtFilter.class);
         return http.build();
     }
 

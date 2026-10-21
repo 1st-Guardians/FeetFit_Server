@@ -129,17 +129,8 @@ public class MeasurementController {
                 - READY_FOR_PRESSURE: 압력 측정 준비 완료. 프론트가 사용자의 준비 완료 버튼 입력 후 보내는 상태입니다.
                 - MEASURING_PRESSURE: FSR 압력 측정 중. 사용자가 움직이지 않아야 하는 상태입니다.
                 - WAITING_FOR_PRESSURE_RETRY: 압력값 부족/비정상 등 다시 측정하면 복구 가능한 압력 실패 상태입니다. 소켓을 유지하며 요청의 failureDetail을 응답과 소켓의 detail로 전달합니다.
-                - 압력 단계의 PRESSURE_SENSOR_ERROR/AI_SERVER_ERROR/HARDWARE_TIMEOUT/NETWORK_ERROR/REPORT_SAVE_ERROR도 재측정할 수 있습니다. 압력 오류 콜백에는 pressureMeasurementAttempt를 전달해야 합니다.
-                - 해당 회차의 복구 가능한 압력 오류를 FAILED로 보내도 재측정 횟수가 남으면 WAITING_FOR_PRESSURE_RETRY로 처리합니다. USER_CANCELLED와 사진 오류는 변환하지 않습니다.
-                - 백엔드의 압력 상태 변경 및 결과 저장 실패도 같은 세션의 재측정 대기로 안내합니다. 하드웨어 요청의 응답 타임아웃만으로 측정 실패를 확정하지 않으며, 이미 MEASURING_PRESSURE/ANALYZING인 작업은 늦은 하드웨어 통신 오류로 되돌리지 않습니다.
-                - AI가 재측정을 요청하지 않아도 백엔드 자체 오류나 진행 중단을 감지하면 재측정 대기 소켓을 발행합니다. 압력 시작/재시작 버튼 처리 중 상태 저장이 롤백된 경우도 회차를 증가시키거나 기기를 동작시키지 않고 다시 시도하도록 안내합니다.
-                - 압력 하드웨어 요청의 응답 대기 기본값은 30초이며 hardware.measurement.pressure-request-timeout-seconds로 설정합니다. 시작 요청을 자동 재전송하지 않습니다.
-                - 압력 진행 감시는 기본 1초마다 실행합니다. 시작 요청 후 대기 30초, 압력 측정 중 30초 동안 진행이 없으면 WAITING_FOR_PRESSURE_RETRY를 소켓으로 안내합니다. AI 분석은 별도로 600초를 적용하며 사용자의 준비 버튼 입력 대기는 시간 제한 대상이 아닙니다. 사용자가 재측정 버튼을 눌러야 기기에 재요청합니다.
-                - 진행 감시 시간은 measurement.pressure.start-timeout-seconds/measurement-timeout-seconds/analysis-timeout-seconds로 설정합니다. 같은 상태의 중복 PATCH는 진행 시간을 연장하지 않으며, 압력 결과 저장 성공은 진행 시간을 갱신합니다.
-                - 압력 수집·분석과 PRESSURE_BALANCE 저장이 완료된 세션은 다른 분석을 기다리더라도 압력 재측정 대상으로 처리하지 않습니다.
                 - READY_FOR_PRESSURE_RETRY: 압력 재측정 버튼 입력. 같은 세션으로 압력 측정 API를 다시 호출합니다.
-                - 압력 재측정은 최초 압력 측정과 별도로 최대 3회입니다. 세 번째 재측정도 실패하면 실제 실패 사유로 FAILED 처리합니다.
-                - 재측정 시작 시 이전 압력 결과와 PRESSURE_BALANCE 지표, 종합 점수를 초기화합니다. 사진·온습도 결과와 다른 지표는 유지합니다.
+                - 압력 재측정은 최초 압력 측정과 별도로 최대 3회입니다. 세 번째 재측정도 실패하면 INVALID_PRESSURE_DATA 사유로 FAILED 처리합니다.
                 - 압력 재측정 하드웨어 요청에는 pressureMeasurementAttempt(1~3)가 포함됩니다. 압력 측정 시작/성공/실패 콜백에서 같은 값을 전달해야 합니다.
                 - 최초 압력 측정의 pressureMeasurementAttempt는 0이며 생략 가능합니다. 압력 재측정 버튼에도 현재 회차를 전달하면 오래된 버튼 요청을 차단합니다.
                 - 압력 재측정 순서는 WAITING_FOR_PRESSURE_RETRY → READY_FOR_PRESSURE_RETRY → MEASURING_PRESSURE → ANALYZING입니다.
@@ -202,7 +193,7 @@ public class MeasurementController {
             @RequestParam MeasurementStatus status,
             @Parameter(description = "측정 소요 시간 (초). COMPLETED 시 생략하면 자동 계산", example = "180")
             @RequestParam(required = false) Integer measurementDurationSec,
-            @Parameter(description = "측정 실패 원인. FAILED 또는 WAITING_FOR_PRESSURE_RETRY에서 사용", example = "CAMERA_ERROR")
+            @Parameter(description = "측정 실패 원인. status=FAILED일 때 사용", example = "CAMERA_ERROR")
             @RequestParam(required = false) MeasurementFailureReason failureReason,
             @Parameter(description = "실패 또는 재촬영 대기 사유", example = "발이 기준 ArUco 마커를 가리고 있습니다. 발 위치를 조정한 뒤 다시 촬영해 주세요.")
             @RequestParam(required = false) String failureDetail,
