@@ -27,7 +27,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
         "spring.jpa.hibernate.ddl-auto=create-drop",
         "spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.H2Dialect"
 })
-@Import({MeasurementCommandServiceImpl.class, MeasurementSocketService.class})
+@Import({MeasurementCommandServiceImpl.class, MeasurementSocketService.class, MeasurementWriteTransactions.class})
 class MeasurementRecaptureJpaIntegrationTest {
     @Autowired TestEntityManager em;
     @Autowired MeasurementCommandService service;

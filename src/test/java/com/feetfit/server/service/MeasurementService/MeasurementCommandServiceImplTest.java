@@ -14,6 +14,7 @@ import com.feetfit.server.repository.UserRepository;
 import com.feetfit.server.web.dto.measurement.MeasurementRequestDTO;
 import com.feetfit.server.web.dto.measurement.MeasurementResponseDTO;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -50,6 +51,17 @@ class MeasurementCommandServiceImplTest {
 
     @Mock
     private MeasurementCompletionService measurementCompletionService;
+
+    @Mock
+    private MeasurementWriteTransactions writeTransactions;
+
+    @BeforeEach
+    void executePressureWrites() {
+        org.mockito.Mockito.lenient().when(writeTransactions.execute(any(), any()))
+                .thenAnswer(invocation -> ((java.util.function.Supplier<?>) invocation.getArgument(1)).get());
+        org.mockito.Mockito.lenient().when(writeTransactions.executeRequired(any()))
+                .thenAnswer(invocation -> ((java.util.function.Supplier<?>) invocation.getArgument(0)).get());
+    }
 
     @InjectMocks
     private MeasurementCommandServiceImpl measurementCommandService;

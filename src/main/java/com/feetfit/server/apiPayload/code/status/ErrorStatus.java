@@ -48,6 +48,7 @@ public enum ErrorStatus implements BaseErrorCode {
     MEASUREMENT_INVALID_STATUS_TRANSITION(HttpStatus.CONFLICT, "MEASUREMENT4008", "현재 측정 단계에서는 요청한 상태로 변경할 수 없습니다."),
     MEASUREMENT_STALE_PHOTO_CAPTURE(HttpStatus.CONFLICT, "MEASUREMENT4009", "촬영 회차가 누락되었거나 현재 촬영 회차와 다릅니다."),
     MEASUREMENT_HARDWARE_REQUEST_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "MEASUREMENT5001", "하드웨어 서버 측정 요청에 실패했습니다."),
+    MEASUREMENT_WRITE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "MEASUREMENT5031", "측정 상태 저장이 지연되고 있어요. 같은 회차로 잠시 후 다시 요청해 주세요."),
 
     // Report
     REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "REPORT4001", "리포트를 찾을 수 없습니다."),

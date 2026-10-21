@@ -60,6 +60,19 @@ class MeasurementControllerTest {
     private JpaMetamodelMappingContext jpaMappingContext;
 
     @Test
+    void exhaustedPressureStatusConflictsReturn503WithAnExplicitRetryMessage() throws Exception {
+        given(findLoginUser.getCurrentUserId()).willReturn(1L);
+        given(measurementCommandService.updateMeasurementStatus(eq(1L), eq(73L), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()))
+                .willThrow(new com.feetfit.server.apiPayload.exception.handler.MeasurementHandler(ErrorStatus.MEASUREMENT_WRITE_UNAVAILABLE));
+        mockMvc.perform(patch("/api/measurement-sessions/73/status")
+                        .param("status", "ANALYZING").param("pressureMeasurementAttempt", "0"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.isSuccess").value(false))
+                .andExpect(jsonPath("$.code").value("MEASUREMENT5031"));
+    }
+
+    @Test
     void getTodayMeasurementStatus_success_returnsTodayStatus() throws Exception {
         given(findLoginUser.getCurrentUserId()).willReturn(1L);
         given(measurementQueryService.getTodayMeasurementStatus(1L))

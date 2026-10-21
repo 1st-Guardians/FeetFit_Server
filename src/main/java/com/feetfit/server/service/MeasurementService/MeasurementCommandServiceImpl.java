@@ -18,12 +18,14 @@ import com.feetfit.server.web.dto.measurement.MeasurementResponseDTO;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 @Service
 @Transactional
@@ -45,6 +47,7 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
     private final MeasurementHardwareClient measurementHardwareClient;
     private final MeasurementCompletionService measurementCompletionService;
     private final EntityManager entityManager;
+    private final MeasurementWriteTransactions writeTransactions;
 
     @Override
     public MeasurementResponseDTO.CreateMeasurementSessionResultDTO createMeasurementSession(Long userId, String authorizationHeader) {
@@ -75,10 +78,51 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
     }
 
     @Override
+    @Transactional(propagation = Propagation.SUPPORTS)
     public MeasurementResponseDTO.UpdateMeasurementStatusResultDTO updateMeasurementStatus(
             Long userId,
             Long measurementSessionId,
             MeasurementRequestDTO.UpdateMeasurementStatusDTO request,
+            String authorizationHeader) {
+        if (isPressureProgress(request.getStatus())) {
+            MeasurementSession session = measurementSessionRepository.findById(measurementSessionId)
+                    .orElseThrow(() -> new MeasurementHandler(ErrorStatus.MEASUREMENT_NOT_FOUND));
+            if (!session.getUser().getId().equals(userId)) {
+                throw new MeasurementHandler(ErrorStatus.MEASUREMENT_FORBIDDEN);
+            }
+            // Existing AI callbacks also use PATCH to confirm an already committed state.
+            if (isUnchangedPressureProgress(session, request)) {
+                validatePhotoCaptureAttempt(session, request, request.getStatus());
+                validatePressureMeasurementAttempt(session, request, request.getStatus());
+                return MeasurementConverter.toUpdateMeasurementStatusResultDTO(session);
+            }
+        }
+        if (request.getStatus() == MeasurementStatus.MEASURING_PRESSURE
+                || request.getStatus() == MeasurementStatus.ANALYZING
+                || request.getStatus() == MeasurementStatus.READY_FOR_PRESSURE
+                || request.getStatus() == MeasurementStatus.READY_FOR_PRESSURE_RETRY
+                || request.getStatus() == MeasurementStatus.WAITING_FOR_PRESSURE_RETRY) {
+            return writeTransactions.execute(measurementSessionId, () -> updateMeasurementStatusInTransaction(
+                    userId, measurementSessionId, request, authorizationHeader));
+        }
+        return writeTransactions.executeRequired(() -> updateMeasurementStatusInTransaction(
+                userId, measurementSessionId, request, authorizationHeader));
+    }
+
+    private boolean isPressureProgress(MeasurementStatus status) {
+        return status == MeasurementStatus.MEASURING_PRESSURE || status == MeasurementStatus.ANALYZING;
+    }
+
+    private boolean isUnchangedPressureProgress(MeasurementSession session,
+                                               MeasurementRequestDTO.UpdateMeasurementStatusDTO request) {
+        return isPressureProgress(request.getStatus()) && session.getStatus() == request.getStatus()
+                && (request.getMeasurementDurationSec() == null
+                    || (request.getMeasurementDurationSec() > 0
+                        && Objects.equals(request.getMeasurementDurationSec(), session.getMeasurementDurationSec())));
+    }
+
+    private MeasurementResponseDTO.UpdateMeasurementStatusResultDTO updateMeasurementStatusInTransaction(
+            Long userId, Long measurementSessionId, MeasurementRequestDTO.UpdateMeasurementStatusDTO request,
             String authorizationHeader) {
 
         MeasurementSession measurementSession = getOwnedMeasurementSession(userId, measurementSessionId);
@@ -115,6 +159,10 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
 
         validateRecaptureTransition(measurementSession, nextStatus);
         validatePressureRetryTransition(measurementSession, nextStatus);
+
+        if (isUnchangedPressureProgress(measurementSession, request)) {
+            return MeasurementConverter.toUpdateMeasurementStatusResultDTO(measurementSession);
+        }
 
         if (nextStatus == MeasurementStatus.COMPLETED) {
             measurementCompletionService.completeMeasurementIfReady(
@@ -154,7 +202,11 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
         }
         measurementSession.updateStatus(nextStatus, request.getMeasurementDurationSec());
         measurementSession.clearFailure();
-        measurementCompletionService.refreshCaptureCompletedByStatus(measurementSession, nextStatus);
+        // Starting the sensors must not wait for analysis queries or completion checks.
+        // Result-saving callbacks update the analysis flags when their data is available.
+        if (nextStatus != MeasurementStatus.MEASURING_PRESSURE) {
+            measurementCompletionService.refreshCaptureCompletedByStatus(measurementSession, nextStatus);
+        }
         if (measurementSession.getStatus() != MeasurementStatus.COMPLETED
                 && shouldPublishStatusChanged(nextStatus)) {
             measurementSocketService.sendMeasurementStatusChanged(measurementSession);
@@ -304,8 +356,16 @@ public class MeasurementCommandServiceImpl implements MeasurementCommandService 
         if (next == MeasurementStatus.FAILED) {
             return;
         }
-        boolean invalid = (next == MeasurementStatus.READY_FOR_PRESSURE_RETRY
+        boolean invalid = (next == MeasurementStatus.READY_FOR_PRESSURE
+                    && current != MeasurementStatus.WAITING_FOR_PRESSURE && current != MeasurementStatus.READY_FOR_PRESSURE)
+                || (next == MeasurementStatus.MEASURING_PRESSURE
+                    && current != MeasurementStatus.READY_FOR_PRESSURE
+                    && current != MeasurementStatus.READY_FOR_PRESSURE_RETRY
+                    && current != MeasurementStatus.MEASURING_PRESSURE)
+                || (next == MeasurementStatus.READY_FOR_PRESSURE_RETRY
                 && current != MeasurementStatus.WAITING_FOR_PRESSURE_RETRY && current != next)
+                || (next == MeasurementStatus.ANALYZING
+                    && current != MeasurementStatus.MEASURING_PRESSURE && current != MeasurementStatus.ANALYZING)
                 || (current == MeasurementStatus.WAITING_FOR_PRESSURE_RETRY
                     && next != current && next != MeasurementStatus.READY_FOR_PRESSURE_RETRY)
                 || (current == MeasurementStatus.READY_FOR_PRESSURE_RETRY

@@ -39,15 +39,21 @@ class MeasurementRecaptureTest {
     @Mock MeasurementHardwareClient hardware;
     @Mock MeasurementCompletionService completion;
     @Mock EntityManager entityManager;
+    @Mock MeasurementWriteTransactions writeTransactions;
     @InjectMocks MeasurementCommandServiceImpl service;
 
     private MeasurementSession session;
 
     @BeforeEach
     void setUp() {
+        lenient().when(writeTransactions.execute(any(), any()))
+                .thenAnswer(invocation -> ((java.util.function.Supplier<?>) invocation.getArgument(1)).get());
+        lenient().when(writeTransactions.executeRequired(any()))
+                .thenAnswer(invocation -> ((java.util.function.Supplier<?>) invocation.getArgument(0)).get());
         session = MeasurementSession.builder().id(79L).user(User.builder().id(6L).build())
                 .status(CAPTURING_PHOTO_ENVIRONMENT).measuredAt(LocalDateTime.now().minusMinutes(2)).build();
         when(sessions.findByIdForUpdate(79L)).thenReturn(Optional.of(session));
+        lenient().when(sessions.findById(79L)).thenReturn(Optional.of(session));
         TransactionSynchronizationManager.initSynchronization();
     }
 
