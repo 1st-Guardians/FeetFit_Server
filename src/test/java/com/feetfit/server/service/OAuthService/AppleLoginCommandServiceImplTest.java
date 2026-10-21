@@ -5,7 +5,6 @@ import com.feetfit.server.domain.enums.SocialType;
 import com.feetfit.server.domain.enums.UserStatus;
 import com.feetfit.server.jwt.TokenProvider;
 import com.feetfit.server.repository.UserRepository;
-import com.feetfit.server.service.UserService.AccountCleanupStore;
 import com.feetfit.server.web.dto.apple.AppleTokenResponseDTO;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,7 +27,6 @@ class AppleLoginCommandServiceImplTest {
     @Mock private AppleIdTokenVerifier appleIdTokenVerifier;
     @Mock private TokenProvider tokenProvider;
     @Mock private UserRepository userRepository;
-    @Mock private AccountCleanupStore accountCleanup;
 
     @InjectMocks
     private AppleLoginCommandServiceImpl service;

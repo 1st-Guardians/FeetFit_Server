@@ -1,7 +1,5 @@
 package com.feetfit.server.service.MeasurementService;
 
-import com.feetfit.server.domain.enums.MeasurementFailureReason;
-import com.feetfit.server.event.MeasurementHardwareFailureEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -9,14 +7,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.util.StringUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.time.Duration;
 import java.util.Map;
-import java.util.concurrent.TimeoutException;
 
 @Component
 @RequiredArgsConstructor
@@ -24,7 +20,6 @@ import java.util.concurrent.TimeoutException;
 public class MeasurementHardwareClient {
 
     private final WebClient webClient;
-    private final ApplicationEventPublisher events;
 
     @Value("${hardware.measurement.start-url}")
     private String measurementStartUrl;
@@ -37,9 +32,6 @@ public class MeasurementHardwareClient {
 
     @Value("${hardware.measurement.pressure-measurement-url}")
     private String pressureMeasurementUrl;
-
-    @Value("${hardware.measurement.pressure-request-timeout-seconds:30}")
-    private long pressureRequestTimeoutSeconds = 30;
 
     public void requestMeasurementStart(Long measurementSessionId, String authorizationHeader) {
         requestHardwareTask("measurement-start", measurementStartUrl, measurementSessionId, authorizationHeader);
@@ -83,14 +75,12 @@ public class MeasurementHardwareClient {
         String authorizationPreview = hasAuthorization
                 ? authorizationHeader.substring(0, Math.min(authorizationHeader.length(), 12))
                 : null;
-        long timeoutSeconds = "pressure-measurement".equals(taskName) ? pressureRequestTimeoutSeconds : 10;
-        log.info("Hardware task request sending. taskName={}, url={}, measurementSessionId={}, hasAuthorization={}, authorizationPreview={}, timeoutSeconds={}, body={}",
+        log.info("Hardware task request sending. taskName={}, url={}, measurementSessionId={}, hasAuthorization={}, authorizationPreview={}, body={}",
                 taskName,
                 requestUrl,
                 measurementSessionId,
                 hasAuthorization,
                 authorizationPreview,
-                timeoutSeconds,
                 body
         );
 
@@ -108,8 +98,7 @@ public class MeasurementHardwareClient {
                     .bodyValue(body)
                     .retrieve()
                     .toBodilessEntity()
-                    .timeout(Duration.ofSeconds(timeoutSeconds))
-                    .block();
+                    .block(Duration.ofSeconds(10));
 
             log.info(
                     "Hardware task request accepted. taskName={}, url={}, measurementSessionId={}, status={}",
@@ -127,7 +116,6 @@ public class MeasurementHardwareClient {
                     e.getStatusCode(),
                     e.getResponseBodyAsString()
             );
-            requestPressureRecovery(taskName, measurementSessionId, body, MeasurementFailureReason.NETWORK_ERROR);
         } catch (Exception e) {
             log.error(
                     "Hardware task request failed. taskName={}, url={}, measurementSessionId={}",
@@ -136,24 +124,6 @@ public class MeasurementHardwareClient {
                     measurementSessionId,
                     e
             );
-            Throwable cause = e;
-            while (cause.getCause() != null && cause.getCause() != cause) cause = cause.getCause();
-            requestPressureRecovery(taskName, measurementSessionId, body,
-                    cause instanceof TimeoutException || cause instanceof java.net.SocketTimeoutException
-                            || cause instanceof io.netty.handler.timeout.TimeoutException
-                            ? MeasurementFailureReason.HARDWARE_TIMEOUT : MeasurementFailureReason.NETWORK_ERROR);
-        }
-    }
-
-    private void requestPressureRecovery(String taskName, Long sessionId, Map<String, Object> body,
-                                         MeasurementFailureReason reason) {
-        if (!"pressure-measurement".equals(taskName)) return;
-        int attempt = ((Number) body.get("pressureMeasurementAttempt")).intValue();
-        try {
-            events.publishEvent(new MeasurementHardwareFailureEvent(sessionId, attempt, reason));
-        } catch (RuntimeException recoveryFailure) {
-            log.error("Could not persist pressure retry after hardware failure. measurementSessionId={}, pressureMeasurementAttempt={}",
-                    sessionId, attempt, recoveryFailure);
         }
     }
 }

@@ -13,7 +13,6 @@ import com.feetfit.server.repository.MeasurementSessionRepository;
 import com.feetfit.server.repository.UserRepository;
 import com.feetfit.server.web.dto.measurement.MeasurementRequestDTO;
 import com.feetfit.server.web.dto.measurement.MeasurementResponseDTO;
-import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -51,9 +50,6 @@ class MeasurementCommandServiceImplTest {
 
     @Mock
     private MeasurementCompletionService measurementCompletionService;
-
-    @Mock
-    private EntityManager entityManager;
 
     @InjectMocks
     private MeasurementCommandServiceImpl measurementCommandService;
